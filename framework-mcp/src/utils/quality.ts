@@ -117,9 +117,10 @@ export function analyzePathQuality(projectRoot: string, targetPath: string): Qua
 
             // Check nesting depth
             lines.forEach((line: string, idx: number) => {
-                const indentMatch = line.match(/^(?:\s{2}){5,}/);
-                if (indentMatch && !line.trim().startsWith("//") && !line.trim().startsWith("*")) {
-                    const depth = Math.floor(indentMatch[0].length / 2);
+                const leadingSpaces = line.match(/^(\s*)/)?.[0].length || 0;
+                if (leadingSpaces >= 10 && !line.trim().startsWith("//") && !line.trim().startsWith("*")) {
+                    const indentSize = (leadingSpaces % 4 === 0) ? 4 : 2;
+                    const depth = Math.floor(leadingSpaces / indentSize);
                     if (depth > 4) {
                         deepNesting++;
                         issues.push({

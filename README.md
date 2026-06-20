@@ -720,9 +720,9 @@ Atabey defines "enterprise-grade" through deterministic rules: AST compliance pa
 - All function inputs validated with Zod schemas
 - Type safety enforced in CI pipeline
 
-### Zero Mock Policy
-- Mock data usage is **forbidden** (except 3rd party services)
-- Tests run against real implementations
+### Prudent Mocking Policy
+- Core governance logic, schemas, and rule engines are verified against real implementations without mock data.
+- Unit and integration boundaries (such as remote Hermes polling loops, network calls, and LLM provider interfaces) utilize lightweight, standard mocks to ensure isolation and fast test execution.
 
 ### PII Masking (KVKK Compliant)
 - All logs scanned for Personally Identifiable Information

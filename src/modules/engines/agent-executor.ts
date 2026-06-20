@@ -3,6 +3,7 @@ import { maskObject, maskText } from "../../shared/pii.js";
 import { AtabeyStorage } from "../../shared/storage.js";
 import { asAgentID, asTraceID } from "../../shared/types.js";
 import { CoreMemory } from "../memory/core.js";
+import { EvaluationEngine } from "./evaluation-engine.js";
 import { QualityGate } from "./quality-gate.js";
 import { RoutingEngine, RoutingResult } from "./routing-engine.js";
 
@@ -42,6 +43,7 @@ export class AgentExecutor {
         let lastError = "";
 
         for (let attempt = 1; attempt <= 3; attempt++) {
+            const startTime = Date.now();
             try {
                 logger.info(`[EXECUTOR] Attempt ${attempt}/3: ${agent} executing...`);
 
@@ -53,6 +55,7 @@ export class AgentExecutor {
                 const qualityResult = await QualityGate.check(agent, output, taskDescription);
 
                 if (qualityResult.passed) {
+                    const durationMs = Date.now() - startTime;
                     logger.info(`[EXECUTOR] ${agent} task PASSED quality check (attempt ${attempt})`);
 
                     // 4. Save to memory
@@ -60,6 +63,13 @@ export class AgentExecutor {
 
                     // Update agent status
                     AtabeyStorage.updateAgentStatus(agent.replace("@", ""), "COMPLETED", taskDescription);
+
+                    // Evaluate task to update specialty memory
+                    try {
+                        EvaluationEngine.evaluateTask(traceId, agent, durationMs, taskDescription);
+                    } catch (evalErr) {
+                        logger.error(`[EXECUTOR] Failed to evaluate task for ${agent}: ${(evalErr as Error).message}`);
+                    }
 
                     return {
                         success: true,

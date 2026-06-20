@@ -110,7 +110,7 @@ export class AtabeyStorage {
                 fs.mkdirSync(frameworkDir, { recursive: true });
             }
             const dbPath = path.join(frameworkDir, "atabey.db");
-            this.db = new Database(dbPath);
+            this.db = new Database(dbPath, { timeout: 5000 });
             this.db.pragma("journal_mode = WAL");
             this.initializeSchema();
         }
