@@ -1,0 +1,26 @@
+{
+  "name": "Agent Atabey",
+  "version": "0.0.14",
+  "profile": "freelancer",
+  "agents": [
+    "manager",
+    "backend",
+    "frontend",
+    "quality"
+  ],
+  "unified": false,
+  "adapters": [
+    "gemini"
+  ],
+  "backendLanguage": "Node.js (TypeScript)",
+  "frontendFramework": "Vite (React)",
+  "language": "tr",
+  "theme": {
+    "palette": "Modern Blue",
+    "colors": {
+      "primary": "#0ea5e9",
+      "secondary": "#64748b",
+      "accent": "#f43f5e"
+    }
+  }
+}

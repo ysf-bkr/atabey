@@ -1,0 +1,8 @@
+# Exclude development scripts from published npm package
+bin/hermes-sandbox.js
+bin/test-init-run.js
+tests/
+framework-mcp/tests/
+.atabey/logs/
+.atabey/messages/
+.atabey/queue/

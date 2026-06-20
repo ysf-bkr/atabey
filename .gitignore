@@ -1,0 +1,93 @@
+# Dependency Directories
+node_modules/
+jspm_packages/
+web_modules/
+
+# Build Directories
+dist/
+build/
+out/
+.docusaurus/
+
+# Logs and Lock Files
+.atabey/logs/*.json
+.atabey/*.lock
+.atabey/memory/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment Variables
+.env
+.env.local
+.env.development
+.env.staging
+.env.production
+.env*.local
+
+# Editor/System Files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Temporary/Scratch Files
+cleanup.js
+cleanup.cjs
+
+# Generated npm tarballs (do not commit)
+*.tgz
+atabey-*.tgz
+
+# Isolated init test directories
+/test-init/
+*.log
+
+# Allow framework's own tests
+!/tests/
+
+# Agent Atabey / Adapter Runtime Folders (Ignore locks, logs, memory, messages, queue)
+.atabey/logs/*.json
+.atabey/*.lock
+.atabey/memory/
+.atabey/queue/
+.atabey/messages/
+.atabey/monitoring/
+
+# Legacy Adapter Ignores
+.gemini/logs/*.json
+.gemini/*.lock
+.gemini/memory/
+.claude/logs/*.json
+.claude/*.lock
+.claude/memory/
+.grok/logs/*.json
+.grok/*.lock
+.grok/memory/
+.agent/logs/*.json
+.agent/*.lock
+.agent/memory/
+
+# Coverage artifacts (do not commit — they are large generated files)
+coverage/
+coverage-clean.json
+coverage-summary.json
+
+# Test artifacts
+tests/test-init/
+
+# Auto-generated entries
+*.tmp
+*.temp
+.cache/
+.atabey/*.db
+.atabey/finops/
+.atabey/telemetry/
+tests/.temp-init/
+

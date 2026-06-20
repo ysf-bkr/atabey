@@ -1,0 +1,59 @@
+{
+  "name": "Atabey Agent Lifecycle",
+  "initialState": "INIT",
+  "states": {
+    "INIT": {
+      "description": "Agent loaded and parsing initial workspace state.",
+      "transitions": {
+        "RESOLVED": "READY"
+      }
+    },
+    "READY": {
+      "description": "Agent is idle and listening for Hermes message cues.",
+      "transitions": {
+        "DELEGATED": "PLANNING"
+      }
+    },
+    "PLANNING": {
+      "description": "Agent is creating a strategic task division plan.",
+      "transitions": {
+        "PLAN_READY": "EXECUTING",
+        "ABORTED": "FAILED"
+      }
+    },
+    "EXECUTING": {
+      "description": "Agent is running shell scripts, file tools or code modifications.",
+      "transitions": {
+        "DELEGATE_REQUIRED": "DELEGATING",
+        "RUN_COMPLETE": "VERIFYING",
+        "CRASHED": "FAILED"
+      }
+    },
+    "DELEGATING": {
+      "description": "Agent is blocked waiting for sub-agent results.",
+      "transitions": {
+        "SUBTASK_RETURNED": "EXECUTING",
+        "SUBTASK_TIMEOUT": "FAILED"
+      }
+    },
+    "VERIFYING": {
+      "description": "Agent runs linting, testing, and compliance on the outputs.",
+      "transitions": {
+        "COMPLIANT": "COMPLETED",
+        "NON_COMPLIANT": "FAILED"
+      }
+    },
+    "COMPLETED": {
+      "description": "Task sequence finalized successfully.",
+      "transitions": {
+        "RESET": "READY"
+      }
+    },
+    "FAILED": {
+      "description": "Validation failed, trace aborted.",
+      "transitions": {
+        "RETRY": "READY"
+      }
+    }
+  }
+}

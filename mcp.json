@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "atabey": {
+      "command": "atabey",
+      "args": ["mcp", "start"],
+      "env": {
+        "ATABEY_PROJECT_ROOT": "/Users/ybekar/Desktop/Projeler/atabey"
+      },
+      "description": "Stdio mode: her kullanici kendi IDE'sinden baglanir."
+    },
+    "atabey-sse": {
+      "url": "http://localhost:5858/mcp/sse",
+      "env": {
+        "ATABEY_PROJECT_ROOT": "/Users/ybekar/Desktop/Projeler/atabey"
+      },
+      "description": "Unified mode: Tek port 5858'de MCP + Dashboard birlikte. Dashboard: http://localhost:5858"
+    }
+  }
+}

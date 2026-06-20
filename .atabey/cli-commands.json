@@ -1,0 +1,32 @@
+{
+  "commands": {
+    "init": {
+      "agent": "manager",
+      "description": "Initialize Agent Atabey structure and AI configuration."
+    },
+    "check": {
+      "agent": "quality",
+      "description": "Verify framework files and code quality discipline."
+    },
+    "status": {
+      "agent": "manager",
+      "description": "Show the current status of the active project phase."
+    },
+    "trace:new": {
+      "agent": "manager",
+      "description": "Generate a new Trace ID to start a task sequence."
+    },
+    "orchestrate": {
+      "agent": "manager",
+      "description": "Execute the Hermes message broker loop."
+    },
+    "verify-contract": {
+      "agent": "architect",
+      "description": "Validate type contracts between backend and frontend."
+    },
+    "update-contract": {
+      "agent": "architect",
+      "description": "Update the contract signature hash."
+    }
+  }
+}

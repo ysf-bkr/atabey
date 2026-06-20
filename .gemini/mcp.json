@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "atabey": {
+      "command": "node",
+      "args": [
+        "framework-mcp/dist/index.js"
+      ],
+      "env": {
+        "ATABEY_PROJECT_ROOT": "/Users/ybekar/Desktop/Projeler/atabey"
+      }
+    }
+  }
+}
