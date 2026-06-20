@@ -185,4 +185,9 @@ export function handleRunCommand(projectRoot: string, args: RunCommandArgs): Pro
                 ? output.substring(0, MAX_OUTPUT_LENGTH) + "... [TRUNCATED] ..."
                 : output;
 
-            resolve({ content: [{ type: "text", text:
+            resolve({
+                content: [{ type: "text", text: truncatedOutput }],
+            });
+        });
+    });
+}

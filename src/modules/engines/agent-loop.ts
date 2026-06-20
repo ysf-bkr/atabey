@@ -11,7 +11,7 @@ import { AgentExecutor } from "./agent-executor.js";
  * Acts as a message-polling and workflow enforcer, ensuring task messages are
  * routed to their designated target agents, which then get processed by the AI client interface.
  *
- * v0.0.14: First real implementation. Agents are now real.
+ * v0.0.14: First real implementation. Agents are now reliably acknowledged and routed.
  */
 export class AgentLoop {
     private static loopHandle: ReturnType<typeof setInterval> | null = null;
