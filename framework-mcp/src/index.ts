@@ -25,6 +25,30 @@ import { TOOLS, toolHandlers, toolSchemas } from "./tools/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// ─── Friendly Startup Validation ──────────────────────────────────
+
+function validateEnvironment(): void {
+    // Node.js version check
+    const nodeMajor = parseInt(process.versions.node.split(".")[0], 10);
+    if (nodeMajor < 18) {
+        process.stderr.write(`
+╔══════════════════════════════════════════════════════════╗
+║  ⚠️  Unsupported Node.js version                       ║
+╠══════════════════════════════════════════════════════════╣
+║  Atabey MCP requires Node.js >= 18.0.0                  ║
+║                                                         ║
+║  Current version: ${process.versions.node}                             ║
+║                                                         ║
+║  📋  To fix this:                                       ║
+║     nvm install 18 && nvm use 18   (if using nvm)      ║
+║     brew install node             (if using Homebrew)  ║
+║     https://nodejs.org            (official installer) ║
+╚══════════════════════════════════════════════════════════╝
+`);
+        process.exit(1);
+    }
+}
+
 function findPackageJson(startDir: string): string {
     let currentDir = startDir;
     while (currentDir !== path.parse(currentDir).root) {
@@ -32,20 +56,74 @@ function findPackageJson(startDir: string): string {
         if (fs.existsSync(pkgPath)) return pkgPath;
         currentDir = path.dirname(currentDir);
     }
-    throw new Error("Could not find package.json for atabey-mcp");
+    process.stderr.write(`
+╔══════════════════════════════════════════════════════════╗
+║  🚧  Package not found                                 ║
+╠══════════════════════════════════════════════════════════╣
+║  Atabey MCP package.json could not be located.          ║
+║                                                         ║
+║  This usually means:                                    ║
+║    1. The package was not installed correctly           ║
+║    2. Node modules are missing                          ║
+║                                                         ║
+║  📋  To fix this:                                       ║
+║     npm install -g atabey        (global install)      ║
+║     npm install                 (local install)        ║
+║     npm run build               (if developing)        ║
+╚══════════════════════════════════════════════════════════╝
+`);
+    process.exit(1);
 }
+
+validateEnvironment();
 
 const pkgPath = findPackageJson(__dirname);
 const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
 const serverVersion = pkg.version;
 
+// Validate environment variables with friendly messages
 const PROJECT_ROOT = process.env.ATABEY_PROJECT_ROOT || process.cwd();
+if (!process.env.ATABEY_PROJECT_ROOT) {
+    const transportMode = process.env.MCP_TRANSPORT || "unified";
+    if (transportMode !== "stdio") {
+        process.stderr.write(`
+╔══════════════════════════════════════════════════════════╗
+║  💡  Tip: Set ATABEY_PROJECT_ROOT                      ║
+╠══════════════════════════════════════════════════════════╣
+║  In HTTP/SSE mode, it's recommended to explicitly set   ║
+║  the project root to avoid confusion.                   ║
+║                                                         ║
+║  Example:                                               ║
+║    export ATABEY_PROJECT_ROOT=/path/to/your/project    ║
+║                                                         ║
+║  Using current directory: ${process.cwd()}         ║
+╚══════════════════════════════════════════════════════════╝
+`);
+    }
+}
+
 const FRAMEWORK_DIR = process.env.ATABEY_FRAMEWORK_DIR || path.join(PROJECT_ROOT, ".atabey");
 const UI_DIST_PATH = path.join(__dirname, "../../dist/dashboard");
 
 // ─── Ports ────────────────────────────────────────────────────────
 
 const PORT = parseInt(process.env.MCP_PORT || "5858", 10);
+if (isNaN(PORT) || PORT < 1 || PORT > 65535) {
+    process.stderr.write(`
+╔══════════════════════════════════════════════════════════╗
+║  ❌  Invalid MCP_PORT                                   ║
+╠══════════════════════════════════════════════════════════╣
+║  The port must be a number between 1 and 65535.        ║
+║                                                         ║
+║  You set: MCP_PORT=${process.env.MCP_PORT || "(empty)"}                        ║
+║                                                         ║
+║  📋  To fix this:                                       ║
+║     export MCP_PORT=5858   (default)                   ║
+║     export MCP_PORT=8080   (alternative)               ║
+╚══════════════════════════════════════════════════════════╝
+`);
+    process.exit(1);
+}
 const HOST = process.env.MCP_HOST || "0.0.0.0";
 
 // ─── MCP Server ───────────────────────────────────────────────────

@@ -75,7 +75,7 @@ export function resolveAgentsByFocus(profile: string, focus: string): string[] {
     if (profile === "enterprise") {
         return ALL_AGENTS.map(a => a.name);
     }
-    
+
     const cleanFocus = focus.toLowerCase().trim();
     if (profile === "freelancer") {
         switch (cleanFocus) {
@@ -92,7 +92,7 @@ export function resolveAgentsByFocus(profile: string, focus: string): string[] {
                 return ["manager", "backend", "frontend", "quality"];
         }
     }
-    
+
     if (profile === "team") {
         switch (cleanFocus) {
             case "backend":
@@ -108,7 +108,7 @@ export function resolveAgentsByFocus(profile: string, focus: string): string[] {
                 return ["manager", "architect", "backend", "frontend", "quality", "database", "security"];
         }
     }
-    
+
     return ["manager", "backend", "quality"];
 }
 
@@ -161,7 +161,7 @@ async function checkAndCleanupLegacy(forceYes: boolean): Promise<void> {
     }
 }
 
-async function runInteractiveInit(profile?: InitProfile): Promise<{ selectedDirs: string[]; selectedAgents: string[]; selectedPalette: string; backendLanguage: string; frontendFramework: string; language: SupportedLanguage }> {
+async function runInteractiveInit(profile?: InitProfile, presetLanguage?: SupportedLanguage): Promise<{ selectedDirs: string[]; selectedAgents: string[]; selectedPalette: string; backendLanguage: string; frontendFramework: string; language: SupportedLanguage }> {
     // If profile is set, skip interactive agent/dir selection
     if (profile) {
         const p = PROFILES[profile];
@@ -171,11 +171,17 @@ async function runInteractiveInit(profile?: InitProfile): Promise<{ selectedDirs
         const question = (query: string): Promise<string> => new Promise((resolve) => rl.question(query, resolve));
 
         try {
-            process.stdout.write("\n[LANG] Select Framework Language / Dil Seçimi:\n");
-            process.stdout.write("1. Türkçe\n");
-            process.stdout.write("2. English\n");
-            const langInput = await question("\nSelect (1-2) or Enter for 'tr': ");
-            const language: SupportedLanguage = langInput.trim() === "2" ? "en" : "tr";
+            let language: SupportedLanguage;
+            if (presetLanguage) {
+                language = presetLanguage;
+                process.stdout.write(`\n[LANG] ${language === "en" ? "English" : "Türkçe"} (from --lang flag)\n`);
+            } else {
+                process.stdout.write("\n[LANG] Select Framework Language / Dil Seçimi:\n");
+                process.stdout.write("1. Türkçe\n");
+                process.stdout.write("2. English\n");
+                const langInput = await question("\nSelect (1-2) or Enter for 'en': ");
+                language = langInput.trim() === "1" ? "tr" : "en";
+            }
             const t = TRANSLATIONS[language];
 
             process.stdout.write(`\n[START] ${t.welcome}\n`);
@@ -338,7 +344,7 @@ export async function initCommand(adapterName: string, options: { unified?: bool
         language = options.language || "tr";
         UI.success(`Non-interactive mode: ${profile} profile (${selectedAgents.length} agents, focus: ${focus}, language: ${language}).`);
     } else {
-        const result = await runInteractiveInit(options.profile);
+        const result = await runInteractiveInit(options.profile, options.language);
         selectedDirs = result.selectedDirs.filter(d => d !== "agents" && d !== "skills");
         selectedAgents = result.selectedAgents;
         selectedPalette = result.selectedPalette;

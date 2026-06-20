@@ -77,6 +77,7 @@ Atabey generates an `mcp.json` config. Point your AI assistant to it:
       "command": "npx",
       "args": ["-y", "atabey-mcp"],
       "env": {
+        "MCP_TRANSPORT": "stdio",
         "ATABEY_PROJECT_ROOT": "/path/to/your/project"
       }
     }
@@ -86,8 +87,10 @@ Atabey generates an `mcp.json` config. Point your AI assistant to it:
 
 **Gemini CLI:**
 ```bash
+# Stdio mode (local, single user)
 gemini config set mcpServers.atabey.command "npx"
 gemini config set mcpServers.atabey.args "[\"-y\", \"atabey-mcp\"]"
+gemini config set mcpServers.atabey.env "{\"MCP_TRANSPORT\": \"stdio\", \"ATABEY_PROJECT_ROOT\": \"/path/to/your/project\"}"
 ```
 
 **Cursor:**
@@ -97,7 +100,10 @@ gemini config set mcpServers.atabey.args "[\"-y\", \"atabey-mcp\"]"
   "mcpServers": {
     "atabey": {
       "command": "npx",
-      "args": ["-y", "atabey-mcp"]
+      "args": ["-y", "atabey-mcp"],
+      "env": {
+        "MCP_TRANSPORT": "stdio"
+      }
     }
   }
 }
@@ -538,7 +544,6 @@ Full command list: see `atabey help` or [ARCHITECTURE.md](ARCHITECTURE.md)
 
 ---
 
-
 ## ✅ Implemented Governance Features
 
 > These features were previously listed as "Blind Spots" but are now fully implemented:
@@ -553,11 +558,131 @@ Full command list: see `atabey help` or [ARCHITECTURE.md](ARCHITECTURE.md)
 
 ---
 
+## 🔍 Detailed Feature Analysis
+
+### Auto-Rollback & Rollback Mechanism
+`framework-mcp/src/utils/auto-rollback.ts`
+
+**How It Works:**
+```
+[AI write_file/replace_text/patch_file call]
+   │
+   ├── 1. Pre-Write Snapshot → Original file content saved (SnapshotManager)
+   ├── 2. Tool executes → File is written
+   ├── 3. Post-Write Validation → rules-engine.ts GOV scan
+   │      ├── ✅ Clean → Allow, clear snapshot
+   │      └── ❌ Violation (any type, console.log, secret, copyleft) →
+   │             ├── Original file restored
+   │             ├── New file deleted
+   │             └── REGENERATE instruction sent to AI:
+   │                 "⛔ AI Output Blocked – Governance Violation
+   │                  🔴 No `any` Type (file.ts:5)
+   │                  Fix: Replace `any` with `unknown`"
+   └── Dashboard WS → rollback_violation event
+```
+
+**Detected Violations:**
+| Violation | Severity | Detection |
+|-----------|----------|-----------|
+| `any` type usage | 🔴 CRITICAL | Regex: `: any\b` |
+| `console.log`/`.error`/`.warn`/`.debug` | 🔴 CRITICAL | Regex (exempts logger.ts) |
+| Hardcoded API Key (sk-, ghp_, AIza) | 🟠 HIGH | Regex pattern |
+| Hardcoded GitHub Token | 🟠 HIGH | `ghp_` pattern |
+| Copyleft license violation | 🔴 CRITICAL | `license-scanner.ts` |
+
+**Test Status:** ✅ `auto-rollback.test.ts` — 14 tests, 228 lines, all scenarios covered.
+
+**Critical Assessment:** Working. The `buildRegenerateInstruction()` method tells the AI exactly what it did wrong and how to fix it. This is far more valuable than simple blocking.
+
+---
+
+### Specialty Memory (Agent Learning Mechanism)
+`src/modules/engines/evaluation-engine.ts`
+
+| Status | Detail |
+|--------|--------|
+| ✅ **Error Learning** | Compliance/lint/test failure → `updateSpecialtyMemory()` writes to `.atabey/memory/specialties/<agent>.md` |
+| ❌ **Success Learning** | No mechanism to extract lessons from successful tasks |
+| ❌ **Auto-Injection** | `readLearnedConventions()` exists but is not automatically injected into AI context |
+| ⚠️ **Learning Opportunity** | Agent never asked "What did I learn from this task?" on completion |
+
+**Current Flow:**
+```
+Task → Evaluation → Any errors?
+   ├── Yes → `updateSpecialtyMemory(agent, "Compliance Violations Detected...")`
+   └── No → Nothing saved (❌)
+```
+
+**Desired Flow:**
+```
+Task → Evaluation →
+   ├── Error → Save error lesson
+   └── Success → Save success lesson: "agent/service pattern was used successfully"
+```
+
+---
+
+### Token/Cost Tracking (FinOps)
+`framework-mcp/src/utils/finops.ts`
+
+| Feature | Status |
+|---------|--------|
+| ✅ Per-agent token tracking | Every MCP tool call logged via `Metrics.logUsage()` |
+| ✅ Monthly budget | `ATABEY_BUDGET_MONTHLY` env for USD-based limit |
+| ✅ Per-agent budget | `ATABEY_BUDGET_AGENT_MAX` for agent-based limit |
+| ✅ Auto-shutdown | MCP middleware returns error when budget exceeded |
+| ✅ Alert thresholds | 50/80/90/100% warning levels |
+| ✅ Dashboard panel | FinOpsPanel.tsx with live visualization |
+| ✅ API endpoint | `GET /api/metrics` — agent/action level detail |
+| ❌ **Weekly Summary** | `atabey gateway stats` output insufficient for weekly overview |
+
+**Usage:** `framework-mcp/src/index.ts` (lines 150-153) calls `Metrics.logUsage()` on every tool call.
+
+---
+
+### KVKK/GDPR Data Privacy
+`src/shared/pii.ts`
+
+| Pattern | Mask | Test |
+|---------|------|------|
+| Email | `***@***` | ✅ |
+| Phone (+90 TR, international) | `***-***-****` | ✅ |
+| TC ID (11 digits) | `***********` | ✅ |
+| API Key (OpenAI, GitHub, Google) | `***-REDACTED-***` | ✅ |
+| JWT Token | `***-JWT-REDACTED-***` | ✅ |
+| IP (IPv4, IPv6) | `***.***.***.***` | ✅ |
+| Credit Card (AMEX included) | `****-****-****-****` | ✅ |
+| IBAN | `****-IBAN-REDACTED-****` | ✅ |
+| Date of Birth | `**/**/****` | ✅ |
+| SSN (US) | `***-**-****` | ✅ |
+| Password/Secret fields | `***-REDACTED-***` | ✅ |
+
+**Layered Protection:**
+1. **MCP Middleware** — `maskToolArgs()`: AI arguments masked before reaching handler
+2. **MCP Middleware** — `maskToolResult()`: Handler result masked before returning to AI
+3. **Logger** — All log entries scanned for PII
+4. **Dashboard API** — All API responses masked
+
+**Dashboard:** PrivacyPanel.tsx — PII masked/detected statistics, category distribution, Right to Erasure.
+
+---
+
+### 🐞 Detected Issues
+
+| # | Issue | File | Fix |
+|---|-------|------|-----|
+| 1 | `MCP_TRANSPORT=stdio` env missing | `src/cli/commands/mcp.ts:66` | Added `MCP_TRANSPORT: "stdio"` |
+| 2 | No success task learning | `src/modules/engines/evaluation-engine.ts` | `updateSpecialtyMemory()` should be called on success too |
+| 3 | Specialty memory not auto-injected into AI | `silent-router.ts` / `discipline.ts` | `.atabey/memory/specialties/*.md` content should be injected on agent calls |
+| 4 | No weekly cost summary | `finops.ts` | Add summary command instead of `atabey gateway stats` |
+
+---
+
 ## Strategic Roadmap
 
 | # | Feature | Priority | Status |
 |---|---------|----------|--------|
-| 1 | Agent specialty memory → auto-sync to agent files | 🟠 High | Planned |
+| 1 | Agent specialty memory → auto-sync to agent files | 🟠 High | 🟡 **Partial** (error learning only) |
 | 2 | MCP `prompts/` endpoint for session-level governance injection | 🟠 High | Planned |
 | 3 | Central Enterprise Server (telemetry ingest + org dashboard) | 🟡 Medium | Planned |
 | 4 | Dynamic rule loading from `.atabey/rules/*.json` | 🟡 Medium | Planned |

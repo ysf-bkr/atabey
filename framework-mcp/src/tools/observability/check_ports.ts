@@ -1,8 +1,9 @@
-import { execSync } from "child_process";
+import { spawnSync } from "child_process";
 import { CheckActivePortsArgs, ToolResult } from "../types.js";
 
 /**
  * Checks for active network ports and their status.
+ * Uses spawnSync instead of execSync to prevent shell injection.
  */
 export function handleCheckPorts(projectRoot: string, args: CheckActivePortsArgs): ToolResult {
     const rawFilter = args.filter || "";
@@ -10,13 +11,23 @@ export function handleCheckPorts(projectRoot: string, args: CheckActivePortsArgs
     const filter = rawFilter.replace(/[^a-zA-Z0-9.:_-]/g, "");
 
     try {
-        // Using 'lsof -i -P -n' to list open files and network connections
-        // Note: may require permissions or behave differently on non-Unix systems
-        const command = process.platform === "win32"
-            ? `netstat -ano | findstr LISTENING ${filter ? `| findstr ${filter}` : ""}`
-            : `lsof -i -P -n | grep LISTEN ${filter ? `| grep ${filter}` : ""}`;
+        let output: string;
 
-        const output = execSync(command, { encoding: "utf8" });
+        if (process.platform === "win32") {
+            const result = spawnSync("netstat", ["-ano"], { encoding: "utf8" });
+            if (result.error) throw result.error;
+            const lines = (result.stdout || "").split("\n").filter(l => l.includes("LISTENING"));
+            output = filter
+                ? lines.filter(l => l.includes(filter)).join("\n")
+                : lines.join("\n");
+        } else {
+            const result = spawnSync("lsof", ["-i", "-P", "-n"], { encoding: "utf8" });
+            if (result.error) throw result.error;
+            const lines = (result.stdout || "").split("\n").filter(l => l.includes("LISTEN"));
+            output = filter
+                ? lines.filter(l => l.includes(filter)).join("\n")
+                : lines.join("\n");
+        }
 
         return {
             content: [{

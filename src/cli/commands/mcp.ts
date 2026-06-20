@@ -66,7 +66,8 @@ async function startMcpServer() {
         stdio: ["inherit", "inherit", "inherit"],
         env: {
             ...process.env,
-            ATABEY_PROJECT_ROOT: process.cwd()
+            ATABEY_PROJECT_ROOT: process.cwd(),
+            MCP_TRANSPORT: "stdio"
         }
     });
 
@@ -95,6 +96,7 @@ async function installMcpConfig() {
                 command: "atabey",
                 args: ["mcp", "start"],
                 env: {
+                    MCP_TRANSPORT: "stdio",
                     ATABEY_PROJECT_ROOT: process.cwd()
                 }
             }

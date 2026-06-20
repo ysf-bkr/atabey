@@ -10,16 +10,16 @@ interface AskHumanArgs {
 /**
  * ─── ASK HUMAN — File Bridge ─────────────────────────────────────────
  *
- * AI CLI'lar (Claude Code, Gemini CLI) MCP server'ı stdio subprocess olarak
- * başlatır. Bu subprocess'te stdin isTTY=false olur (MCP JSON-RPC için kullanılır).
+ * AI CLIs (Claude Code, Gemini CLI) start the MCP server as a stdio subprocess.
+ * In this subprocess, stdin is isTTY=false (used for MCP JSON-RPC).
  *
- * Çözüm: File-based Q&A bridge.
- * 1. Soru → .atabey/hitl/question.txt dosyasına yazılır
- * 2. Geliştirici `atabey hitl` komutuyla cevap girer
- * 3. Cevap → .atabey/hitl/answer.txt dosyasına yazılır
- * 4. Bu handler cevabı okur ve AI'ya döner
+ * Solution: File-based Q&A bridge.
+ * 1. Question → written to .atabey/hitl/question.txt
+ * 2. Developer answers via `atabey hitl` command
+ * 3. Answer → written to .atabey/hitl/answer.txt
+ * 4. This handler reads the answer and returns it to the AI
  *
- * Dashboard: /api/approvals endpoint'i üzerinden web dashboard'dan da cevaplanabilir.
+ * Dashboard: Can also be answered via /api/approvals endpoint on the web dashboard.
  */
 export async function handleAskHuman(root: string, args: AskHumanArgs): Promise<ToolResult> {
     const timeoutSeconds = args.timeoutSeconds ?? 120;
@@ -115,4 +115,3 @@ export async function handleAskHuman(root: string, args: AskHumanArgs): Promise<
         };
     }
 }
-

@@ -1,4 +1,4 @@
-import { approveOperation, rejectOperation, getPendingApprovals } from "../../utils/human-in-loop.js";
+import { approveOperation, getPendingApprovals, rejectOperation } from "../../utils/human-in-loop.js";
 import { ToolResult } from "../types.js";
 
 interface ApproveOperationArgs {
@@ -8,18 +8,18 @@ interface ApproveOperationArgs {
 }
 
 /**
- * ─── APPROVE OPERATION — In-Chat Risk Gate ──────────────────────────
+ * MCP Tool: approve_operation
  *
- * AI CLI kullanımında "atabey approve <traceId>" CLI komutu çalıştırmak mümkün
- * değildir — chat'e yazılan şey CLI komutu olarak değil mesaj olarak işlenir.
+ * In AI CLI (Claude Code, Gemini CLI), running "atabey approve <traceId>"
+ * is not possible — anything typed in chat is treated as a message, not a CLI command.
  *
- * Bu tool, risk gate approval flow'unu doğrudan MCP tool çağrısına taşır:
+ * This tool moves the risk gate approval flow directly into an MCP tool call:
  *
- * 1. Atabey yüksek riskli bir operasyonu bloklar
- * 2. Geliştiriciye: "approve_operation tool'unu çağır" der
- * 3. AI bu tool'u çağırır → operasyon onaylanır/reddedilir
+ * 1. Atabey blocks a high-risk operation
+ * 2. Tells the developer: "call the approve_operation tool"
+ * 3. AI calls this tool → operation is approved/rejected
  *
- * Geliştirici terminale geçmek zorunda kalmaz.
+ * Developer never has to switch to terminal.
  */
 export async function handleApproveOperation(
     _root: string,
@@ -27,7 +27,7 @@ export async function handleApproveOperation(
 ): Promise<ToolResult> {
     const { action, traceId, reason } = args;
 
-    // LIST: Bekleyen approval'ları göster
+    // LIST: Show pending approvals
     if (action === "list") {
         const pending = getPendingApprovals();
         if (pending.length === 0) {
@@ -57,7 +57,7 @@ export async function handleApproveOperation(
         };
     }
 
-    // APPROVE or REJECT: traceId zorunlu
+    // APPROVE or REJECT: traceId is required
     if (!traceId) {
         return {
             isError: true,

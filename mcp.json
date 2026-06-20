@@ -4,16 +4,17 @@
       "command": "atabey",
       "args": ["mcp", "start"],
       "env": {
+        "MCP_TRANSPORT": "stdio",
         "ATABEY_PROJECT_ROOT": "/Users/ybekar/Desktop/Projeler/atabey"
       },
-      "description": "Stdio mode: her kullanici kendi IDE'sinden baglanir."
+      "description": "Stdio mode: each developer connects from their own IDE."
     },
     "atabey-sse": {
       "url": "http://localhost:5858/mcp/sse",
       "env": {
         "ATABEY_PROJECT_ROOT": "/Users/ybekar/Desktop/Projeler/atabey"
       },
-      "description": "Unified mode: Tek port 5858'de MCP + Dashboard birlikte. Dashboard: http://localhost:5858"
+      "description": "Unified mode: MCP + Dashboard on single port 5858. Dashboard: http://localhost:5858"
     }
   }
 }

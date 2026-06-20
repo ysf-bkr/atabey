@@ -139,7 +139,7 @@ export function MCPSetupPanel() {
                         <div className="stat-card-value" style={{ fontSize: "1.2rem", color: "#ef4444" }}>
                             {s.mode === "unified" ? "Unified" : "Stdio"}
                         </div>
-                        <div className="stat-card-desc">MCP + Dashboard tek portta</div>
+                        <div className="stat-card-desc">MCP + Dashboard on single port</div>
                     </div>
 
                     <div className="stat-card" style={{ background: "#111827", borderColor: "#1f2937" }}>
@@ -192,14 +192,14 @@ export function MCPSetupPanel() {
                 <div style={{ padding: "0 12px 12px", fontSize: "0.85rem", color: "#94a3b8" }}>
                     {authInfo.enabled ? (
                         <p style={{ margin: 0 }}>
-                            <strong style={{ color: "#22c55e" }}>Authentication aktif.</strong> Tüm API/MCP istekleri
+                            <strong style={{ color: "#22c55e" }}>Authentication active.</strong> All API/MCP requests require
                             <code style={{ fontFamily: "monospace", color: "#ef4444", background: "#1a1a1a", padding: "1px 4px", borderRadius: 2 }}>{' Authorization: Bearer <token> '}</code>
-                            header'ı gerektirir. Dashboard statik dosyaları halka açıktır.
+                            header. Dashboard static files are public.
                         </p>
                     ) : (
                         <p style={{ margin: 0 }}>
-                            <strong style={{ color: "#eab308" }}>Uyarı: Authentication kapalı.</strong> Sunucuya bağlanabilen herkes tüm API'ye erişebilir.
-                            Korumak için: <code style={{ fontFamily: "monospace", color: "#ef4444", background: "#1a1a1a", padding: "1px 4px", borderRadius: 2 }}>MCP_AUTH_TOKEN=gizli-anahtar</code>
+                            <strong style={{ color: "#eab308" }}>Warning: Authentication is off.</strong> Anyone who can reach the server can access all APIs.
+                            To protect: <code style={{ fontFamily: "monospace", color: "#ef4444", background: "#1a1a1a", padding: "1px 4px", borderRadius: 2 }}>MCP_AUTH_TOKEN=your-secret-key</code>
                         </p>
                     )}
                 </div>
@@ -215,7 +215,7 @@ export function MCPSetupPanel() {
                     </div>
                     <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
                         <p style={{ fontSize: "0.8rem", color: "#94a3b8", margin: 0 }}>
-                            Her geliştirici kendi bilgisayarında çalıştırır. Sadece kendi IDE'si bağlanır.
+                            Each developer runs on their own machine. Only their own IDE connects.
                         </p>
 
                         <div style={{ fontSize: "0.8rem" }}>
@@ -269,20 +269,20 @@ export function MCPSetupPanel() {
                     </div>
                     <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
                         <p style={{ fontSize: "0.8rem", color: "#94a3b8", margin: 0 }}>
-                            Tek sunucu tüm ekibe hizmet verir. Herkes aynı MCP'ye bağlanır.
+                            Single server serves the entire team. Everyone connects to the same MCP.
                         </p>
 
                         <div style={{ fontSize: "0.8rem" }}>
-                            <div style={{ color: "#64748b", marginBottom: 4 }}>Server (bir kişi çalıştırır):</div>
+                            <div style={{ color: "#64748b", marginBottom: 4 }}>Server (one person runs):</div>
                             <div
-                                onClick={() => copyToClipboard("MCP_HOST=0.0.0.0 MCP_AUTH_TOKEN=gizli-key atabey mcp start", "net-cmd")}
+                                onClick={() => copyToClipboard("MCP_HOST=0.0.0.0 MCP_AUTH_TOKEN=secret-key atabey mcp start", "net-cmd")}
                                 style={{
                                     padding: "8px 12px", background: "#090d16", borderRadius: 4,
                                     fontFamily: "monospace", color: "#ef4444", cursor: "pointer",
                                     border: "1px solid #1e293b", fontSize: "0.8rem"
                                 }}
                             >
-                                MCP_HOST=0.0.0.0 MCP_AUTH_TOKEN=gizli-key atabey mcp start
+                                MCP_HOST=0.0.0.0 MCP_AUTH_TOKEN=secret-key atabey mcp start
                                 <span style={{ float: "right", color: copied === "net-cmd" ? "#22c55e" : "#64748b" }}>
                                     {copied === "net-cmd" ? "✓ Copied" : "📋"}
                                 </span>
@@ -290,9 +290,9 @@ export function MCPSetupPanel() {
                         </div>
 
                         <div style={{ fontSize: "0.8rem" }}>
-                            <div style={{ color: "#64748b", marginBottom: 4 }}>Her geliştiricinin mcp.json'u:</div>
+                            <div style={{ color: "#64748b", marginBottom: 4 }}>Each developer's mcp.json:</div>
                             <div
-                                onClick={() => copyToClipboard(JSON.stringify({ mcpServers: { atabey: { url: s.mcpSseUrl, headers: { Authorization: "Bearer gizli-key" }, env: { ATABEY_PROJECT_ROOT: "/path/to/project" } } } }, null, 2), "net-json")}
+                                onClick={() => copyToClipboard(JSON.stringify({ mcpServers: { atabey: { url: s.mcpSseUrl, headers: { Authorization: "Bearer secret-key" }, env: { ATABEY_PROJECT_ROOT: "/path/to/project" } } } }, null, 2), "net-json")}
                                 style={{
                                     padding: "8px 12px", background: "#090d16", borderRadius: 4,
                                     fontFamily: "monospace", color: "#22c55e", cursor: "pointer",
@@ -304,7 +304,7 @@ export function MCPSetupPanel() {
     "atabey": {
       "url": "${s.mcpSseUrl}",
       "headers": {
-        "Authorization": "Bearer gizli-key"
+        "Authorization": "Bearer secret-key"
       },
       "env": {
         "ATABEY_PROJECT_ROOT": "/path/to/project"
@@ -340,41 +340,41 @@ export function MCPSetupPanel() {
                                 <td style={{ padding: "8px", fontFamily: "monospace", color: "#ef4444" }}>MCP_TRANSPORT</td>
                                 <td style={{ padding: "8px", fontFamily: "monospace", color: "#64748b" }}>unified</td>
                                 <td style={{ padding: "8px", color: "#94a3b8" }}>
-                                    <strong>unified</strong> (önerilen): Tek portta MCP + Dashboard<br />
-                                    <strong>stdio</strong>: Sadece MCP, dashboard ayrı
+                                    <strong>unified</strong> (recommended): MCP + Dashboard on single port<br />
+                                    <strong>stdio</strong>: MCP only, dashboard separate
                                 </td>
                             </tr>
                             <tr style={{ borderBottom: "1px solid #1e293b" }}>
                                 <td style={{ padding: "8px", fontFamily: "monospace", color: "#ef4444" }}>MCP_AUTH_TOKEN</td>
                                 <td style={{ padding: "8px", fontFamily: "monospace", color: "#64748b" }}>-</td>
                                 <td style={{ padding: "8px", color: "#94a3b8" }}>
-                                    <strong style={{ color: "#22c55e" }}>Güvenlik!</strong> API Key. Ayarlanırsa tüm istekler <code>{'Authorization: Bearer <token>'}</code> gerektirir.
+                                    <strong style={{ color: "#22c55e" }}>Security!</strong> API Key. If set, all requests require <code>{'Authorization: Bearer <token>'}</code>.
                                 </td>
                             </tr>
                             <tr style={{ borderBottom: "1px solid #1e293b" }}>
                                 <td style={{ padding: "8px", fontFamily: "monospace", color: "#ef4444" }}>MCP_AUTH_USERS</td>
                                 <td style={{ padding: "8px", fontFamily: "monospace", color: "#64748b" }}>-</td>
                                 <td style={{ padding: "8px", color: "#94a3b8" }}>
-                                    Kullanıcı bazlı token: <code>ali:key1,veli:key2</code>
+                                    Per-user tokens: <code>ali:key1,veli:key2</code>
                                 </td>
                             </tr>
                             <tr style={{ borderBottom: "1px solid #1e293b" }}>
                                 <td style={{ padding: "8px", fontFamily: "monospace", color: "#ef4444" }}>MCP_PORT</td>
                                 <td style={{ padding: "8px", fontFamily: "monospace", color: "#64748b" }}>5858</td>
-                                <td style={{ padding: "8px", color: "#94a3b8" }}>Sunucu portu</td>
+                                <td style={{ padding: "8px", color: "#94a3b8" }}>Server port</td>
                             </tr>
                             <tr style={{ borderBottom: "1px solid #1e293b" }}>
                                 <td style={{ padding: "8px", fontFamily: "monospace", color: "#ef4444" }}>MCP_HOST</td>
                                 <td style={{ padding: "8px", fontFamily: "monospace", color: "#64748b" }}>0.0.0.0</td>
                                 <td style={{ padding: "8px", color: "#94a3b8" }}>
-                                    <strong>0.0.0.0</strong>: Açık (network)<br />
-                                    <strong>localhost</strong>: Güvenli (solo)
+                                    <strong>0.0.0.0</strong>: Open (network)<br />
+                                    <strong>localhost</strong>: Secure (solo)
                                 </td>
                             </tr>
                             <tr>
                                 <td style={{ padding: "8px", fontFamily: "monospace", color: "#ef4444" }}>ATABEY_PROJECT_ROOT</td>
                                 <td style={{ padding: "8px", fontFamily: "monospace", color: "#64748b" }}>process.cwd()</td>
-                                <td style={{ padding: "8px", color: "#94a3b8" }}>Proje kök dizini (SSE modunda zorunlu)</td>
+                                <td style={{ padding: "8px", color: "#94a3b8" }}>Project root directory (required in SSE mode)</td>
                             </tr>
                         </tbody>
                     </table>

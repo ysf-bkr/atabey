@@ -13,7 +13,14 @@ export async function runScriptCommand(script: string, projectPath: string) {
     }
     UI.info(`Running 'npm run ${script}' in ${projectPath}...`);
     try {
-        cp.spawnSync("npm", ["run", script], { cwd: fullPath, stdio: "inherit", shell: true });
+        // shell: false prevents shell injection attacks
+        // script name is validated (no spaces, no special chars)
+        const sanitizedScript = script.replace(/[^a-zA-Z0-9_-]/g, "");
+        if (sanitizedScript !== script) {
+            UI.error(`Invalid script name: "${script}". Use only letters, numbers, hyphens, and underscores.`);
+            return;
+        }
+        cp.spawnSync("npm", ["run", sanitizedScript], { cwd: fullPath, stdio: "inherit", shell: false });
     } catch (e: unknown) {
         const message = e instanceof Error ? e.message : "Unknown error";
         UI.error(`Failed to run script: ${message}`);
