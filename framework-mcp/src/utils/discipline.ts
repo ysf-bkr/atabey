@@ -262,7 +262,7 @@ export function getAllDisciplineStats(): Record<string, {
     lastViolation: string | null;
 }> {
     const stats: Record<string, ReturnType<typeof getDisciplineStats>> = {};
-    for (const [agent, _discipline] of agentDiscipline) {
+    for (const [agent] of agentDiscipline) {
         stats[agent] = getDisciplineStats(agent);
     }
     return stats;

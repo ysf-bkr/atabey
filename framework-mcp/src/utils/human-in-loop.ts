@@ -260,7 +260,7 @@ export function getPendingApprovals(): ApprovalRequest[] {
     const pending: ApprovalRequest[] = [];
 
     // Clean expired
-    for (const [traceId, request] of activeApprovals) {
+    for (const [, request] of activeApprovals) {
         if (request.status === "PENDING" && now > request.expiresAt) {
             request.status = "EXPIRED";
         }

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { handleRunCommand } from "../../../src/tools/shell/run_command.js";
-import { exec } from "child_process";
+import { spawn } from "child_process";
+import { EventEmitter } from "events";
 
 vi.mock("child_process");
 
@@ -11,18 +12,44 @@ describe("handleRunCommand", () => {
         vi.clearAllMocks();
     });
 
+    // Helper to create a mocked child process
+    function createMockChildProcess(stdoutData = "", stderrData = "", exitCode = 0, triggerError = false) {
+        const child = new EventEmitter() as any;
+        child.stdout = new EventEmitter();
+        child.stderr = new EventEmitter();
+        
+        process.nextTick(() => {
+            if (triggerError) {
+                child.emit("error", new Error("Spawn error"));
+                return;
+            }
+            
+            if (stdoutData) {
+                child.stdout.emit("data", Buffer.from(stdoutData));
+            }
+            if (stderrData) {
+                child.stderr.emit("data", Buffer.from(stderrData));
+            }
+            
+            child.emit("close", exitCode);
+        });
+        
+        return child;
+    }
+
     it("should execute an allowed command", async () => {
         const args = { command: "git status" };
         
-        vi.mocked(exec).mockImplementation((_cmd, _opts, callback) => {
-            // @ts-expect-error: Mock implementation callback type is complex
-            callback(null, "On branch main", "");
-            return {} as any;
-        });
+        vi.mocked(spawn).mockReturnValue(createMockChildProcess("On branch main", "") as any);
 
         const result = await handleRunCommand(projectRoot, args);
         
-        expect(exec).toHaveBeenCalledWith("git status", { cwd: projectRoot, timeout: 30000 }, expect.any(Function));
+        expect(spawn).toHaveBeenCalledWith("git", ["status"], {
+            cwd: projectRoot,
+            timeout: 30000,
+            shell: false,
+            stdio: ["ignore", "pipe", "pipe"],
+        });
         expect(result.isError).toBeUndefined();
         expect(result.content[0].text).toContain("On branch main");
     });
@@ -31,7 +58,7 @@ describe("handleRunCommand", () => {
         const args = { command: "rm -rf /" };
         const result = await handleRunCommand(projectRoot, args);
         
-        expect(exec).not.toHaveBeenCalled();
+        expect(spawn).not.toHaveBeenCalled();
         expect(result.isError).toBe(true);
         expect(result.content[0].text).toContain("Command not allowed");
     });
@@ -40,7 +67,7 @@ describe("handleRunCommand", () => {
         const args = { command: "git status && echo injected" };
         const result = await handleRunCommand(projectRoot, args);
         
-        expect(exec).not.toHaveBeenCalled();
+        expect(spawn).not.toHaveBeenCalled();
         expect(result.isError).toBe(true);
         expect(result.content[0].text).toContain("Command rejected: Shell metacharacters are forbidden");
     });
@@ -48,17 +75,19 @@ describe("handleRunCommand", () => {
     it("should handle command failure", async () => {
         const args = { command: "npm run build" };
 
-        vi.mocked(exec).mockImplementation((_cmd, _opts, callback) => {
-            // @ts-expect-error: Mock implementation callback type is complex
-            callback({ code: 1, message: "Build failed" }, "", "Error details");
-            return {} as any;
-        });
+        vi.mocked(spawn).mockReturnValue(createMockChildProcess("", "Error details", 1) as any);
 
         const result = await handleRunCommand(projectRoot, args);
 
-        expect(exec).toHaveBeenCalledWith("npm run build", { cwd: projectRoot, timeout: 30000 }, expect.any(Function));
+        expect(spawn).toHaveBeenCalledWith("npm", ["run", "build"], {
+            cwd: projectRoot,
+            timeout: 30000,
+            shell: false,
+            stdio: ["ignore", "pipe", "pipe"],
+        });
         expect(result.isError).toBe(true);
         expect(result.content[0].text).toContain("Command failed with exit code 1");
         expect(result.content[0].text).toContain("Error details");
     });
 });
+

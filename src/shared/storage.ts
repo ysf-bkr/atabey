@@ -49,6 +49,53 @@ export interface LogRow {
     findings?: string;
 }
 
+export interface CostDbRow {
+    id: number;
+    provider: string;
+    model: string;
+    input_tokens: number;
+    output_tokens: number;
+    cost: number;
+    timestamp: string;
+    trace_id: string | null;
+}
+
+export interface MessageDbRow {
+    id: number;
+    timestamp: string;
+    sender: string;
+    receiver: string;
+    category: string;
+    content: string;
+    trace_id: string;
+    parent_id: string | null;
+    status: string;
+    priority: string;
+    requires_approval: number;
+}
+
+export interface TaskDbRow {
+    id: string;
+    trace_id: string;
+    description: string;
+    agent: string;
+    status: string;
+    priority: string;
+    dependencies: string;
+    created_at: string;
+}
+
+export interface LogDbRow {
+    id: number;
+    timestamp: string;
+    agent: string;
+    action: string;
+    trace_id: string | null;
+    status: string;
+    summary: string;
+    findings: string | null;
+}
+
 /**
  * [DB] Atabey Storage Engine
  * Central SQLite database for enterprise-scale agent state management.
@@ -186,16 +233,7 @@ export class AtabeyStorage {
         timestamp: string;
         traceId?: string;
     }> {
-        const rows = this.getDB().prepare("SELECT * FROM costs ORDER BY timestamp ASC").all() as {
-            id: number;
-            provider: string;
-            model: string;
-            input_tokens: number;
-            output_tokens: number;
-            cost: number;
-            timestamp: string;
-            trace_id: string | null;
-        }[];
+        const rows = this.getDB().prepare("SELECT * FROM costs ORDER BY timestamp ASC").all() as CostDbRow[];
         return rows.map(r => ({
             provider: r.provider,
             model: r.model,
@@ -252,19 +290,7 @@ export class AtabeyStorage {
     }
 
     public static getPendingMessages(): MessageRow[] {
-        const rows = this.getDB().prepare("SELECT * FROM messages WHERE status IN ('PENDING', 'APPROVED') ORDER BY priority DESC, timestamp ASC").all() as {
-            id: number;
-            timestamp: string;
-            sender: string;
-            receiver: string;
-            category: string;
-            content: string;
-            trace_id: string;
-            parent_id: string | null;
-            status: string;
-            priority: string;
-            requires_approval: number;
-        }[];
+        const rows = this.getDB().prepare("SELECT * FROM messages WHERE status IN ('PENDING', 'APPROVED') ORDER BY priority DESC, timestamp ASC").all() as MessageDbRow[];
         return rows.map(r => ({
             id: asMessageID(r.id),
             timestamp: r.timestamp,
@@ -307,38 +333,11 @@ export class AtabeyStorage {
 
     public static getTasks(traceId?: TraceID): TaskRow[] {
         const db = this.getDB();
-        let rows: {
-            id: string;
-            trace_id: string;
-            description: string;
-            agent: string;
-            status: string;
-            priority: string;
-            dependencies: string;
-            created_at: string;
-        }[];
+        let rows: TaskDbRow[];
         if (traceId) {
-            rows = db.prepare("SELECT * FROM tasks WHERE trace_id = ?").all(traceId) as {
-                id: string;
-                trace_id: string;
-                description: string;
-                agent: string;
-                status: string;
-                priority: string;
-                dependencies: string;
-                created_at: string;
-            }[];
+            rows = db.prepare("SELECT * FROM tasks WHERE trace_id = ?").all(traceId) as TaskDbRow[];
         } else {
-            rows = db.prepare("SELECT * FROM tasks").all() as {
-                id: string;
-                trace_id: string;
-                description: string;
-                agent: string;
-                status: string;
-                priority: string;
-                dependencies: string;
-                created_at: string;
-            }[];
+            rows = db.prepare("SELECT * FROM tasks").all() as TaskDbRow[];
         }
         return rows.map(r => {
             let deps: string[] = [];
@@ -364,22 +363,13 @@ export class AtabeyStorage {
 
     public static getLogs(agentName?: string): LogRow[] {
         const db = this.getDB();
-        let rows: {
-            id: number;
-            timestamp: string;
-            agent: string;
-            action: string;
-            trace_id: string | null;
-            status: string;
-            summary: string;
-            findings: string | null;
-        }[];
+        let rows: LogDbRow[];
         const cleanName = agentName ? agentName.replace("@", "") : undefined;
 
         if (cleanName) {
-            rows = db.prepare("SELECT * FROM logs WHERE agent = ? ORDER BY timestamp DESC").all(cleanName) as typeof rows;
+            rows = db.prepare("SELECT * FROM logs WHERE agent = ? ORDER BY timestamp DESC").all(cleanName) as LogDbRow[];
         } else {
-            rows = db.prepare("SELECT * FROM logs ORDER BY timestamp DESC").all() as typeof rows;
+            rows = db.prepare("SELECT * FROM logs ORDER BY timestamp DESC").all() as LogDbRow[];
         }
 
         return rows.map(r => ({

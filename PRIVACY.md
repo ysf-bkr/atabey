@@ -93,14 +93,14 @@ DataRetention.eraseAllData("KVKK-RIGHT-TO-ERASURE");
 
 ### 4. Data Portability (KVKK Art. 11 / GDPR Art. 20)
 
-All stored data is exportable:
+All stored operational data and metrics are inspectable:
 
 ```bash
-# Export audit logs
-atabey gateway stats
+# View agent statuses, token usage, and cost distributions
+atabey status
 
-# Export all data
-atabey kvkk:export
+# Run full health and compliance checks
+atabey check
 ```
 
 ### 5. Data Processing Records (KVKK Art. 4 / GDPR Art. 30)
@@ -129,16 +129,10 @@ Every data processing operation is logged in the audit trail:
 ## 📝 CLI Commands
 
 ```bash
-# Check current retention status
-atabey kvkk:status
+# View agent status, token usage, and cost distribution
+atabey status
 
-# Export data inventory
-atabey kvkk:export
-
-# Erase all data (with confirmation)
-atabey kvkk:erase-all
-
-# Run compliance audit
+# Run compliance, health, and security checks
 atabey check
 ```
 

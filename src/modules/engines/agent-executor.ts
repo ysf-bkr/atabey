@@ -129,7 +129,7 @@ export class AgentExecutor {
             requiresApproval: false,
         });
 
-        AtabeyStorage.updateAgentStatus(normalizedName, "COMPLETED", task);
+        AtabeyStorage.updateAgentStatus(normalizedName, "ACKNOWLEDGED", task);
         return responseContent;
     }
 

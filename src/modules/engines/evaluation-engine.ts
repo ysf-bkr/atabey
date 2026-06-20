@@ -134,7 +134,7 @@ export class EvaluationEngine {
         }
 
         // Generic success lesson if no specific pattern matched
-        return `Task completed with score >= 80. Pattern/approach used was effective.`;
+        return "Task completed with score >= 80. Pattern/approach used was effective.";
     }
 
     /**

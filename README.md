@@ -1,4 +1,4 @@
-# [GOV] Agent Atabey — MCP-Powered AI Governance & Autonomous Orchestration
+# [GOV] Agent Atabey — MCP-Powered AI Governance & Multi-Agent Workflow Layer for AI Coding Assistants
 
 [![Version](https://img.shields.io/badge/Version-v0.0.15-blue.svg)](https://github.com/ysf-bkr/atabey)
 [![npm](https://img.shields.io/npm/v/atabey)](https://www.npmjs.com/package/atabey)
@@ -37,6 +37,9 @@ You (@backend): "Create a user login service with JWT authentication"
 ```
 
 **No separate terminal needed. No CLI commands for daily use.** Just chat with your AI and use `@agent` syntax.
+
+> [!NOTE]
+> **Execution Context:** The LLM inference/execution is handled entirely inside the developer's active AI interface (such as Claude Code or Cursor). Atabey acts as the context injector and policy engine, silently evaluating prompts, routing instructions, and checking output code against quality guidelines.
 
 ---
 
@@ -248,6 +251,9 @@ npx atabey init gemini
 
 ## 13 Specialized Agents
 
+> [!NOTE]
+> Each agent listed below represents a specialized prompt and rule-template context injected via the MCP server. The actual reasoning and file modification are performed by the developer's active client AI interface using the instructions supplied by these agents.
+
 | Agent | Tier | Role | Freelancer | Team | Enterprise |
 |-------|------|------|:----------:|:----:|:----------:|
 | **@manager** | Supreme | Orchestration, governance, quality gate | ✅ | ✅ | ✅ |
@@ -271,7 +277,7 @@ npx atabey init gemini
 ### 1. Deterministic Quality Gate
 No agent can push code directly to production. All outputs pass through AST analysis (compliance), linting, and unit tests. Failed code triggers an automatic 3-attempt retry loop.
 
-### 2. Autonomous Vector Memory
+### 2. Persistent Vector Memory
 Project context, contracts, and past tasks are stored locally via `better-sqlite3` using TF-IDF semantic search (cosine similarity). Agents search past architectural decisions.
 
 ### 3. Hermes Message Broker
@@ -279,6 +285,9 @@ Agents communicate asynchronously via a SQLite-backed message queue. A file-base
 
 ### 4. Risk Engine (Human-in-the-Loop — In-Chat Approval)
 Operations containing `DROP`, `DELETE`, `TRUNCATE`, or secret manipulation are flagged. Execution is blocked until human approval.
+
+> [!NOTE]
+> **Heuristic Detection:** The Risk Engine relies on deterministic keyword and path-pattern heuristics (e.g., matching SQL command strings) rather than complex machine learning models to identify and block high-risk operations.
 
 **In-Chat Approval (no terminal switch needed):**
 When an operation is blocked, the AI is instructed to call the `approve_operation` MCP tool:
@@ -304,7 +313,7 @@ Claude Code, Gemini CLI, Cursor, Codex CLI, Antigravity CLI — automatic agent 
 Node.js, Go, Java, Python, .NET — automatic scaffolding based on backend language selection.
 
 ### 9. Multi-User Distributed Lock Registry
-When multiple developers work on the same repository, their autonomous agents might attempt to modify the same files simultaneously. Atabey implements a Git-aware distributed locking mechanism (`DistributedLock`). It dynamically identifies the lock owner using `git config user.name` and blocks other processes from mutating the locked resources until released or expired, preventing merge conflicts and race conditions.
+When multiple developers work on the same repository, their contextual agents might attempt to modify the same files simultaneously. Atabey implements a Git-aware distributed locking mechanism (`DistributedLock`). It dynamically identifies the lock owner using `git config user.name` and blocks other processes from mutating the locked resources until released or expired, preventing merge conflicts and race conditions.
 
 ### 10. Multi-Client MCP Support (Stdio + HTTP/SSE)
 Atabey supports two transport modes:
@@ -391,11 +400,11 @@ Atabey automatically classifies data into security levels:
 
 Data portability (KVKK Art. 11 / GDPR Art. 20):
 ```bash
-# Export all data
-atabey kvkk:export
+# View agent statuses, token usage, and cost distributions
+atabey status
 
-# Export audit logs
-atabey gateway stats
+# Run full health and compliance checks
+atabey check
 ```
 
 ### 15. Adapter-Skill System
@@ -505,11 +514,23 @@ atabey mcp install           Generate mcp.json config for AI integration
 atabey dashboard [port]      Open web dashboard (default: 5858)
 atabey status                Show agent statuses and costs
 atabey check                 Full health and compliance check
-atabey orchestrate           Start autonomous orchestration loop
+atabey orchestrate           Start orchestration workflow loop
 atabey approve <traceId>     Approve a blocked high-risk task (terminal alternative)
 atabey hitl answer "<text>"  Answer a pending ask_human question
 atabey @agent "task"         Send task directly to an agent
 ```
+
+### `atabey init [adapter]` Options
+
+| Option | Values | Description |
+|---|---|---|
+| `[adapter]` | `gemini`, `claude`, `cursor`, `grok`, `codex`, `local`, `antigravity-cli` | The target AI platform/client for initialization. |
+| `--profile` | `freelancer`, `team`, `enterprise` | Preset agent group layout and governance complexity. |
+| `--focus` | `fullstack`, `backend`, `frontend`, `mobile`, `mobile-fullstack` | Optimize active agents and templates for the project type. |
+| `--lang` | `tr`, `en` | Set the language for constitution (`ATABEY.md`) and standard operating procedures. |
+| `--unified` | *None (Flag)* | Place all agent instruction files under a single `.agents/` directory with native client links. |
+| `--yes` | *None (Flag)* | Run in non-interactive mode using default or provided parameters. |
+| `--dryRun` | *None (Flag)* | Simulate the initialization run without writing any files or folders to the workspace. |
 
 > **In-chat alternative:** Use `approve_operation` MCP tool directly in your AI CLI chat — no terminal switch needed.
 
@@ -634,7 +655,7 @@ Task → Evaluation →
 | ✅ Alert thresholds | 50/80/90/100% warning levels |
 | ✅ Dashboard panel | FinOpsPanel.tsx with live visualization |
 | ✅ API endpoint | `GET /api/metrics` — agent/action level detail |
-| ❌ **Weekly Summary** | `atabey gateway stats` output insufficient for weekly overview |
+| ❌ **Weekly Summary** | `atabey status` output does not provide a weekly rollup overview |
 
 **Usage:** `framework-mcp/src/index.ts` (lines 150-153) calls `Metrics.logUsage()` on every tool call.
 
@@ -674,7 +695,7 @@ Task → Evaluation →
 | 1 | `MCP_TRANSPORT=stdio` env missing | `src/cli/commands/mcp.ts:66` | Added `MCP_TRANSPORT: "stdio"` |
 | 2 | No success task learning | `src/modules/engines/evaluation-engine.ts` | `updateSpecialtyMemory()` should be called on success too |
 | 3 | Specialty memory not auto-injected into AI | `silent-router.ts` / `discipline.ts` | `.atabey/memory/specialties/*.md` content should be injected on agent calls |
-| 4 | No weekly cost summary | `finops.ts` | Add summary command instead of `atabey gateway stats` |
+| 4 | No weekly cost summary | `finops.ts` | Add weekly rollup statistics to `atabey status` command |
 
 ---
 
@@ -690,6 +711,9 @@ Task → Evaluation →
 ---
 
 ## Security
+
+### Enterprise-Grade Governance
+Atabey defines "enterprise-grade" through deterministic rules: AST compliance parsing, strict TypeScript type validation (zero `any`), syntax/linter checks, and automated unit tests, rather than unpredictable probabilistic algorithms.
 
 ### Zero Type Hole Policy
 - `any` type usage is **strictly forbidden**

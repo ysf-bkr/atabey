@@ -36,14 +36,14 @@ export function initAuth(): void {
     }
 
     if (masterToken) {
-        console.error(`[AUTH] Master token configured (${masterToken.length} chars)`);
+        process.stderr.write(`[AUTH] Master token configured (${masterToken.length} chars)\n`);
     }
     if (authUsers.length > 0) {
-        console.error(`[AUTH] ${authUsers.length} user(s) configured: ${authUsers.map(u => u.name).join(", ")}`);
+        process.stderr.write(`[AUTH] ${authUsers.length} user(s) configured: ${authUsers.map(u => u.name).join(", ")}\n`);
     }
     if (!masterToken && authUsers.length === 0) {
-        console.error("[AUTH] No authentication configured - OPEN ACCESS");
-        console.error("[AUTH] Set MCP_AUTH_TOKEN=<key> or MCP_AUTH_USERS=user1:key1,user2:key2 to enable");
+        process.stderr.write("[AUTH] No authentication configured - OPEN ACCESS\n");
+        process.stderr.write("[AUTH] Set MCP_AUTH_TOKEN=<key> or MCP_AUTH_USERS=user1:key1,user2:key2 to enable\n");
     }
 }
 

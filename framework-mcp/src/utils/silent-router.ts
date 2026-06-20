@@ -71,7 +71,7 @@ export function detectAgent(toolName: string, args: Record<string, unknown>): st
 
     const contextParts: string[] = [toolName];
 
-    for (const [key, value] of Object.entries(args)) {
+    for (const [, value] of Object.entries(args)) {
         if (typeof value === "string") {
             contextParts.push(value);
         } else if (Array.isArray(value)) {

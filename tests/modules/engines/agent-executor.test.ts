@@ -49,7 +49,7 @@ describe("AgentExecutor", () => {
         expect(result.reasoning.length).toBeGreaterThan(0);
     });
 
-    it("should save delegation message to SQLite on execution", async () => {
+    it("should execute task pipeline and log results to SQLite", async () => {
         // Mock runAgentTask to skip Hermes polling and return immediately
         vi.spyOn(AgentExecutor as any, "runAgentTask").mockResolvedValue("[MOCK] Task completed");
 

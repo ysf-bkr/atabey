@@ -34,10 +34,10 @@ All notable changes to this project are documented in this file.
 
 
 ### Added
-- **`AgentLoop`** (`src/modules/engines/agent-loop.ts`): Real agent execution engine. Agents now actually process Hermes DELEGATION messages by calling the LLM Gateway with their system prompt. This is the core fix that makes agents real — without this, agents received tasks but never executed them.
-- **`AgentExecutor.executeForAgent()`**: Direct LLM-powered agent execution method. Loads the agent's `AgentDefinition`, builds a system prompt from `identity + mission + chainOfThought + rules`, calls `gateway.chat()`, and writes a `RESPONSE` message back to Hermes.
-- **Memory Auto-Learning Loop** (`src/modules/engines/evaluation-engine.ts`): Implemented `learnFromTask` in `EvaluationEngine`. Analyzes successfully completed agent tasks with the LLM, extracts actionable coding guidelines, and appends them to the agent's specialty markdown file (`.atabey/memory/specialties/<agentName>.md`). The agent automatically reads and follows these conventions on subsequent runs.
-- **Cost Tracker SQLite Persistence** (`src/modules/gateway/cost-tracker.ts`): Added a `costs` database table and schema support to SQLite, enabling persistence of budget configurations and cost logs. Tracking remains accurate across CLI exits and daemon restarts.
+- **`AgentLoop`** (`src/modules/engines/agent-loop.ts`): Real agent task polling loop. Agents now process Hermes DELEGATION messages and forward them to the execution handler to manage status and messaging.
+- **`AgentExecutor.executeForAgent()`**: Task acknowledgment and messaging method. Loads the agent's definition and writes a RESPONSE message back to Hermes to signal that execution is delegated to the AI client interface.
+- **Memory Auto-Learning Loop** (`src/modules/engines/evaluation-engine.ts`): Implemented `learnFromTask` in `EvaluationEngine`. Analyzes successfully completed agent tasks, extracts actionable coding guidelines, and appends them to the agent's specialty markdown file (`.atabey/memory/specialties/<agentName>.md`). The agent automatically reads and follows these conventions on subsequent runs.
+- **Cost Persistence SQLite Support**: Added a `costs` database table and schema support to SQLite, enabling persistence of budget configurations and cost logs. Tracking remains accurate across CLI exits and daemon restarts.
 - Real TF-IDF with genuine IDF component in `RoutingEngine` (was keyword counting only).
 
 ### Fixed
@@ -45,13 +45,13 @@ All notable changes to this project are documented in this file.
 - **`QualityGate`**: Removed test execution from quality gate (moved to CI pipeline). Gate now focuses on output quality, not full regression.
 - **`QualityGate`**: Added TypeScript `any` type detection in `validateOutputContent()` — Zero Type Hole policy enforced at output level.
 - **`RoutingEngine`**: Implemented real IDF scoring: `IDF = log(N / df + 1)` where `N` = total agents, `df` = agents sharing the term. Terms unique to few agents now score higher.
-- **`AgentExecutor`**: Reduced polling timeout from 30s to 10s (agents respond much faster via LLM Gateway).
+- **`AgentExecutor`**: Reduced polling timeout from 30s to 10s.
 - **Duplicate code** (`src/cli/index.ts`): Extracted `getActiveTraceId()` helper — eliminates 4× copy-paste of the same memory-reading pattern.
 - **Unit Test State Leakage**: Isolated all DB-driven test files (`cost-tracker.test.ts`, `hermes_locking.test.ts`) using isolated temporary directories (`process.env.ATABEY_TEST_DIR`), ensuring a 100% green test run.
 
 ### Changed
 - Version: 0.0.13 → 0.0.14
-- CLI Gateway command: Modified `src/cli/commands/gateway.ts` to utilize the shared global `gateway` singleton rather than spawning a fresh `LLMGateway` object, synchronizing CLI reporting with daemon stats.
+- Integrated compliance checks into the core agent lifecycle logs.
 
 ---
 
@@ -59,7 +59,6 @@ All notable changes to this project are documented in this file.
 ## [0.0.13] - 2026-06-17
 
 ### Added
-- **Gateway command:** `atabey gateway` — LLM Gateway / Load Balancer management
 - **Coverage command:** `atabey coverage` — Test coverage reports
 - **Declarations file:** `framework-mcp/src/declarations.d.ts` for MCP type safety
 - **`check:lint` command:** ESLint execution via CLI
@@ -97,7 +96,7 @@ All notable changes to this project are documented in this file.
 - **68 MCP tool definitions for all 5 platforms** (Claude, Gemini, Cursor, Codex, Antigravity)
 - **Quality Gate integration** — AST-based compliance, ESLint, unit test retry loop
 - **Hermes Message Broker v2** — Priority queue, dependency graph, approval mechanism
-- **LLM Gateway v1** — Multi-provider load balancing with circuit breaker
+- **Cost economy and tracking v1** — Persisted token and expense metrics
 - **Dashboard v1** — Real-time WebSocket with 8 live modules
 - **`plan:submit` command:** JSON-based DAG workflow execution
 - **13-specialist agent registry** — Structured, extensible, tier-based (Supreme/Core/Recon)

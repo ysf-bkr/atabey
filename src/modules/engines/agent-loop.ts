@@ -5,11 +5,11 @@ import { AgentExecutor } from "./agent-executor.js";
 /**
  * [ENGINE] AgentLoop — Real-time Hermes Message Consumer
  *
- * Runs as a background loop consuming DELEGATION messages from the
- * Hermes queue and dispatching them to agents for execution.
+ * Runs as a background loop polling and consuming DELEGATION messages from the
+ * Hermes queue and forwarding them to agents for acknowledgment.
  *
- * This is the "namlusu" (barrel) of Atabey — without this, agents
- * receive tasks but never execute them.
+ * Acts as a message-polling and workflow enforcer, ensuring task messages are
+ * routed to their designated target agents, which then get processed by the AI client interface.
  *
  * v0.0.14: First real implementation. Agents are now real.
  */

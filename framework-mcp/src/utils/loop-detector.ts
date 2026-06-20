@@ -351,7 +351,7 @@ export function recordAndCheck(
 /**
  * Apply cooldown to an agent.
  */
-function applyCooldown(history: AgentHistory, alert: LoopAlert, agent: string): void {
+function applyCooldown(history: AgentHistory, alert: LoopAlert, _agent: string): void {
     history.inCooldown = true;
     history.cooldownUntil = alert.cooldownUntil || Date.now() + CONFIG.COOLDOWN_MS;
     history.cooldownCount++;
@@ -451,8 +451,8 @@ export function getAllLoopStats(): Record<string, {
     lastAlert: LoopAlert | null;
 }> {
     const stats: Record<string, ReturnType<typeof getLoopStats>> = {};
-    for (const [agent] of agentHistories) {
-        stats[agent] = getLoopStats(agent);
+    for (const [agentName] of agentHistories) {
+        stats[agentName] = getLoopStats(agentName);
     }
     return stats;
 }

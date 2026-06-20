@@ -103,7 +103,7 @@ if (!process.env.ATABEY_PROJECT_ROOT) {
 }
 
 const FRAMEWORK_DIR = process.env.ATABEY_FRAMEWORK_DIR || path.join(PROJECT_ROOT, ".atabey");
-const UI_DIST_PATH = path.join(__dirname, "../../dist/dashboard");
+const UI_DIST_PATH = path.join(__dirname, "../../dashboard/dist");
 
 // ─── Ports ────────────────────────────────────────────────────────
 
@@ -346,7 +346,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         // [AUTO-ROLLBACK] Check write results for governance violations
         if (name === "write_file" || name === "replace_text" || name === "patch_file") {
             try {
-                const responseText = result.content?.filter(b => b.type === "text").map(b => b.text).join(" ") || "";
                 const filePath = (maskedArgs.path as string) || "";
                 const content = (maskedArgs.content as string) || "";
                 if (filePath && content) {

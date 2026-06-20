@@ -161,7 +161,7 @@ export function containsPIIInObject(obj: unknown, depth = 0): boolean {
         return obj.some(item => containsPIIInObject(item, depth + 1));
     }
 
-    for (const [_key, value] of Object.entries(obj as Record<string, unknown>)) {
+    for (const [, value] of Object.entries(obj as Record<string, unknown>)) {
         if (typeof value === "string") {
             if (containsPII(value)) return true;
         } else if (typeof value === "object") {
