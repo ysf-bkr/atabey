@@ -9,9 +9,10 @@ import { EvaluationResult } from "./types.js";
 
 export class EvaluationEngine {
     /**
-     * Evaluates a completed task, calculates a score, and updates Specialty Memory if needed.
+     * Evaluates a completed task, calculates a score, and updates Specialty Memory.
+     * Saves lessons from both failures AND successes.
      */
-    public static evaluateTask(traceIdStr: string, agentName: string, durationMs: number): EvaluationResult {
+    public static evaluateTask(traceIdStr: string, agentName: string, durationMs: number, taskDescription?: string): EvaluationResult {
         const traceId = asTraceID(traceIdStr);
         logger.debug(`Starting evaluation for Trace ${traceId} by ${agentName}`);
 
@@ -24,14 +25,17 @@ export class EvaluationEngine {
         };
 
         const projectRoot = process.cwd();
+        const lessons: string[] = [];
 
         // 1. Compliance Check (AST-based discipline check)
         try {
-            const issues = scanProjectCompliance("src"); // Defaulting to src/ for now
+            const issues = scanProjectCompliance("src");
             metrics.compliance = issues.length;
             if (issues.length > 0) {
-                score -= Math.min(issues.length * 5, 40); // Max 40 points deduction for compliance
-                this.updateSpecialtyMemory(agentName, "Compliance Violations Detected: Ensure strict adherence to zero-any, zero-console.log policies.");
+                score -= Math.min(issues.length * 5, 40);
+                lessons.push("Compliance Violations Detected: Ensure strict adherence to zero-any, zero-console.log policies.");
+            } else {
+                lessons.push("Compliance check passed: No any types or console.log violations found.");
             }
         } catch (e) {
             logger.debug("Compliance check failed during evaluation", e);
@@ -41,37 +45,56 @@ export class EvaluationEngine {
         try {
             if (fs.existsSync(path.join(projectRoot, "tsconfig.json"))) {
                 runCommandQuiet("npx", ["tsc", "--noEmit"], projectRoot);
+                lessons.push("TypeScript compilation succeeded. Project is type-safe.");
             }
         } catch {
             metrics.compilation = false;
             score -= 20;
-            this.updateSpecialtyMemory(agentName, "Compilation Error: Always run 'npx tsc --noEmit' to verify type safety before completing a task.");
+            lessons.push("Compilation Error: Always run 'npx tsc --noEmit' to verify type safety before completing a task.");
         }
 
         // 3. Lint Check
         try {
             if (fs.existsSync(path.join(projectRoot, "eslint.config.js"))) {
                 runCommandQuiet("npx", ["eslint", ".", "--max-warnings", "0"], projectRoot);
+                lessons.push("Lint check passed. Code follows project style guidelines.");
             }
         } catch {
             metrics.lint = false;
             score -= 10;
         }
 
-        // 4. Test Check (Assuming vitest is standard for this framework)
+        // 4. Test Check
         try {
             if (fs.existsSync(path.join(projectRoot, "vitest.config.ts"))) {
                 runCommandQuiet("npx", ["vitest", "run", "--passWithNoTests"], projectRoot);
+                lessons.push("All tests passed. Changes are verified.");
             }
         } catch {
             metrics.tests = false;
             score -= 20;
-            this.updateSpecialtyMemory(agentName, "Test Failure: Ensure all unit tests pass before marking a task as COMPLETED.");
+            lessons.push("Test Failure: Ensure all unit tests pass before marking a task as COMPLETED.");
         }
 
         // 5. Efficiency Check
-        if (durationMs > 120000) { // If task took more than 2 minutes
+        if (durationMs > 120000) {
             score -= 10;
+            lessons.push("Task took longer than 2 minutes. Consider breaking large tasks into smaller steps.");
+        } else if (score >= 80) {
+            lessons.push("Task completed efficiently within expected timeframe.");
+        }
+
+        // 6. Success Lesson — if score is high and no critical errors
+        if (score >= 80 && taskDescription) {
+            const successLesson = this.extractSuccessLesson(agentName, taskDescription);
+            if (successLesson) {
+                lessons.push(successLesson);
+            }
+        }
+
+        // Save all lessons to specialty memory
+        for (const lesson of lessons) {
+            this.updateSpecialtyMemory(agentName, lesson);
         }
 
         const result: EvaluationResult = {
@@ -85,6 +108,53 @@ export class EvaluationEngine {
 
         logger.debug(`Evaluation completed for ${agentName}: Score ${result.score}/100`);
         return result;
+    }
+
+    /**
+     * Extract a meaningful success lesson from a completed task.
+     */
+    private static extractSuccessLesson(agentName: string, taskDescription: string): string | null {
+        const patterns: Array<{ keywords: string[]; lesson: string }> = [
+            { keywords: ["api", "endpoint", "route", "rest"], lesson: "REST API pattern used successfully for this task." },
+            { keywords: ["auth", "login", "jwt", "token"], lesson: "Authentication/authorization pattern used successfully." },
+            { keywords: ["test", "spec", "vitest"], lesson: "Test-driven approach used successfully." },
+            { keywords: ["migration", "schema", "database", "sql"], lesson: "Database schema/migration pattern used successfully." },
+            { keywords: ["component", "react", "ui", "page"], lesson: "UI component pattern used successfully for this task." },
+            { keywords: ["middleware", "guard", "interceptor"], lesson: "Middleware/guard pattern used successfully." },
+            { keywords: ["service", "repository", "inject"], lesson: "Service/repository pattern used successfully." },
+            { keywords: ["error", "exception", "catch", "try"], lesson: "Error handling pattern used successfully." },
+            { keywords: ["config", "env", "environment"], lesson: "Configuration/environment pattern used successfully." },
+        ];
+
+        const lower = taskDescription.toLowerCase();
+        for (const { keywords, lesson } of patterns) {
+            if (keywords.some(k => lower.includes(k))) {
+                return lesson;
+            }
+        }
+
+        // Generic success lesson if no specific pattern matched
+        return `Task completed with score >= 80. Pattern/approach used was effective.`;
+    }
+
+    /**
+     * Reads learned conventions from an agent's specialty memory.
+     * Used by silent-router to inject context into AI calls.
+     */
+    public static readLearnedConventions(agentName: string): string {
+        const cleanName = agentName.replace("@", "");
+        const fwDir = getFrameworkDir();
+        const filePath = path.join(fwDir, "memory", "specialties", `${cleanName}.md`);
+
+        try {
+            if (fs.existsSync(filePath)) {
+                const content = fs.readFileSync(filePath, "utf8").trim();
+                if (content) return content;
+            }
+        } catch {
+            // File might not exist yet
+        }
+        return "";
     }
 
     /**
@@ -111,9 +181,4 @@ export class EvaluationEngine {
             appendFile(filePath, entry);
         }
     }
-
-    // ─── Auto-Learning Loop disabled ─────────────────────────────────────────
-    // LLMGateway was removed. AI-powered meta-learning is handled by the AI
-    // interface (Claude Code / Gemini CLI / Cursor) directly.
-    // Specialty memory can still be updated via other evaluation triggers.
 }

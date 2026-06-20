@@ -9,11 +9,12 @@
  *
  * Features:
  * - Auto-agent detection from tool call context
- * - Silent system prompt injection
+ * - Silent system prompt injection with specialty memory
  * - Multi-agent chain support
  * - Stealth notifications (stderr/dashboard only, never chat)
  */
 
+import { EvaluationEngine } from "../../../src/modules/engines/evaluation-engine.js";
 import { RoutingEngine } from "../../../src/modules/engines/routing-engine.js";
 
 // ─── Configuration ────────────────────────────────────────────────
@@ -25,6 +26,8 @@ const CONFIG = {
     STEALTH_NOTIFY: process.env.MCP_SILENT_STEALTH !== "false",
     /** Agent override via env (for testing/debugging) */
     FORCE_AGENT: process.env.MCP_FORCE_AGENT || null,
+    /** Enable specialty memory injection into context */
+    INJECT_SPECIALTY_MEMORY: process.env.MCP_INJECT_SPECIALTY_MEMORY !== "false",
 };
 
 // ─── Agent Rule Cache ─────────────────────────────────────────────
@@ -53,7 +56,6 @@ async function loadAgentRules(): Promise<Map<string, AgentRules>> {
             });
         }
     } catch {
-        // Fallback: use discipline rules file
         agentRuleCache = new Map();
     }
 
@@ -67,7 +69,6 @@ async function loadAgentRules(): Promise<Map<string, AgentRules>> {
 export function detectAgent(toolName: string, args: Record<string, unknown>): string {
     if (CONFIG.FORCE_AGENT) return CONFIG.FORCE_AGENT;
 
-    // Build context from args for routing
     const contextParts: string[] = [toolName];
 
     for (const [key, value] of Object.entries(args)) {
@@ -80,7 +81,6 @@ export function detectAgent(toolName: string, args: Record<string, unknown>): st
 
     const context = contextParts.join(" ").substring(0, 500);
 
-    // Use RoutingEngine to detect the best agent
     return RoutingEngine.resolveAgent(context);
 }
 
@@ -108,8 +108,31 @@ export async function getAgentPrompt(agentName: string): Promise<string | null> 
 }
 
 /**
+ * Load specialty memory for an agent and format it for injection.
+ */
+function getSpecialtyMemoryContext(agentName: string): string | null {
+    if (!CONFIG.INJECT_SPECIALTY_MEMORY) return null;
+
+    try {
+        const conventions = EvaluationEngine.readLearnedConventions(agentName);
+        if (!conventions) return null;
+
+        return [
+            "",
+            "### Previously Learned Conventions",
+            `The following lessons were learned from past tasks for @${agentName}:`,
+            "",
+            conventions,
+            "",
+        ].join("\n");
+    } catch {
+        return null;
+    }
+}
+
+/**
  * Build a silent context injection payload.
- * This is prepended to tool responses to guide the AI without @agent commands.
+ * Injects agent rules + specialty memory into tool responses.
  */
 export async function buildSilentContext(
     detectedAgent: string,
@@ -121,14 +144,18 @@ export async function buildSilentContext(
     const agentPrompt = await getAgentPrompt(detectedAgent);
     if (!agentPrompt) return responseText;
 
-    // Only inject if the response is substantial enough to warrant governance
     if (responseText.length < 50) return responseText;
 
-    // Inject as a comment block that won't break tool results
+    // Inject specialty memory if available
+    const specialtyContext = getSpecialtyMemoryContext(detectedAgent);
+    const fullPrompt = specialtyContext
+        ? `${agentPrompt}\n${specialtyContext}`
+        : agentPrompt;
+
     const injection = [
         "",
         `<!-- ATABEY_GOVERNANCE agent="${detectedAgent}" tool="${toolName}" -->`,
-        `${agentPrompt}`,
+        `${fullPrompt}`,
         "<!-- /ATABEY_GOVERNANCE -->",
         "",
     ].join("\n");
