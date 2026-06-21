@@ -16,8 +16,6 @@ describe("LoopDetector", () => {
 
     beforeEach(async () => {
         vi.resetModules();
-        // Use a unique agent suffix per test to avoid cross-test contamination
-        const testId = Math.random().toString(36).substr(2, 4);
         // Set test-friendly config
         process.env.MCP_LOOP_DETECTION = "true";
         process.env.MCP_LOOP_MAX_CONSECUTIVE = "3";

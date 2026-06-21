@@ -3,7 +3,7 @@
   "version": "0.0.15",
   "description": "MCP-Powered AI Governance & Autonomous Orchestration Framework. Plugs into Claude Code, Gemini CLI, and Cursor as an MCP server.",
   "author": "Yusuf BEKAR",
-  "license": "MIT",
+  "license": "AGPL-3.0",
   "readme": "README.md",
   "type": "module",
   "repository": {

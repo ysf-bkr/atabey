@@ -2,6 +2,7 @@ import fs from "fs";
 import { safePath } from "../../utils/security.js";
 import { ReadFileArgs, ToolResult } from "../types.js";
 import { Metrics } from "../../utils/metrics.js";
+import { verifyReadPermission } from "../../utils/permissions.js";
 
 export function handleReadFile(projectRoot: string, args: ReadFileArgs): ToolResult {
     if (!args.path) {
@@ -12,6 +13,12 @@ export function handleReadFile(projectRoot: string, args: ReadFileArgs): ToolRes
 
     try {
         const filePath = safePath(projectRoot, args.path);
+
+        // ENFORCE READ PERMISSION MATRIX
+        // Checked before file existence to avoid leaking path information
+        // to agents without read access (Claude Code, Cursor, Gemini CLI, etc.)
+        verifyReadPermission(projectRoot, args.path);
+
         if (!fs.existsSync(filePath)) {
             const err = `File not found: ${args.path}`;
             Metrics.logError(projectRoot, "@mcp", "read_file", err);

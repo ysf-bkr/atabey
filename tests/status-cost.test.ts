@@ -47,6 +47,8 @@ describe("Status Cost Dashboard", () => {
 
         expect(calls.some(c => c.includes("Total Estimated Tokens:"))).toBe(true);
         expect(calls.some(c => c.includes("Total Estimated LLM Cost:"))).toBe(true);
+        expect(calls.some(c => c.includes("Weekly Estimated Tokens (Last 7 days):"))).toBe(true);
+        expect(calls.some(c => c.includes("Weekly Estimated LLM Cost (Last 7 days):"))).toBe(true);
         expect(calls.some(c => c.includes("@backend"))).toBe(true);
         expect(calls.some(c => c.includes("@frontend"))).toBe(true);
 

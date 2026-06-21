@@ -4,6 +4,25 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## [0.0.16] — 2026-06-21
+
+### Added
+- **Prompt Injection Detection** (`framework-mcp/src/utils/discipline.ts`): Added `PROMPT_INJECTION_PATTERNS` array (13 patterns) and `scanForPromptInjection()` helper to `validateResponse()`. Catches adversarial payloads such as "Ignore previous instructions", persona overrides, LLM template tokens (`[INST]`, `<<SYS>>`), jailbreak phrases, and system-prompt injection attempts embedded in file content or API responses. Violations are blocked with a descriptive label before reaching the AI.
+- **Semantic Routing** (`src/modules/engines/routing-engine.ts`): Added `resolveWithEmbeddings()` async method and `cosineSimilarity()` helper. Connects the existing `CoreMemory.generateEmbedding()` (TF-IDF, 384-dim) and `embedding.ts` (OpenAI text-embedding-3-small when `OPENAI_API_KEY` is set) infrastructure to the RoutingEngine. Blends TF-IDF (60%) with cosine similarity (40%) for higher routing accuracy. Falls back gracefully to pure TF-IDF if embedding fails. Also extracted `scoreSingleCandidate()` private helper to eliminate duplication.
+- **SAST via CodeQL** (`.github/workflows/ci.yml`): New `sast` job runs GitHub CodeQL with `security-and-quality` query suite on every push/PR. Covers JavaScript/TypeScript.
+- **Secret Scanning via Gitleaks** (`.github/workflows/ci.yml`): New `security-scan` job runs `gitleaks/gitleaks-action@v2` over full git history to detect leaked API keys, tokens, and credentials. `build-and-test` job now depends on `security-scan` passing.
+- **Coverage Upload Artifact** (`.github/workflows/ci.yml`): `build-and-test` now uploads `coverage/` as an artifact on Node 22.x runs for inspection without downloading locally.
+
+### Fixed
+- **`agent-executor.ts` — Runtime Crash** (`src/modules/engines/agent-executor.ts`): `pollForAgentResponse()` referenced `maskedResponse` before it was defined, causing a `ReferenceError` every time an agent responded. Fixed by adding `const maskedResponse = maskText(response.content)` before the `saveLog` call. Return value also updated to `maskedResponse` for KVKK/GDPR consistency.
+- **`quality-gate.ts` — False Positive Rejections** (`src/modules/engines/quality-gate.ts`): Error indicator check used `.includes()` which incorrectly rejected valid TypeScript code containing identifiers like `ErrorBoundary`, `handleError`, `TIMEOUT_MS`, `FAILED_VALIDATION`. Changed to word-boundary regex (`\bERROR\b`, etc.) to match only standalone error words.
+
+### Changed
+- **`RiskEngine` — Contextual Behavioral Scoring** (`src/modules/engines/risk-engine.ts`): Added 3 new behavioral signal categories alongside keyword/path analysis: (1) `BULK_SCOPE_PATTERNS` — glob/wildcard patterns in task text or file paths score +25; (2) mass-deletion language ("delete all", "wipe") scores +30; (3) `assessChangeRisk()` now accepts optional `affectedFileCount` and `deletedLineCount` parameters — high file counts (>3 files: +15, >10 files: +40) and bulk line deletions (>100: +20, >500: +35) are factored into risk score.
+- **Coverage Thresholds** (`vitest.config.ts`): Raised from blanket 40% to lines/functions/statements: 70%, branches: 60%. Added phased roadmap comment toward the 100% framework-mcp goal.
+
+---
+
 ## [0.0.15] — 2026-06-20
 
 ### Added

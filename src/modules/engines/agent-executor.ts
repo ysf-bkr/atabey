@@ -181,11 +181,13 @@ export class AgentExecutor {
         // Update agent status
         AtabeyStorage.updateAgentStatus(agentName, "EXECUTING", taskDescription);
 
-        // Log action
-        AtabeyStorage.getDB().prepare(`
-            INSERT INTO logs (agent, action, trace_id, status, summary)
-            VALUES (?, ?, ?, ?, ?)
-        `).run(agentName, "DELEGATION_SENT", traceId, "IN_PROGRESS", maskedTask.substring(0, 200));
+        AtabeyStorage.saveLog({
+            agent: agentName,
+            action: "DELEGATION_SENT",
+            trace_id: traceId,
+            status: "IN_PROGRESS",
+            summary: maskedTask.substring(0, 200)
+        });
 
         logger.info(`[HERMES] Delegation sent to ${agent} (trace: ${traceId})`);
 
@@ -223,15 +225,19 @@ export class AgentExecutor {
                     AtabeyStorage.updateMessageStatus(response.id as number, "PROCESSED");
                 }
 
-                // [KVKK/GDPR] Mask PII in response content before logging
+                // [KVKK/GDPR] Mask PII in response content before logging and returning
                 const maskedResponse = maskText(response.content);
-                AtabeyStorage.getDB().prepare(`
-                    INSERT INTO logs (agent, action, trace_id, status, summary)
-                    VALUES (?, ?, ?, ?, ?)
-                `).run(agentName, "RESPONSE_RECEIVED", traceId, "SUCCESS", maskedResponse.substring(0, 200));
+
+                AtabeyStorage.saveLog({
+                    agent: agentName,
+                    action: "RESPONSE_RECEIVED",
+                    trace_id: traceId,
+                    status: "SUCCESS",
+                    summary: maskedResponse.substring(0, 200)
+                });
 
                 logger.info(`[HERMES] Response received from @${agentName} (trace: ${traceId})`);
-                return response.content;
+                return maskedResponse;
             }
 
             // Short delay before next poll
@@ -242,10 +248,13 @@ export class AgentExecutor {
         const timeoutMsg = `[TIMEOUT] @${agentName} did not respond within ${(maxAttempts * pollInterval) / 1000}s. Ensure AgentLoop is running or a provider is configured.`;
         logger.warn(`[HERMES] ${timeoutMsg} (trace: ${traceId})`);
 
-        AtabeyStorage.getDB().prepare(`
-            INSERT INTO logs (agent, action, trace_id, status, summary)
-            VALUES (?, ?, ?, ?, ?)
-        `).run(agentName, "RESPONSE_TIMEOUT", traceId, "FAILED", timeoutMsg);
+        AtabeyStorage.saveLog({
+            agent: agentName,
+            action: "RESPONSE_TIMEOUT",
+            trace_id: traceId,
+            status: "FAILED",
+            summary: timeoutMsg
+        });
 
         return timeoutMsg;
     }
@@ -272,16 +281,13 @@ export class AgentExecutor {
         });
 
         // Save to SQLite logs
-        AtabeyStorage.getDB().prepare(`
-            INSERT INTO logs (agent, action, trace_id, status, summary)
-            VALUES (?, ?, ?, ?, ?)
-        `).run(
-            agent.replace("@", ""),
-            "COMPLETED",
-            traceId,
-            "SUCCESS",
-            maskedOutput.substring(0, 200),
-        );
+        AtabeyStorage.saveLog({
+            agent: agent.replace("@", ""),
+            action: "COMPLETED",
+            trace_id: traceId,
+            status: "SUCCESS",
+            summary: maskedOutput.substring(0, 200)
+        });
 
         // Update task status
         const tasks = AtabeyStorage.getTasks(asTraceID(traceId));

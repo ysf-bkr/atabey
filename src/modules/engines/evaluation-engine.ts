@@ -110,31 +110,33 @@ export class EvaluationEngine {
         return result;
     }
 
-    /**
-     * Extract a meaningful success lesson from a completed task.
-     */
     private static extractSuccessLesson(agentName: string, taskDescription: string): string | null {
-        const patterns: Array<{ keywords: string[]; lesson: string }> = [
-            { keywords: ["api", "endpoint", "route", "rest"], lesson: "REST API pattern used successfully for this task." },
-            { keywords: ["auth", "login", "jwt", "token"], lesson: "Authentication/authorization pattern used successfully." },
-            { keywords: ["test", "spec", "vitest"], lesson: "Test-driven approach used successfully." },
-            { keywords: ["migration", "schema", "database", "sql"], lesson: "Database schema/migration pattern used successfully." },
-            { keywords: ["component", "react", "ui", "page"], lesson: "UI component pattern used successfully for this task." },
-            { keywords: ["middleware", "guard", "interceptor"], lesson: "Middleware/guard pattern used successfully." },
-            { keywords: ["service", "repository", "inject"], lesson: "Service/repository pattern used successfully." },
-            { keywords: ["error", "exception", "catch", "try"], lesson: "Error handling pattern used successfully." },
-            { keywords: ["config", "env", "environment"], lesson: "Configuration/environment pattern used successfully." },
+        const patterns: Array<{ keywords: string[]; category: string }> = [
+            { keywords: ["api", "endpoint", "route", "rest"], category: "REST API pattern" },
+            { keywords: ["auth", "login", "jwt", "token"], category: "Authentication/authorization/JWT pattern" },
+            { keywords: ["test", "spec", "vitest"], category: "Test-driven development approach" },
+            { keywords: ["migration", "schema", "database", "sql"], category: "Database schema/migration pattern" },
+            { keywords: ["component", "react", "ui", "page"], category: "UI component design pattern" },
+            { keywords: ["middleware", "guard", "interceptor"], category: "Middleware/guard pipeline pattern" },
+            { keywords: ["service", "repository", "inject"], category: "Service/repository architecture pattern" },
+            { keywords: ["error", "exception", "catch", "try"], category: "Robust error handling pattern" },
+            { keywords: ["config", "env", "environment"], category: "Configuration and environment control pattern" },
         ];
 
         const lower = taskDescription.toLowerCase();
-        for (const { keywords, lesson } of patterns) {
+        let categoryStr = "";
+        for (const { keywords, category } of patterns) {
             if (keywords.some(k => lower.includes(k))) {
-                return lesson;
+                categoryStr = ` using ${category}`;
+                break;
             }
         }
 
-        // Generic success lesson if no specific pattern matched
-        return "Task completed with score >= 80. Pattern/approach used was effective.";
+        const cleanedTask = taskDescription.replace(/\r?\n/g, " ").trim();
+        const truncatedTask = cleanedTask.length > 120 ? cleanedTask.substring(0, 117) + "..." : cleanedTask;
+        const capitalizedTask = truncatedTask.charAt(0).toUpperCase() + truncatedTask.slice(1);
+
+        return `Successfully completed task: "${capitalizedTask}"${categoryStr}.`;
     }
 
     /**

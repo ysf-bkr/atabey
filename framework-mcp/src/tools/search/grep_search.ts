@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { GrepSearchArgs, ToolResult } from "../types.js";
 import { Metrics } from "../../utils/metrics.js";
+import { verifyReadPermission } from "../../utils/permissions.js";
 
 /**
  * Searches for a regex pattern within files in the project.
@@ -43,11 +44,16 @@ export function handleGrepSearch(projectRoot: string, args: GrepSearchArgs): Too
                     if (includePattern && !filePath.endsWith(includePattern)) {
                         continue;
                     }
-                    const content = fs.readFileSync(filePath, "utf8");
-                    if (new RegExp(pattern).test(content)) {
-                        if (results.length < 30) {
-                            results.push(filePath);
+                    try {
+                        verifyReadPermission(projectRoot, filePath);
+                        const content = fs.readFileSync(filePath, "utf8");
+                        if (new RegExp(pattern).test(content)) {
+                            if (results.length < 30) {
+                                results.push(filePath);
+                            }
                         }
+                    } catch {
+                        // Silently skip files without read permissions
                     }
                 }
             }

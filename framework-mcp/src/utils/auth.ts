@@ -93,3 +93,6 @@ export function getAuthHeader(user: string, token: string): string {
 export function isAuthEnabled(): boolean {
     return !!masterToken || authUsers.length > 0;
 }
+
+// Auto-initialize on load
+initAuth();

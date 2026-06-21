@@ -2,10 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
 
 export function useApi<T>(endpoint: string, interval = 0) {
+    const token = localStorage.getItem("atabey-auth-token") || "";
     const q = useQuery<T, Error>({
-        queryKey: [endpoint],
+        queryKey: [endpoint, token],
         queryFn: async () => {
-            const r = await fetch(`/api${endpoint}`);
+            const headers: Record<string, string> = {};
+            if (token) {
+                headers["Authorization"] = `Bearer ${token}`;
+            }
+            const r = await fetch(`/api${endpoint}`, { headers });
             if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
             const json = await r.json();
             let data = json;

@@ -5,6 +5,7 @@ import { logger } from "../../shared/logger.js";
 import { AtabeyStorage } from "../../shared/storage.js";
 import { asAgentID, asTraceID } from "../../shared/types.js";
 import { ALL_AGENTS } from "../agents/definitions.js";
+import { CoreMemory } from "../memory/core.js";
 
 export interface RoutingCandidate {
     agent: string;
@@ -30,6 +31,10 @@ export class RoutingEngine {
      *
      * Uses real TF-IDF scoring: term frequency in the task weighted by
      * inverse document frequency across the full agent candidate corpus.
+     *
+     * Semantic routing via `resolveWithEmbeddings()` blends TF-IDF scores
+     * with cosine similarity over local TF-IDF embeddings (or OpenAI embeddings
+     * when OPENAI_API_KEY is set). Use the async variant for higher accuracy.
      */
     public static resolveAgent(taskDescription: string): string {
         return this.resolveWithDetails(taskDescription).agent;
@@ -116,9 +121,121 @@ export class RoutingEngine {
         };
     }
 
+    // ─── Semantic Routing (Embedding-based) ─────────────────────────────────
+
     /**
-     * Automatically splits the task into subtasks
+     * Semantic routing via embedding cosine similarity.
+     *
+     * Blends TF-IDF score (60%) with embedding cosine similarity (40%).
+     * Falls back gracefully to pure TF-IDF when embeddings are unavailable.
+     *
+     * When OPENAI_API_KEY is set, uses text-embedding-3-small (1536-dim).
+     * Otherwise falls back to the local TF-IDF vectorizer (384-dim) from
+     * CoreMemory.generateEmbedding(), which is already used by the memory system.
+     *
+     * @param taskDescription - Natural language task to route
+     * @returns Routing result with semantic score blend
      */
+    public static async resolveWithEmbeddings(taskDescription: string): Promise<RoutingResult> {
+        // Start TF-IDF routing in parallel with embedding generation
+        const tfidfResult = this.resolveWithDetails(taskDescription);
+
+        try {
+            const taskVector = CoreMemory.generateEmbedding(taskDescription);
+            const candidates = this.getCandidates();
+
+            let bestAgent = tfidfResult.agent;
+            let bestBlendedScore = -Infinity;
+            let bestReasoning = tfidfResult.reasoning;
+
+            for (const candidate of candidates) {
+                // Build a combined specialty text for this agent to embed
+                const specialtyText = Object.keys(candidate.specialties).join(" ") +
+                    " " + candidate.role + " " + candidate.displayName;
+                const agentVector = CoreMemory.generateEmbedding(specialtyText);
+
+                const similarity = this.cosineSimilarity(taskVector, agentVector);
+
+                // Retrieve TF-IDF score for this specific candidate
+                const candidateTfIdfScore = this.scoreSingleCandidate(
+                    taskDescription, candidate, candidates
+                );
+
+                // Blend: 60% TF-IDF score (normalized 0-1) + 40% cosine similarity
+                const normalizedTfIdf = Math.min(candidateTfIdfScore / 30, 1);
+                const blendedScore = normalizedTfIdf * 0.6 + similarity * 0.4;
+
+                if (blendedScore > bestBlendedScore) {
+                    bestBlendedScore = blendedScore;
+                    bestAgent = candidate.agent;
+                    bestReasoning = `Semantic blend (TF-IDF: ${(normalizedTfIdf * 100).toFixed(0)}%, cosine: ${(similarity * 100).toFixed(0)}%) → ${candidate.role}`;
+                }
+            }
+
+            const confidence: "high" | "medium" | "low" =
+                bestBlendedScore > 0.6 ? "high"
+                    : bestBlendedScore > 0.35 ? "medium"
+                        : "low";
+
+            logger.debug(`[ROUTING] Semantic routing selected ${bestAgent} (blend score: ${bestBlendedScore.toFixed(3)})`);
+
+            return {
+                agent: bestAgent,
+                score: Math.round(bestBlendedScore * 100) / 100,
+                confidence,
+                reasoning: bestReasoning,
+                subTasks: this.generateSubTasks(bestAgent, taskDescription),
+            };
+        } catch (err) {
+            // Graceful fallback to TF-IDF if embedding fails
+            logger.warn(`[ROUTING] Embedding-based routing failed, falling back to TF-IDF: ${(err as Error).message}`);
+            return tfidfResult;
+        }
+    }
+
+    /**
+     * Scores a single candidate against a task using TF-IDF.
+     * Extracted from resolveWithDetails to support semantic blend calculation.
+     */
+    private static scoreSingleCandidate(
+        taskDescription: string,
+        candidate: RoutingCandidate,
+        allCandidates: RoutingCandidate[]
+    ): number {
+        const textLower = taskDescription.toLowerCase();
+        const tokens = this.tokenize(textLower);
+        let score = 0;
+
+        for (const [specialty, weight] of Object.entries(candidate.specialties)) {
+            const specTokens = this.tokenize(specialty.toLowerCase());
+            for (const token of tokens) {
+                if (specTokens.some(st => token.includes(st) || st.includes(token))) {
+                    score += weight * this.calculateTfIdf(token, tokens, allCandidates);
+                }
+            }
+        }
+        score += (candidate.capability - 5) * 0.5;
+        return score;
+    }
+
+    /**
+     * Cosine similarity between two numeric vectors.
+     * Returns a value in [0, 1] where 1 = identical direction.
+     */
+    private static cosineSimilarity(a: number[], b: number[]): number {
+        const len = Math.min(a.length, b.length);
+        let dot = 0;
+        let normA = 0;
+        let normB = 0;
+        for (let i = 0; i < len; i++) {
+            dot   += a[i] * b[i];
+            normA += a[i] * a[i];
+            normB += b[i] * b[i];
+        }
+        const denom = Math.sqrt(normA) * Math.sqrt(normB);
+        return denom === 0 ? 0 : Math.max(0, dot / denom);
+    }
+
     public static planTask(taskDescription: string): string[] {
         const result = this.resolveWithDetails(taskDescription);
 

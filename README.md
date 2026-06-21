@@ -5,15 +5,15 @@
 [![npm-mcp](https://img.shields.io/npm/v/atabey-mcp)](https://www.npmjs.com/package/atabey-mcp)
 [![MCP](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io)
 [![Type-Safety](https://img.shields.io/badge/Type--Safety-100%25-green.svg)](https://github.com/ysf-bkr/atabey)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Tests](https://img.shields.io/badge/Tests-266%20passed-brightgreen)](https://github.com/ysf-bkr/atabey)
 [![MCP Tools](https://img.shields.io/badge/MCP%20Tools-35-blue)](https://github.com/ysf-bkr/atabey)
 [![Engine Tests](https://img.shields.io/badge/Engine%20Tests-56%20passed-brightgreen)](https://github.com/ysf-bkr/atabey)
 
-**Agent Atabey** is a **MCP (Model Context Protocol) server** that plugs directly into your AI coding interface — Claude Code, Gemini CLI, or Cursor — adding 13 specialized AI agents with enterprise-grade governance.
+**Agent Atabey** is an **MCP (Model Context Protocol) server** designed specifically for agentic developer workflows. It plugs directly into your AI coding interface — such as Claude Code, Gemini CLI, or Cursor — to govern, secure, and coordinate the terminal/CLI commands and file modification loops executed autonomously by these AI assistants.
 
 > **Philosophy:** "Order from Chaos"
-> **How it works:** Install → Connect to your AI → Use `@agent` commands in chat
+> **Governance Context:** In an agentic workflow, the AI assistant runs the development tools, shell commands, and file edits. Atabey acts as the deterministic governance and safety layer over these AI execution loops.
 
 ---
 
@@ -148,11 +148,11 @@ Open your AI interface and simply type:
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-Atabey is **not a separate platform**. It's a tool server that augments your existing AI assistant with:
-- **13 specialized agents** (backend, frontend, security, etc.)
-- **Deterministic quality gates** (AST analysis + lint + tests)
-- **Risk detection** (blocks destructive operations)
-- **Vector memory** (remembers past decisions)
+Atabey is **not a separate execution engine**. It is a context-aware governance and policy middleware that intercepts, validates, and routes the actions of AI coding assistants using their own CLIs:
+- **13 Specialized Agent Contexts** (injected templates to structure AI reasoning)
+- **Deterministic Quality Gates** (AST analysis + lint + tests validating AI writes before commit)
+- **Risk Gate & Heuristic Scanning** (blocking dangerous shell commands or edits and requiring human passcode confirmation)
+- **Persistent Vector Memory** (allowing AIs to query project context locally)
 - **Audit trails** (every action logged)
 
 ---
@@ -762,9 +762,18 @@ npm run build
 
 ---
 
-## License
+## License & Business Model
 
-MIT License — [Yusuf BEKAR](mailto:ybekar@msn.com)
+**Code:** GNU Affero General Public License v3.0 — [Yusuf BEKAR](mailto:ybekar@msn.com)
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+**Network Use Clause (Section 13):** If you modify the Program and make it accessible over a network (e.g., as a SaaS service), you must provide the complete corresponding source code to all users who interact with it remotely. This prevents others from selling Atabey as a closed-source SaaS.
+
+**Service Model (Support / SLA / Consulting):** The code is **100% free and open source**. Revenue comes from:
+- **Enterprise Support & SLA** — Guaranteed response times, priority bug fixes, custom integrations
+- **Consulting & Training** — Team onboarding, governance policy design, architecture review
+- **Managed Enterprise Server** — Centralized telemetry, multi-team budget management, org-wide dashboard
 
 Enterprise inquiries: **ybekar@msn.com**
 

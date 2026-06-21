@@ -197,8 +197,43 @@ export async function enforceDiscipline(
     return null;
 }
 
+// ─── Prompt Injection Patterns ─────────────────────────────────────────────
+// Common adversarial patterns that attempt to override agent instructions.
+// These are checked in tool responses to prevent exfiltrated injection payloads
+// (e.g. from malicious file content, API responses, or external user input)
+// from reaching the AI and overriding the system prompt.
+const PROMPT_INJECTION_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
+    { pattern: /ignore\s+(previous|prior|above|all)\s+instructions?/i,            label: "ignore-instructions" },
+    { pattern: /disregard\s+(previous|prior|above|all)\s+instructions?/i,         label: "disregard-instructions" },
+    { pattern: /forget\s+(everything|all|prior|previous)/i,                        label: "forget-prior" },
+    { pattern: /you\s+are\s+now\s+(a|an)\s+/i,                                    label: "persona-override" },
+    { pattern: /\bsystem\s*:\s*(you|your|ignore|forget|act)/i,                    label: "system-prompt-inject" },
+    { pattern: /\bnew\s+instructions?\s*:/i,                                       label: "new-instructions" },
+    { pattern: /\bact\s+as\s+(if\s+you\s+are|a|an)\s+/i,                         label: "act-as-override" },
+    { pattern: /\boverride\s+(safety|rules|guidelines|instructions)/i,             label: "safety-override" },
+    { pattern: /\bdo\s+not\s+follow\s+(your|the|any)\s+(rules|instructions)/i,   label: "rule-bypass" },
+    { pattern: /\bdeveloper\s+mode\s+(enabled|activated|on)/i,                    label: "developer-mode" },
+    { pattern: /\bjailbreak/i,                                                     label: "jailbreak" },
+    { pattern: /<\|.*?\|>/,                                                        label: "token-boundary-inject" },
+    { pattern: /\[INST\]|\[\/?SYS\]|<<SYS>>/,                                    label: "llm-template-inject" },
+];
+
+/**
+ * Scans a text block for known prompt injection patterns.
+ * Returns the matched pattern label if injection is detected, null otherwise.
+ */
+function scanForPromptInjection(text: string): string | null {
+    for (const { pattern, label } of PROMPT_INJECTION_PATTERNS) {
+        if (pattern.test(text)) {
+            return label;
+        }
+    }
+    return null;
+}
+
 /**
  * Validate tool response content before returning to AI.
+ * Blocks: oversized responses, binary data, and prompt injection attempts.
  * Returns error message if blocked, null if allowed.
  */
 export function validateResponse(toolName: string, result: { content: Array<{ type: string; text: string }> }): string | null {
@@ -207,15 +242,22 @@ export function validateResponse(toolName: string, result: { content: Array<{ ty
     for (const block of result.content) {
         if (block.type !== "text" || !block.text) continue;
 
-        // Check response size
+        // 1. Check response size
         if (block.text.length > CONFIG.MAX_RESPONSE_SIZE) {
             return `[DISCIPLINE] Response too large (${(block.text.length / 1024).toFixed(1)}KB, max: ${(CONFIG.MAX_RESPONSE_SIZE / 1024).toFixed(1)}KB).`;
         }
 
-        // Block binary/gibberish content in text responses
+        // 2. Block binary/gibberish content in text responses
         const nonPrintable = (block.text.match(/[^\x20-\x7E\n\r\t]/g) || []).length;
         if (nonPrintable > block.text.length * 0.3) {
             return `[DISCIPLINE] Response contains too much binary data (${nonPrintable} non-printable chars). Blocked.`;
+        }
+
+        // 3. Prompt injection detection — scan for adversarial override patterns
+        // that may have been embedded in file content, API responses, or user input.
+        const injectionLabel = scanForPromptInjection(block.text);
+        if (injectionLabel) {
+            return `[DISCIPLINE] Prompt injection pattern detected in "${toolName}" response (pattern: ${injectionLabel}). Response blocked to protect agent integrity.`;
         }
     }
 

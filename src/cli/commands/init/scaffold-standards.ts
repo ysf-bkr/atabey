@@ -66,7 +66,7 @@ This document outlines the strict ESLint coding standards for Agent Atabey proje
         { file: "swagger-standards.md", template: "templates/standards/swagger-standards.md", default: "# [API] Swagger / OpenAPI Standards" },
         { file: "typeorm-standards.md", template: "templates/standards/typeorm-standards.md", default: "# [DB] TypeORM ORM Standards" },
         { file: "vitest-standards.md", template: "templates/standards/vitest-standards.md", default: "# [TEST] Vitest Unit Testing Standards" },
-        { file: "token-economy.md", template: "templates/standards/token-economy.md", default: "# [GATEWAY] LLM Token Economy and Cost Standards" }
+        { file: "token-economy.md", template: "templates/standards/token-economy.md", default: "# [FINOPS] LLM Token Economy and Cost Standards" }
     ];
 
     for (const std of standards) {

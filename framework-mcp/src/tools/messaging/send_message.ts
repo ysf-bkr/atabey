@@ -3,10 +3,17 @@ import path from "path";
 import { resolveFrameworkDir } from "../../utils/security.js";
 import { SendAgentMessageArgs, ToolResult } from "../types.js";
 import { Metrics } from "../../utils/metrics.js";
+import { verifyMessagingPermission, resolveActiveAgent } from "../../utils/permissions.js";
 
 export async function handleSendAgentMessage(projectRoot: string, args: SendAgentMessageArgs): Promise<ToolResult> {
     const { to, category, content, traceId, parentId, requiresApproval } = args;
-    const from = args.from || "@mcp";
+    
+    const frameworkDir = resolveFrameworkDir(projectRoot);
+    const absoluteFrameworkPath = path.isAbsolute(frameworkDir)
+        ? frameworkDir
+        : path.resolve(projectRoot, frameworkDir);
+    const activeAgent = resolveActiveAgent(absoluteFrameworkPath);
+    const from = activeAgent || args.from || "@mcp";
 
     if (!to || !category || !content || !traceId) {
         const err = "Missing required messaging arguments (to, category, content, or traceId).";
@@ -14,7 +21,17 @@ export async function handleSendAgentMessage(projectRoot: string, args: SendAgen
         return { isError: true, content: [{ type: "text", text: `[ERROR] ${err}` }] };
     }
 
-    const frameworkDir = resolveFrameworkDir(projectRoot);
+    // ENFORCE AGENT TIER MESSAGING RBAC
+    // Prevents core agents from delegating to recon agents, bypassing the quality gate.
+    // This is the AI Governance enforcement point for Claude Code, Gemini CLI, Cursor.
+    try {
+        verifyMessagingPermission(from, to);
+    } catch (e) {
+        const err = String(e instanceof Error ? e.message : e);
+        Metrics.logError(projectRoot, from, "send_agent_message", err);
+        return { isError: true, content: [{ type: "text", text: `[ERROR] ${err}` }] };
+    }
+
     const messagesDir = path.join(projectRoot, frameworkDir, "messages");
     const agentName = to.replace("@", "");
     const messagePath = path.join(messagesDir, `${agentName}.json`);
@@ -28,7 +45,7 @@ export async function handleSendAgentMessage(projectRoot: string, args: SendAgen
             if (fs.existsSync(lockPath)) {
                 try {
                     const stats = fs.statSync(lockPath);
-                    if (Date.now() - stats.mtimeMs > 10000) {
+                    if (Date.now() - stats.mtimeMs > 15000) {
                         const tempLockPath = `${lockPath}.${Math.random().toString(36).substring(2)}.old`;
                         fs.renameSync(lockPath, tempLockPath);
                         fs.unlinkSync(tempLockPath);

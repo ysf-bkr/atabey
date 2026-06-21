@@ -9,11 +9,13 @@ export default defineConfig({
         coverage: {
             provider: "v8",
             reporter: ["text", "json", "html", "json-summary"],
+            // Phased coverage targets — ROADMAP goal: 100% for framework-mcp.
+            // Progression: 40 (baseline) → 70/60 (v0.0.16) → 80/70 → 90/80 → 100.
             thresholds: {
-                lines: 40,
-                functions: 40,
-                branches: 40,
-                statements: 40,
+                lines: 70,
+                functions: 70,
+                branches: 60,
+                statements: 70,
             },
         },
     },

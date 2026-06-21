@@ -383,6 +383,44 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             }
         } catch { /* response validation should not block */ }
 
+        // [INJECTION PROTECTION] Sanitize prompt injection attempts in response text
+        try {
+            const { PromptInjectionProtection } = await import("./utils/prompt-injection.js");
+            if (result.content) {
+                for (let i = 0; i < result.content.length; i++) {
+                    const block = result.content[i];
+                    if (block.type === "text" && block.text) {
+                        const scan = PromptInjectionProtection.sanitizeResponse(block.text);
+                        if (scan.detected) {
+                            process.stderr.write(`[INJECTION PROTECTION] Neutralized prompt injection pattern: ${scan.patterns.join(", ")}\n`);
+                            // Record in immutable logs
+                            const { Storage } = await import("../../src/shared/storage.js");
+                            Storage.saveLog({
+                                agent: detectedAgent,
+                                action: "INJECTION_DETECTION",
+                                trace_id: traceId || undefined,
+                                status: "WARNING",
+                                summary: `Prompt injection patterns neutralized: ${scan.patterns.join(", ")}`,
+                            });
+                            // Broadcast to dashboard
+                            broadcastWS("injection_violation", {
+                                agent: detectedAgent,
+                                tool: name,
+                                patterns: scan.patterns,
+                                timestamp: new Date().toISOString()
+                            });
+                            result.content[i] = {
+                                ...block,
+                                text: scan.sanitized,
+                            };
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            process.stderr.write(`[INJECTION PROTECTION] Error: ${(err as Error).message}\n`);
+        }
+
         // [GOVERNANCE] Validate response against governance rules (post-execution)
         try {
             const { validateResponseAgainstRules } = await import("./utils/rules-engine.js");

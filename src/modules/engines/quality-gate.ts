@@ -92,10 +92,12 @@ export class QualityGate {
             return { passed: false, reason: "Output is too short or empty." };
         }
 
-        // Check for hard error indicators
+        // Check for hard error indicators (word-boundary match to avoid false positives
+        // on valid identifiers such as 'ErrorBoundary', 'handleError', 'TIMEOUT_MS',
+        // 'FAILED_VALIDATION', etc.).
         const errorIndicators = ["ERROR", "FAILED", "CRASHED", "TIMEOUT"];
         for (const indicator of errorIndicators) {
-            if (output.toUpperCase().includes(indicator)) {
+            if (new RegExp(`\\b${indicator}\\b`).test(output.toUpperCase())) {
                 return { passed: false, reason: `Output contains error indicator: ${indicator}` };
             }
         }

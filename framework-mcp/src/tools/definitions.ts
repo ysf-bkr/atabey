@@ -16,7 +16,7 @@ export const TOOLS: ToolDefinition[] = [
     },
     {
         name: "view_file",
-        description: "Alias for read_file. Reads the content of a file within the project.",
+        description: "Alias for read_file. Views the content of a file within the project.",
         inputSchema: zodToMcpSchema(schemas.ReadFileSchema),
     },
     {

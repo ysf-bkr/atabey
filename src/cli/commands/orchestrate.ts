@@ -122,10 +122,22 @@ export async function orchestrateCommand(options?: { maxIterations?: number }) {
 
                             if (approved && msg.id !== undefined) {
                                 Storage.updateMessageStatus(msg.id, "APPROVED");
-                                Storage.getDB().exec(`INSERT INTO logs (agent, action, summary) VALUES ('@human', 'APPROVED', 'Trace ${msg.traceId} approved')`);
+                                Storage.saveLog({
+                                    agent: "@human",
+                                    action: "APPROVED",
+                                    trace_id: msg.traceId,
+                                    status: "SUCCESS",
+                                    summary: `Trace ${msg.traceId} approved`,
+                                });
                             } else if (msg.id !== undefined) {
                                 Storage.updateMessageStatus(msg.id, "PROCESSED");
-                                Storage.getDB().exec(`INSERT INTO logs (agent, action, summary) VALUES ('@human', 'REJECTED', 'Trace ${msg.traceId} rejected')`);
+                                Storage.saveLog({
+                                    agent: "@human",
+                                    action: "REJECTED",
+                                    trace_id: msg.traceId,
+                                    status: "FAILED",
+                                    summary: `Trace ${msg.traceId} rejected`,
+                                });
                                 continue;
                             }
                         }

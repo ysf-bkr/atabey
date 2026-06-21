@@ -1,6 +1,9 @@
 import { spawn } from "child_process";
 import { Metrics } from "../../utils/metrics.js";
 import { RunCommandArgs, ToolResult } from "../types.js";
+import { resolveActiveAgent, getAgentTier } from "../../utils/permissions.js";
+import { resolveFrameworkDir } from "../../utils/security.js";
+import path from "path";
 
 // Each entry defines the executable and its allowed args prefix
 const COMMAND_ALLOW_LIST: Array<{ cmd: string; args?: string[] }> = [
@@ -83,7 +86,30 @@ const COMMAND_ALLOW_LIST: Array<{ cmd: string; args?: string[] }> = [
     { cmd: "df" },
 ];
 
-const TIMEOUT = 30000; // 30 seconds
+const TIMEOUT = parseInt(process.env.MCP_COMMAND_TIMEOUT_MS || "30000", 10);
+
+/**
+ * Checks if a parsed command represents a state-mutating (write) operation.
+ */
+function isWriteCommand(parsed: { cmd: string; args: string[] }): boolean {
+    const cmd = parsed.cmd;
+    const firstArg = parsed.args[0] || "";
+
+    const writeCmds = ["mkdir", "cp", "mv", "rmdir", "touch", "make", "cmake", "./gradlew", "mvn"];
+    if (writeCmds.includes(cmd)) return true;
+
+    if (cmd === "npm" && ["install", "ci", "audit", "run"].includes(firstArg)) return true;
+    if (cmd === "yarn" && ["install", "run"].includes(firstArg)) return true;
+    if (cmd === "pnpm" && ["install", "run"].includes(firstArg)) return true;
+    
+    if (cmd === "git" && ["add", "commit", "push", "pull", "merge", "rebase", "checkout", "reset"].includes(firstArg)) return true;
+    
+    if (cmd === "dotnet" && ["build", "run", "restore"].includes(firstArg)) return true;
+    if (cmd === "go" && ["build", "run", "mod"].includes(firstArg)) return true;
+    if (cmd === "cargo" && ["build", "check"].includes(firstArg)) return true;
+
+    return false;
+}
 
 /**
  * Parse a command string into executable + args array.
@@ -118,6 +144,26 @@ export function handleRunCommand(projectRoot: string, args: RunCommandArgs): Pro
             content: [{ type: "text", text: "ERROR: Empty command." }],
             isError: true,
         });
+    }
+
+    // Resolve active agent and tier to check command permission
+    const frameworkDir = resolveFrameworkDir(projectRoot);
+    const absoluteFrameworkPath = path.isAbsolute(frameworkDir)
+        ? frameworkDir
+        : path.resolve(projectRoot, frameworkDir);
+    const activeAgent = resolveActiveAgent(absoluteFrameworkPath);
+
+    if (activeAgent) {
+        const tier = getAgentTier(activeAgent);
+        if (tier === "recon" && isWriteCommand(parsed)) {
+            return Promise.resolve({
+                isError: true,
+                content: [{
+                    type: "text",
+                    text: `[RBAC] Permission Denied: Agent ${activeAgent} (tier: recon) is not allowed to run write/build command "${command}". Recon agents are restricted to read-only commands.`
+                }]
+            });
+        }
     }
 
     if (!isAllowed(parsed)) {

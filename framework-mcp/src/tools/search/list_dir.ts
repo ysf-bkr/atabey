@@ -2,12 +2,16 @@ import fs from "fs";
 import path from "path";
 import { safePath } from "../../utils/security.js";
 import { ListDirArgs, ToolResult } from "../types.js";
+import { verifyReadPermission } from "../../utils/permissions.js";
 
 /**
  * Lists the contents of a directory.
  */
 export function handleListDir(projectRoot: string, args: ListDirArgs): ToolResult {
     const dirPath = safePath(projectRoot, args.path || ".");
+    
+    // ENFORCE READ PERMISSION MATRIX FOR DIRECTORY
+    verifyReadPermission(projectRoot, path.join(args.path || ".", "placeholder"));
     
     if (!fs.existsSync(dirPath)) {
         throw new Error(`Directory not found: ${args.path}`);

@@ -76,27 +76,50 @@ export async function statusCommand() {
     if (fs.existsSync(metricsPath)) {
         try {
             const rawMetrics = fs.readFileSync(metricsPath, "utf8");
-            const metrics = JSON.parse(rawMetrics) as Array<{ agent: string; estimatedTokens: number }>;
+            const metrics = JSON.parse(rawMetrics) as Array<{ agent: string; estimatedTokens: number; timestamp?: string }>;
 
             let totalTokens = 0;
             const agentTokens: Record<string, number> = {};
+
+            const now = new Date();
+            const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            let weeklyTokens = 0;
+            const weeklyAgentTokens: Record<string, number> = {};
 
             metrics.forEach(m => {
                 totalTokens += m.estimatedTokens;
                 const name = m.agent.startsWith("@") ? m.agent : `@${m.agent}`;
                 agentTokens[name] = (agentTokens[name] || 0) + m.estimatedTokens;
+
+                // Track weekly tokens if entry falls within last 7 days
+                const entryDate = m.timestamp ? new Date(m.timestamp) : now;
+                if (entryDate >= sevenDaysAgo) {
+                    weeklyTokens += m.estimatedTokens;
+                    weeklyAgentTokens[name] = (weeklyAgentTokens[name] || 0) + m.estimatedTokens;
+                }
             });
 
             // Assume $5.00 per 1M tokens average pricing
             const estimatedCost = (totalTokens / 1_000_000) * 5.00;
+            const estimatedWeeklyCost = (weeklyTokens / 1_000_000) * 5.00;
 
             UI.info("OBSERVABILITY & COST DASHBOARD");
             UI.info(`Total Estimated Tokens: ${totalTokens.toLocaleString()}`);
             UI.info(`Total Estimated LLM Cost: $${estimatedCost.toFixed(4)}`);
+            UI.info(`Weekly Estimated Tokens (Last 7 days): ${weeklyTokens.toLocaleString()}`);
+            UI.info(`Weekly Estimated LLM Cost (Last 7 days): $${estimatedWeeklyCost.toFixed(4)}`);
 
             if (Object.keys(agentTokens).length > 0) {
-                UI.info("Cost Distribution per Agent:");
+                UI.info("Cost Distribution per Agent (Total):");
                 Object.entries(agentTokens).forEach(([agent, tokens]) => {
+                    const agentCost = (tokens / 1_000_000) * 5.00;
+                    process.stdout.write(`  ${chalk.bold(agent.padEnd(12))} : ${tokens.toLocaleString()} tokens ($${agentCost.toFixed(4)})\n`);
+                });
+            }
+
+            if (Object.keys(weeklyAgentTokens).length > 0) {
+                UI.info("Cost Distribution per Agent (Weekly - Last 7 days):");
+                Object.entries(weeklyAgentTokens).forEach(([agent, tokens]) => {
                     const agentCost = (tokens / 1_000_000) * 5.00;
                     process.stdout.write(`  ${chalk.bold(agent.padEnd(12))} : ${tokens.toLocaleString()} tokens ($${agentCost.toFixed(4)})\n`);
                 });

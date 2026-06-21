@@ -1,7 +1,7 @@
 # Agent Atabey — MCP Server (`atabey-mcp`)
 
 [![Version](https://img.shields.io/npm/v/atabey-mcp.svg)](https://www.npmjs.com/package/atabey-mcp)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![npm](https://img.shields.io/npm/dt/atabey-mcp)](https://www.npmjs.com/package/atabey-mcp)
 
 The **Model Context Protocol (MCP)** server for [Agent Atabey](https://www.npmjs.com/package/atabey).
@@ -126,7 +126,6 @@ framework-mcp/dashboard/src/
 │   ├── CompliancePanel.tsx    # Compliance control panel
 │   ├── ErrorTracker.tsx       # Error tracking
 │   ├── FinOpsPanel.tsx        # Team & Agent budget management (New)
-│   ├── GatewayPanel.tsx       # LLM Gateway management
 │   ├── HermesBrokerView.tsx   # Hermes message queue
 │   ├── HermesStats.tsx        # Hermes statistics
 │   ├── LicensePanel.tsx       # SPDX license compliance tracker (New)
@@ -217,34 +216,6 @@ framework-mcp/dashboard/src/
 | Tool | Description |
 |------|-------------|
 | `run_shell_command` | Execute shell commands |
-
----
-
-## LLM Gateway Tools
-
-### `llm_gateway_query`
-
-Sends queries to LLM providers with load balancing, circuit breaker, and rate limiting.
-
-**Parameters:**
-- `provider` (string): LLM provider name (`openai`, `anthropic`, `google`, `groq`, `ollama`)
-- `model` (string): Model name
-- `messages` (array): Chat messages
-- `options` (object, optional): Temperature, max tokens, etc.
-
-### `llm_gateway_status`
-
-Returns gateway status and provider statistics.
-
-**Supported Providers:**
-
-| Provider | Models | Status |
-|----------|--------|--------|
-| OpenAI | GPT-4, GPT-4o, o3, o4-mini | ✅ |
-| Anthropic | Claude Opus 4.5, Sonnet 4.5, Haiku 3.5 | ✅ |
-| Google | Gemini 2.5 Pro, Flash, Flash-Lite | ✅ |
-| Groq | Llama, Mixtral | ✅ |
-| Ollama | Local models | ✅ |
 
 ---
 
@@ -577,7 +548,6 @@ framework-mcp/
 │   │   ├── control_plane/  # Lock, Registry
 │   │   ├── file_system/    # Read, Write, Edit, Patch
 │   │   ├── framework/      # Status, Test, Orchestrate
-│   │   ├── gateway/        # LLM Gateway
 │   │   ├── memory/         # Knowledge management
 │   │   ├── messaging/      # Hermes messaging
 │   │   ├── observability/  # Health, Port
@@ -617,7 +587,6 @@ npx vitest run tests/tools/file_system/file_system_tools.test.ts
 | `utils/auto-rollback.test.ts` | Pre-write snapshot, violation detection, auto-rollback | ✅ 12 passed |
 | `utils/loop-detector.test.ts` | 6 loop patterns, file churn, oscillation detection | ✅ 14 passed |
 
-> **Note:** Gateway module tests are in the main package: `tests/modules/gateway/`
 
 ---
 
@@ -628,6 +597,23 @@ npx vitest run tests/tools/file_system/file_system_tools.test.ts
 - **Documentation:** [ARCHITECTURE.md](../ARCHITECTURE.md)
 - **Contributing:** [CONTRIBUTING.md](../CONTRIBUTING.md)
 - **Enterprise:** ybekar@msn.com
+
+---
+
+## License & Business Model
+
+**Code:** GNU Affero General Public License v3.0 — [Yusuf BEKAR](mailto:ybekar@msn.com)
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+**Network Use Clause (Section 13):** If you modify the Program and make it accessible over a network (e.g., as a SaaS service), you must provide the complete corresponding source code to all users who interact with it remotely.
+
+**Service Model (Support / SLA / Consulting):** The code is **100% free and open source**. Revenue comes from:
+- **Enterprise Support & SLA** — Guaranteed response times, priority bug fixes, custom integrations
+- **Consulting & Training** — Team onboarding, governance policy design, architecture review
+- **Managed Enterprise Server** — Centralized telemetry, multi-team budget management, org-wide dashboard
+
+Enterprise inquiries: **ybekar@msn.com**
 
 ---
 

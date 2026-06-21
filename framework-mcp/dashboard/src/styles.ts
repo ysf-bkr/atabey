@@ -22,68 +22,68 @@ export const css = `
 /* ─── CSS Variables (Light/Dark Themes) ────────────── */
 :root {
     --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-    --radius-sm: 4px;
-    --radius-md: 8px;
-    --radius-lg: 12px;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
     --radius-full: 9999px;
-    --sidebar-width: 220px;
+    --sidebar-width: 230px;
 
     /* Light Theme (White & Red Accent) */
-    --color-bg: #f5f5f5;
+    --color-bg: #f9f9fb;
     --color-surface: #ffffff;
-    --color-border: #e5e5e5;
-    --color-border-hover: rgba(220, 38, 38, 0.45);
-    --color-text-primary: #171717;
-    --color-text-secondary: #525252;
-    --color-text-muted: #a3a3a3;
-    --color-accent-primary: #dc2626;
-    --color-accent-hover: #b91c1c;
-    --color-accent-glow: rgba(220, 38, 38, 0.15);
-    --color-sidebar-bg: #171717;
-    --color-sidebar-text: #a3a3a3;
-    --color-sidebar-hover: #262626;
-    --color-sidebar-active: #291515;
-    --color-success: #22c55e;
-    --color-warning: #eab308;
+    --color-border: #e4e4e7;
+    --color-border-hover: rgba(193, 18, 31, 0.5);
+    --color-text-primary: #09090b;
+    --color-text-secondary: #4b5563;
+    --color-text-muted: #9ca3af;
+    --color-accent-primary: #c1121f;
+    --color-accent-hover: #780000;
+    --color-accent-glow: rgba(193, 18, 31, 0.08);
+    --color-sidebar-bg: #18181b;
+    --color-sidebar-text: #a1a1aa;
+    --color-sidebar-hover: #27272a;
+    --color-sidebar-active: #2b1114;
+    --color-success: #10b981;
+    --color-warning: #f59e0b;
     --color-error: #ef4444;
-    --color-info: #ef4444;
-    --color-dim: #64748b;
-    --color-text-soft: #94a3b8;
-    --color-heading: #f8fafc;
-    --color-code-bg: #090d16;
-    --color-code-border: #1e293b;
-    --color-label: #64748b;
-    --color-highlight: #38bdf8;
-    --color-accent-muted: #a78bfa;
+    --color-info: #3b82f6;
+    --color-dim: #71717a;
+    --color-text-soft: #71717a;
+    --color-heading: #18181b;
+    --color-code-bg: #f4f4f5;
+    --color-code-border: #e4e4e7;
+    --color-label: #71717a;
+    --color-highlight: #c1121f;
+    --color-accent-muted: #8b5cf6;
 }
 
 .theme-dark {
     /* Dark Theme (Pure Black & Red Accent) */
     --color-bg: #000000;
-    --color-surface: #0a0a0a;
-    --color-border: #262626;
-    --color-border-hover: rgba(239, 68, 68, 0.55);
-    --color-text-primary: #ffffff;
-    --color-text-secondary: #a3a3a3;
-    --color-text-muted: #525252;
-    --color-accent-primary: #ef4444;
-    --color-accent-hover: #f87171;
-    --color-accent-glow: rgba(239, 68, 68, 0.25);
-    --color-sidebar-bg: #050505;
-    --color-sidebar-text: #737373;
-    --color-sidebar-hover: #171717;
-    --color-sidebar-active: #241111;
-    --color-success: #22c55e;
-    --color-warning: #eab308;
+    --color-surface: #060608;
+    --color-border: #141416;
+    --color-border-hover: rgba(255, 0, 60, 0.6);
+    --color-text-primary: #f4f4f5;
+    --color-text-secondary: #a1a1aa;
+    --color-text-muted: #52525b;
+    --color-accent-primary: #ff003c;
+    --color-accent-hover: #ff3366;
+    --color-accent-glow: rgba(255, 0, 60, 0.12);
+    --color-sidebar-bg: #030303;
+    --color-sidebar-text: #71717a;
+    --color-sidebar-hover: #0f0f12;
+    --color-sidebar-active: #1c0006;
+    --color-success: #10b981;
+    --color-warning: #f59e0b;
     --color-error: #ef4444;
-    --color-info: #ef4444;
-    --color-dim: #64748b;
-    --color-text-soft: #94a3b8;
-    --color-heading: #f8fafc;
-    --color-code-bg: #090d16;
-    --color-code-border: #1e293b;
-    --color-label: #64748b;
-    --color-highlight: #ef4444;
+    --color-info: #3b82f6;
+    --color-dim: #71717a;
+    --color-text-soft: #a1a1aa;
+    --color-heading: #f4f4f5;
+    --color-code-bg: #09090b;
+    --color-code-border: #18181b;
+    --color-label: #a1a1aa;
+    --color-highlight: #ff003c;
     --color-accent-muted: #a78bfa;
 }
 
@@ -239,6 +239,28 @@ a:hover { color: var(--color-accent-hover); text-decoration: underline; }
     align-items: center;
     gap: 1rem;
     font-size: 0.85rem;
+}
+.auth-token-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-right: 0.5rem;
+}
+.auth-token-input {
+    padding: 0.35rem 0.65rem 0.35rem 1.65rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    color: var(--color-text-primary);
+    font-size: 0.75rem;
+    width: 100px;
+    outline: none;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.auth-token-input:focus {
+    border-color: var(--color-accent-primary);
+    box-shadow: 0 0 8px var(--color-accent-glow);
+    width: 160px;
 }
 .menu-toggle {
     display: none;
@@ -856,6 +878,23 @@ a:hover { color: var(--color-accent-hover); text-decoration: underline; }
     .main-header-right {
         font-size: 0.75rem;
         gap: 0.5rem;
+    }
+}
+
+/* ─── Split-Pane Overview Columns ───────────────────── */
+.overview-sections-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+.overview-left-column, .overview-right-column {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+@media (max-width: 1199px) {
+    .overview-sections-layout {
+        grid-template-columns: 1fr;
     }
 }
 

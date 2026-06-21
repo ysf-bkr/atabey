@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 import { getFrameworkDir } from "../cli/utils/memory.js";
 import { logger } from "./logger.js";
 import { maskText } from "./pii.js";
@@ -47,6 +48,8 @@ export interface LogRow {
     status: string;
     summary: string;
     findings?: string;
+    prev_hash?: string;
+    hash?: string;
 }
 
 export interface CostDbRow {
@@ -94,6 +97,8 @@ export interface LogDbRow {
     status: string;
     summary: string;
     findings: string | null;
+    prev_hash: string | null;
+    hash: string | null;
 }
 
 /**
@@ -171,9 +176,25 @@ export class AtabeyStorage {
                 trace_id TEXT,
                 status TEXT,
                 summary TEXT,
-                findings TEXT
+                findings TEXT,
+                prev_hash TEXT,
+                hash TEXT
             )
         `);
+
+        // self-healing schema check/migration for older logs table
+        try {
+            const tableInfo = db.prepare("PRAGMA table_info(logs)").all() as Array<{ name: string }>;
+            const columnNames = tableInfo.map(c => c.name);
+            if (!columnNames.includes("prev_hash")) {
+                db.exec("ALTER TABLE logs ADD COLUMN prev_hash TEXT");
+            }
+            if (!columnNames.includes("hash")) {
+                db.exec("ALTER TABLE logs ADD COLUMN hash TEXT");
+            }
+        } catch (err) {
+            logger.error(`Failed to migrate logs table schema: ${(err as Error).message}`);
+        }
 
         // Metadata (State) Table
         db.exec(`
@@ -196,6 +217,98 @@ export class AtabeyStorage {
                 trace_id TEXT
             )
         `);
+    }
+
+    public static saveLog(log: {
+        agent: string;
+        action: string;
+        trace_id?: string;
+        status: string;
+        summary: string;
+        findings?: string;
+    }): number {
+        const db = this.getDB();
+        const timestamp = new Date().toISOString();
+        const agent = log.agent.replace("@", "");
+        const maskedSummary = maskText(log.summary);
+        const maskedFindings = log.findings ? maskText(log.findings) : null;
+
+        // Get last log's hash
+        let prevHash = "GENESIS";
+        try {
+            const lastRow = db.prepare("SELECT hash FROM logs ORDER BY id DESC LIMIT 1").get() as { hash: string } | undefined;
+            if (lastRow && lastRow.hash) {
+                prevHash = lastRow.hash;
+            }
+        } catch { /* use default */ }
+
+        // Compute hash
+        const dataToHash = `${prevHash}|${agent}|${log.action}|${log.trace_id || ""}|${log.status}|${maskedSummary}|${timestamp}`;
+        const hash = crypto.createHash("sha256").update(dataToHash).digest("hex");
+
+        const result = db.prepare(`
+            INSERT INTO logs (timestamp, agent, action, trace_id, status, summary, findings, prev_hash, hash)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+            timestamp,
+            agent,
+            log.action,
+            log.trace_id || null,
+            log.status,
+            maskedSummary,
+            maskedFindings,
+            prevHash,
+            hash
+        );
+
+        return result.lastInsertRowid as number;
+    }
+
+    public static verifyLogIntegrity(): { valid: boolean; failedLogId?: number; reason?: string } {
+        const db = this.getDB();
+        try {
+            const rows = db.prepare("SELECT * FROM logs ORDER BY id ASC").all() as Array<{
+                id: number;
+                timestamp: string;
+                agent: string;
+                action: string;
+                trace_id: string | null;
+                status: string;
+                summary: string;
+                findings: string | null;
+                prev_hash: string | null;
+                hash: string | null;
+            }>;
+
+            let expectedPrevHash = "GENESIS";
+            for (const row of rows) {
+                if (row.prev_hash !== expectedPrevHash) {
+                    return {
+                        valid: false,
+                        failedLogId: row.id,
+                        reason: `Hash mismatch at row ${row.id}: expected prev_hash to be '${expectedPrevHash}', but got '${row.prev_hash}'`
+                    };
+                }
+
+                // Recalculate hash
+                const dataToHash = `${row.prev_hash}|${row.agent}|${row.action}|${row.trace_id || ""}|${row.status}|${row.summary}|${row.timestamp}`;
+                const calculatedHash = crypto.createHash("sha256").update(dataToHash).digest("hex");
+
+                if (row.hash !== calculatedHash) {
+                    return {
+                        valid: false,
+                        failedLogId: row.id,
+                        reason: `Hash corruption at row ${row.id}: calculated hash '${calculatedHash}' does not match database hash '${row.hash}'`
+                    };
+                }
+
+                expectedPrevHash = row.hash || "";
+            }
+
+            return { valid: true };
+        } catch (err) {
+            return { valid: false, reason: `Verification error: ${(err as Error).message}` };
+        }
     }
 
     // --- Cost Operations ---
@@ -381,7 +494,9 @@ export class AtabeyStorage {
             status: r.status,
             // [KVKK/GDPR] Mask PII in log summaries before returning
             summary: maskText(r.summary),
-            findings: r.findings ? maskText(r.findings) : undefined
+            findings: r.findings ? maskText(r.findings) : undefined,
+            prev_hash: r.prev_hash || undefined,
+            hash: r.hash || undefined
         }));
     }
 

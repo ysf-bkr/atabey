@@ -92,15 +92,47 @@ describe("Dashboard API - Storage Operations", () => {
         expect(tasks[0].id).toBe("TASK-001");
     });
 
-    it("should store and retrieve logs", async () => {
+    it("should store and retrieve logs with cryptographic hashing", async () => {
         const { Storage } = await import("../src/shared/storage.js");
-        const db = Storage.getDB();
-        db.exec("INSERT INTO logs (agent, action, trace_id, status, summary) VALUES ('@manager', 'TEST', 'T-001', 'SUCCESS', 'Test log entry')");
+        Storage.saveLog({
+            agent: "@manager",
+            action: "TEST_CHAIN",
+            trace_id: "T-001",
+            status: "SUCCESS",
+            summary: "Test log entry for cryptographic chaining",
+        });
 
         const logs = Storage.getLogs();
-        const testLog = logs.find((l) => l.action === "TEST");
+        const testLog = logs.find((l) => l.action === "TEST_CHAIN");
         expect(testLog).toBeDefined();
         expect(testLog?.status).toBe("SUCCESS");
+        expect(testLog?.prev_hash).toBeDefined();
+        expect(testLog?.hash).toBeDefined();
+
+        const integrity = Storage.verifyLogIntegrity();
+        expect(integrity.valid).toBe(true);
+    });
+
+    it("should fail integrity check if log database is tampered with", async () => {
+        const { Storage } = await import("../src/shared/storage.js");
+        Storage.saveLog({
+            agent: "@manager",
+            action: "SECURE_LOG",
+            trace_id: "T-001",
+            status: "SUCCESS",
+            summary: "Secure log",
+        });
+
+        const integrityBefore = Storage.verifyLogIntegrity();
+        expect(integrityBefore.valid).toBe(true);
+
+        // Manually tamper the database row
+        const db = Storage.getDB();
+        db.prepare("UPDATE logs SET summary = 'Tampered log content' WHERE action = 'SECURE_LOG'").run();
+
+        const integrityAfter = Storage.verifyLogIntegrity();
+        expect(integrityAfter.valid).toBe(false);
+        expect(integrityAfter.reason).toContain("Hash corruption");
     });
 
     it("should approve pending messages", async () => {

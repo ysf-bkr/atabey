@@ -92,11 +92,11 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
     const projectRoot = path.resolve(__dirname, "../../../../");
     const uiDistPath = path.join(projectRoot, "framework-mcp/dist/dashboard");
 
-    const server = http.createServer((req, res) => {
+    const server = http.createServer(async (req, res) => {
         // CORS & Cache Headers
         res.setHeader("Access-Control-Allow-Origin", "*");
         res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-        res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+        res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
         res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
         res.setHeader("Pragma", "no-cache");
         res.setHeader("Expires", "0");
@@ -109,6 +109,23 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
 
         const url = req.url || "/";
         const { pathname, params } = parseUrl(url);
+
+        // [SECURITY] Authentication check for API routes
+        // Skip auth for static UI and health endpoints
+        const needsAuth = pathname.startsWith("/api/");
+        const isPublicPath = pathname === "/api/health";
+        if (needsAuth && !isPublicPath) {
+            try {
+                const { authenticate } = await import("../../../framework-mcp/src/utils/auth.js");
+                const auth = authenticate(req);
+                if (!auth.authenticated) {
+                    serveJson(res, 401, { error: "Unauthorized. Provide Authorization: Bearer <token> header. Set MCP_AUTH_TOKEN env var to configure." });
+                    return;
+                }
+            } catch (e) {
+                console.warn("[AUTH-WARNING] Auth module error:", (e as Error).message);
+            }
+        }
 
         // ─── API Routes ────────────────────────────────────────────────
 
@@ -477,6 +494,155 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
         // MCP Sessions
         if (pathname === "/api/mcp/sessions") {
             serveJson(res, 200, { success: true, data: { total: 0, sessions: [] } });
+            return;
+        }
+
+        // Discipline Stats
+        if (pathname === "/api/discipline") {
+            try {
+                const { getAllDisciplineStats } = await import("../../../framework-mcp/src/utils/discipline.js");
+                const stats = getAllDisciplineStats();
+                serveJson(res, 200, { success: true, data: stats });
+            } catch (e) {
+                serveJson(res, 500, { success: false, error: (e as Error).message });
+            }
+            return;
+        }
+
+        // Telemetry Status
+        if (pathname === "/api/telemetry") {
+            try {
+                const { telemetryStreamer, TelemetryConfig } = await import("../../../framework-mcp/src/utils/telemetry-streamer.js");
+                const status = telemetryStreamer.getStatus();
+                serveJson(res, 200, { success: true, data: { ...status, config: { ...TelemetryConfig, AUTH_TOKEN: TelemetryConfig.AUTH_TOKEN ? "***" : "" } } });
+            } catch (e) {
+                serveJson(res, 500, { success: false, error: (e as Error).message });
+            }
+            return;
+        }
+
+        // Loop Detection Stats
+        if (pathname === "/api/loop-detector") {
+            try {
+                const { getAllLoopStats } = await import("../../../framework-mcp/src/utils/loop-detector.js");
+                const agent = params.agent;
+                const stats = agent
+                    ? (await import("../../../framework-mcp/src/utils/loop-detector.js")).getLoopStats(agent)
+                    : getAllLoopStats();
+                serveJson(res, 200, { success: true, data: stats });
+            } catch (e) {
+                serveJson(res, 500, { success: false, error: (e as Error).message });
+            }
+            return;
+        }
+
+        // Clear Loop Cooldown
+        if (pathname.startsWith("/api/loop-detector/clear/") && req.method === "POST") {
+            const agent = decodeURIComponent(pathname.replace("/api/loop-detector/clear/", ""));
+            try {
+                const { clearCooldown } = await import("../../../framework-mcp/src/utils/loop-detector.js");
+                const cleared = clearCooldown(agent);
+                serveJson(res, 200, { success: true, data: { agent, cleared } });
+            } catch (e) {
+                serveJson(res, 500, { success: false, error: (e as Error).message });
+            }
+            return;
+        }
+
+        // Budget / FinOps Status
+        if (pathname === "/api/finops") {
+            try {
+                const { budgetManager } = await import("../../../framework-mcp/src/utils/finops.js");
+                const state = budgetManager.getState();
+                serveJson(res, 200, { success: true, data: state });
+            } catch (e) {
+                serveJson(res, 500, { success: false, error: (e as Error).message });
+            }
+            return;
+        }
+
+        // Budget Check for an agent
+        if (pathname === "/api/finops/check") {
+            try {
+                const agent = params.agent || "default";
+                const { budgetManager } = await import("../../../framework-mcp/src/utils/finops.js");
+                const result = budgetManager.checkBudget(agent);
+                serveJson(res, 200, { success: true, data: result });
+            } catch (e) {
+                serveJson(res, 500, { success: false, error: (e as Error).message });
+            }
+            return;
+        }
+
+        // Budget Reset
+        if (pathname === "/api/finops/reset" && req.method === "POST") {
+            try {
+                const { budgetManager } = await import("../../../framework-mcp/src/utils/finops.js");
+                budgetManager.resetPeriod();
+                serveJson(res, 200, { success: true, message: "Budget period reset." });
+            } catch (e) {
+                serveJson(res, 500, { success: false, error: (e as Error).message });
+            }
+            return;
+        }
+
+        // License Scanner
+        if (pathname === "/api/license") {
+            try {
+                const { scanForLicenses, getLicenseSeveritySummary, LicenseScannerConfig } = await import("../../../framework-mcp/src/utils/license-scanner.js");
+                const filePath = params.path || "";
+                const content = params.content || "";
+                const matches = filePath && content ? scanForLicenses(filePath, content) : [];
+                const summary = matches.length > 0 ? getLicenseSeveritySummary(matches) : null;
+                serveJson(res, 200, {
+                    success: true, data: {
+                        matches,
+                        summary,
+                        config: LicenseScannerConfig,
+                    }
+                });
+            } catch (e) {
+                serveJson(res, 500, { success: false, error: (e as Error).message });
+            }
+            return;
+        }
+
+        // Auto-Rollback Stats
+        if (pathname === "/api/rollback") {
+            try {
+                const { AutoRollbackEngine } = await import("../../../framework-mcp/src/utils/auto-rollback.js");
+                const stats = AutoRollbackEngine.getSnapshotStats();
+                serveJson(res, 200, { success: true, data: stats });
+            } catch (e) {
+                serveJson(res, 500, { success: false, error: (e as Error).message });
+            }
+            return;
+        }
+
+        // All Governance Stats (combined endpoint)
+        if (pathname === "/api/governance") {
+            try {
+                const { getAllDisciplineStats } = await import("../../../framework-mcp/src/utils/discipline.js");
+                const { getAllTokenBudgetStats } = await import("../../../framework-mcp/src/utils/context-optimizer.js");
+                const { getAllLoopStats } = await import("../../../framework-mcp/src/utils/loop-detector.js");
+                const { getAllRules } = await import("../../../framework-mcp/src/utils/rules-engine.js");
+                const { AutoRollbackEngine } = await import("../../../framework-mcp/src/utils/auto-rollback.js");
+                const { budgetManager } = await import("../../../framework-mcp/src/utils/finops.js");
+
+                serveJson(res, 200, {
+                    success: true, data: {
+                        discipline: getAllDisciplineStats(),
+                        tokenBudget: getAllTokenBudgetStats(),
+                        loopDetection: getAllLoopStats(),
+                        rules: getAllRules().map(r => ({ id: r.id, name: r.name, priority: r.priority, bypassable: r.bypassable })),
+                        rollback: AutoRollbackEngine.getSnapshotStats(),
+                        budget: budgetManager.getState(),
+                        telemetry: (await import("../../../framework-mcp/src/utils/telemetry-streamer.js")).telemetryStreamer.getStatus(),
+                    }
+                });
+            } catch (e) {
+                serveJson(res, 500, { success: false, error: (e as Error).message });
+            }
             return;
         }
 

@@ -4,16 +4,12 @@ import { Storage } from "../../shared/storage.js";
 export async function logAgentActionCommand(data: { agent?: unknown; action?: string; requestId?: string; traceId?: string; status?: string; summary?: string; files?: string[]; details?: Record<string, unknown> }) {
     const agent = normalizeAgentName(data.agent);
     
-    const db = Storage.getDB();
-    db.prepare(`
-        INSERT INTO logs (agent, action, trace_id, status, summary, findings)
-        VALUES (?, ?, ?, ?, ?, ?)
-    `).run(
+    Storage.saveLog({
         agent,
-        data.action,
-        data.traceId || null,
-        data.status || "SUCCESS",
-        data.summary || "",
-        data.details ? JSON.stringify(data.details) : null
-    );
+        action: data.action || "ACTION",
+        trace_id: data.traceId || undefined,
+        status: data.status || "SUCCESS",
+        summary: data.summary || "",
+        findings: data.details ? JSON.stringify(data.details) : undefined
+    });
 }

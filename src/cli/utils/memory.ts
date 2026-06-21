@@ -195,11 +195,12 @@ export function updateDocumentStore(type: "state" | "task" | "history" | "status
             break;
         }
         case "history": {
-            const db = Storage.getDB();
-            db.prepare(`
-                INSERT INTO logs (agent, action, summary)
-                VALUES (?, ?, ?)
-            `).run("@manager", "HISTORY_UPDATE", (data as { content: string }).content);
+            Storage.saveLog({
+                agent: "@manager",
+                action: "HISTORY_UPDATE",
+                status: "SUCCESS",
+                summary: (data as { content: string }).content,
+            });
             break;
         }
     }

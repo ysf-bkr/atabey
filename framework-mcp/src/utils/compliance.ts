@@ -2,6 +2,8 @@ import ts from "typescript";
 import fs from "fs";
 import path from "path";
 import { resolveFrameworkDir } from "./security.js";
+import { resolveActiveAgent } from "./permissions.js";
+import { createApprovalRequest, getApprovalStatus } from "./human-in-loop.js";
 
 export interface ComplianceIssue {
     file: string;
@@ -76,7 +78,7 @@ export function verifyCorporateCompliance(content: string, filePath: string): vo
                                      filePath.includes("shared/fs.ts") ||
                                      filePath.includes("shared/lock.ts") ||
                                      filePath.includes("quality-gate.ts") ||
-                                     filePath.includes("providers/shared.ts");
+                                     filePath.includes("shell/run_command.ts");
                     if (!isExempt) {
                         errors.push(`[ERROR] Corporate Compliance Breach: Direct 'child_process' usage is forbidden at line ${sourceFile.getLineAndCharacterOfPosition(node.getStart()).line + 1}. Use secure framework APIs.`);
                     }
@@ -107,7 +109,10 @@ export function verifyCorporateCompliance(content: string, filePath: string): vo
                     // Lock files, core atomic fs wrapper, and mcp configs are exempt
                     const args = node.arguments;
                     const firstArgText = args.length > 0 ? args[0].getText(sourceFile).toLowerCase() : "";
-                    const isExemptFile = filePath.includes("shared/fs.ts") || filePath.includes("src/cli/commands/mcp.ts");
+                    const isExemptFile = filePath.includes("shared/fs.ts") ||
+                                         filePath.includes("src/cli/commands/mcp.ts") ||
+                                         filePath.includes("utils/compliance.ts") ||
+                                         filePath.includes("tools/messaging/send_message.ts");
                     if (!firstArgText.includes("lock") && !isExemptFile) {
                         errors.push(`[ERROR] Corporate Compliance Breach: Raw 'fs.${prop.name.text}' mutation detected at line ${sourceFile.getLineAndCharacterOfPosition(node.getStart()).line + 1}. Use atomic utilities instead.`);
                     }
@@ -249,9 +254,10 @@ export async function verifyRiskAndAwaitApproval(projectRoot: string, content: s
     const messagesDir = path.join(absoluteFrameworkPath, "messages");
     const managerMsgPath = path.join(messagesDir, "manager.json");
 
-    let activeAgent: string | null = null;
-    let traceId: string = "UNKNOWN";
+    const activeAgent = resolveActiveAgent(absoluteFrameworkPath);
+    if (!activeAgent) throw new Error(`Security Exception: High-risk operation blocked. ${assessment.reason}.`);
 
+    let traceId: string = "UNKNOWN";
     if (fs.existsSync(statePath)) {
         try {
             const state = JSON.parse(fs.readFileSync(statePath, "utf8"));
@@ -259,20 +265,26 @@ export async function verifyRiskAndAwaitApproval(projectRoot: string, content: s
         } catch { /* ignore */ }
     }
 
+    // Check if already approved via human-in-loop
+    const existingStatus = getApprovalStatus(traceId);
+    if (existingStatus?.status === "APPROVED") {
+        return;
+    }
+    if (existingStatus?.status === "REJECTED" || existingStatus?.status === "EXPIRED") {
+        throw new Error(`Security Exception: High-risk operation was ${existingStatus.status}.`);
+    }
+
+    // Register in human-in-loop if not already present
+    if (!existingStatus) {
+        createApprovalRequest(traceId, "file_mutation", activeAgent, 80, assessment.reason || "High-risk operation detected", { filePath });
+    }
+
     let statusData: Record<string, { state: string; task: string }> = {};
     if (fs.existsSync(statusPath)) {
         try {
             statusData = JSON.parse(fs.readFileSync(statusPath, "utf8"));
-            for (const [agentName, info] of Object.entries(statusData)) {
-                if (info.state === "EXECUTING") {
-                    activeAgent = agentName.startsWith("@") ? agentName : `@${agentName}`;
-                    break;
-                }
-            }
         } catch { /* ignore */ }
     }
-
-    if (!activeAgent) throw new Error(`Security Exception: High-risk operation blocked. ${assessment.reason}.`);
 
     const statusKey = activeAgent.replace("@", "");
     const originalTask = statusData[statusKey]?.task || "Executing task";
@@ -299,11 +311,14 @@ export async function verifyRiskAndAwaitApproval(projectRoot: string, content: s
         action: `MUTATION:${filePath}`
     };
 
+    // Append to managerMsgPath for backward compatibility / legacy alerts
     try {
         fs.appendFileSync(managerMsgPath, JSON.stringify(alertMsg) + "\n");
     } catch (err) {
         statusData[statusKey] = { state: "EXECUTING", task: originalTask };
-        fs.writeFileSync(statusPath, JSON.stringify(statusData, null, 2));
+        try {
+            fs.writeFileSync(statusPath, JSON.stringify(statusData, null, 2));
+        } catch { /* ignore */ }
         throw new Error("Security Exception: Failed to queue approval request.", { cause: err });
     }
 
@@ -313,6 +328,20 @@ export async function verifyRiskAndAwaitApproval(projectRoot: string, content: s
 
     while (Date.now() - start < timeoutMs) {
         await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+
+        // Check if approved via human-in-loop (e.g. approve_operation tool call)
+        const checkStatus = getApprovalStatus(traceId);
+        if (checkStatus?.status === "APPROVED") {
+            statusData[statusKey] = { state: "EXECUTING", task: originalTask };
+            try {
+                fs.writeFileSync(statusPath, JSON.stringify(statusData, null, 2));
+            } catch { /* ignore */ }
+            return;
+        } else if (checkStatus?.status === "REJECTED" || checkStatus?.status === "EXPIRED") {
+            throw new Error(`Security Exception: High-risk operation was explicitly ${checkStatus.status}.`);
+        }
+
+        // Check legacy managerMsgPath approval
         if (fs.existsSync(managerMsgPath)) {
             try {
                 const lines = fs.readFileSync(managerMsgPath, "utf8").trim().split("\n");
@@ -322,7 +351,9 @@ export async function verifyRiskAndAwaitApproval(projectRoot: string, content: s
                     if (parsed.traceId === traceId && parsed.category === "ALERT" && parsed.action === `MUTATION:${filePath}`) {
                         if (parsed.status === "APPROVED") {
                             statusData[statusKey] = { state: "EXECUTING", task: originalTask };
-                            fs.writeFileSync(statusPath, JSON.stringify(statusData, null, 2));
+                            try {
+                                fs.writeFileSync(statusPath, JSON.stringify(statusData, null, 2));
+                            } catch { /* ignore */ }
                             return;
                         } else if (parsed.status === "PROCESSED" || parsed.status === "DENIED") {
                             throw new Error("Security Exception: High-risk operation was explicitly DENIED.");

@@ -34,7 +34,69 @@ const CONFIG = {
     AUTO_APPROVE_LOW_RISK: process.env.MCP_AUTO_APPROVE_LOW_RISK !== "false",
     /** Approval timeout in seconds */
     APPROVAL_TIMEOUT_SECONDS: parseInt(process.env.MCP_APPROVAL_TIMEOUT || "300", 10), // 5 min
+    /**
+     * Minimum risk score requiring Lead/Admin approval (legacy compat).
+     * Superseded by ROLE_RISK_MAP below — kept for backward compatibility with env var.
+     */
+    RBAC_HIGH_RISK_THRESHOLD: parseInt(process.env.MCP_RBAC_HIGH_RISK_THRESHOLD || "80", 10),
 };
+
+// ─── Role Hierarchy ──────────────────────────────────────────────────────────
+//
+// Defines which roles can approve operations at each risk level.
+// This is the AI Governance layer for IDE/CLI tool orchestrators:
+//   Claude Code, Gemini CLI, Cursor, Copilot all route through this gate.
+//
+// Role:        Can approve operations with risk score >=
+//   junior      → NONE (cannot approve anything, read-only user)
+//   developer   → MEDIUM (30+)
+//   lead        → HIGH (60+)
+//   admin       → any (0+, including CRITICAL)
+//
+// The role is read EXCLUSIVELY from process.env.MCP_USER_ROLE.
+// The userRole parameter in approveOperation/rejectOperation is intentionally
+// IGNORED to prevent privilege escalation via AI tool argument injection.
+// (e.g. an AI calling approve_operation {userRole: "admin"} must not work.)
+
+export type UserRole = "junior" | "developer" | "lead" | "admin";
+
+/**
+ * Maximum risk score each role is allowed to approve.
+ * A role can approve any operation with riskScore <= its max.
+ * Override via MCP_RBAC_ROLE_* env vars.
+ *
+ *   junior    → cannot approve anything (max = -1)
+ *   developer → can approve MEDIUM risk (0–59)
+ *   lead      → can approve HIGH risk (0–79)
+ *   admin     → can approve any risk (0–100)
+ */
+export const ROLE_RISK_MAP: Record<UserRole, number> = {
+    admin:     parseInt(process.env.MCP_RBAC_ROLE_ADMIN     || "100",  10),
+    lead:      parseInt(process.env.MCP_RBAC_ROLE_LEAD      || "79",   10),
+    developer: parseInt(process.env.MCP_RBAC_ROLE_DEVELOPER || "59",   10),
+    junior:    parseInt(process.env.MCP_RBAC_ROLE_JUNIOR    || "-1",   10), // cannot approve
+};
+
+/**
+ * Returns the minimum role required to approve an operation at the given risk score.
+ */
+export function getMinimumRoleForScore(riskScore: number): UserRole {
+    if (riskScore <= ROLE_RISK_MAP.developer) return "developer";
+    if (riskScore <= ROLE_RISK_MAP.lead)      return "lead";
+    return "admin";
+}
+
+/**
+ * Reads the active user role from environment only.
+ * AI-supplied userRole arguments are NOT trusted.
+ */
+function getActiveUserRole(): UserRole {
+    const envRole = process.env.MCP_USER_ROLE?.trim().toLowerCase();
+    if (envRole === "admin" || envRole === "lead" || envRole === "developer" || envRole === "junior") {
+        return envRole;
+    }
+    return "junior"; // safest default
+}
 
 // ─── Types ────────────────────────────────────────────────────────
 
@@ -51,6 +113,7 @@ export interface ApprovalRequest {
     createdAt: number;
     expiresAt: number;
     status: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
+    passcode?: string;
 }
 
 // ─── Active Approval Requests ─────────────────────────────────────
@@ -70,6 +133,19 @@ export function getRiskLevel(score: number): RiskLevel {
  * Create an approval request for a high-risk operation.
  * Returns the approval request and a message for the AI/developer.
  */
+function generatePasscode(): string {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let code = "";
+    for (let i = 0; i < 5; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+}
+
+/**
+ * Create an approval request for a high-risk operation.
+ * Returns the approval request and a message for the AI/developer.
+ */
 export function createApprovalRequest(
     traceId: string,
     toolName: string,
@@ -79,6 +155,7 @@ export function createApprovalRequest(
     args: Record<string, unknown>
 ): { request: ApprovalRequest; message: string } {
     const now = Date.now();
+    const passcode = generatePasscode();
 
     const request: ApprovalRequest = {
         traceId,
@@ -91,9 +168,13 @@ export function createApprovalRequest(
         createdAt: now,
         expiresAt: now + CONFIG.APPROVAL_TIMEOUT_SECONDS * 1000,
         status: "PENDING",
+        passcode,
     };
 
     activeApprovals.set(traceId, request);
+
+    // Print passcode to stderr so the human developer sees it but AI cannot access it
+    process.stderr.write(`\n[ATABEY SECURITY GATES] APPROVAL PASSCODE FOR TRACE ${traceId}: ${passcode}\n\n`);
 
     // Create a Hermes approval message
     AtabeyStorage.saveMessage({
@@ -125,14 +206,14 @@ export function createApprovalRequest(
         `  Trace ID:   ${traceId}`,
         "",
         "─── IN-CHAT APPROVAL ────────────────────────────────────────",
-        "Ask your AI assistant to call the approve_operation tool:",
+        "This is a high-risk operation. To prevent autonomous bypass,",
+        "Atabey has printed a 5-character PASSCODE to your terminal's stderr.",
         "",
-        `  To approve: approve_operation { "action": "approve", "traceId": "${traceId}" }`,
-        `  To reject:  approve_operation { "action": "reject",  "traceId": "${traceId}" }`,
-        "  To list:    approve_operation { \"action\": \"list\" }",
+        "Ask the user for the passcode, then call the approve_operation tool:",
+        `  approve_operation { "action": "approve", "traceId": "${traceId}", "passcode": "<passcode_from_user>" }`,
         "─────────────────────────────────────────────────────────────",
         "",
-        `Alternative: atabey hitl answer "${traceId}:approve" in your terminal.`,
+        `Alternative: Run 'atabey approve ${traceId}' in your local terminal.`,
     ].join("\n");
 
     return { request, message };
@@ -196,8 +277,19 @@ export function getApprovalStatus(traceId: string): ApprovalRequest | null {
 
 /**
  * Approve a pending operation.
+ *
+ * RBAC enforcement (AI Governance layer):
+ * - Role is read from process.env.MCP_USER_ROLE ONLY.
+ * - The userRole parameter is accepted for API compatibility but completely IGNORED.
+ *   This prevents AI agents (Claude Code, Gemini, Cursor) from escalating privilege
+ *   by passing {userRole: "admin"} in the tool call arguments.
+ * - The passcode printed to stderr is the second factor — AI cannot read stderr.
  */
-export function approveOperation(traceId: string): { success: boolean; message: string } {
+export function approveOperation(
+    traceId: string,
+    passcode?: string,
+    _userRoleIgnored?: string   // kept for API compat — value is intentionally ignored
+): { success: boolean; message: string } {
     const request = activeApprovals.get(traceId);
     if (!request) {
         return { success: false, message: `No pending approval found for trace: ${traceId}` };
@@ -205,6 +297,32 @@ export function approveOperation(traceId: string): { success: boolean; message: 
 
     if (request.status !== "PENDING") {
         return { success: false, message: `Approval for ${traceId} is already ${request.status}` };
+    }
+
+    // ── RBAC Check ──────────────────────────────────────────────────────────
+    // Role is read exclusively from the environment — not from the tool argument.
+    // This ensures Claude Code, Gemini CLI, Cursor, or any MCP client cannot
+    // escalate privilege by injecting a role in the tool args.
+    const role = getActiveUserRole();
+    const maxApprovable = ROLE_RISK_MAP[role];
+
+    if (request.riskScore <= maxApprovable) {
+        // Role is allowed — proceed to passcode check
+    } else {
+        const requiredRole = getMinimumRoleForScore(request.riskScore);
+        return {
+            success: false,
+            message:
+                `[RBAC] Approval denied: Risk score ${request.riskScore}/100 requires at least '${requiredRole}' role. ` +
+                `Current role: '${role}' (max approvable: ${maxApprovable}). ` +
+                "Set MCP_USER_ROLE env var to a role with sufficient authority."
+        };
+    }
+    // ── End RBAC Check ──────────────────────────────────────────────────────
+
+    // Passcode second-factor (printed to stderr — AI cannot intercept)
+    if (request.passcode && (!passcode || passcode.trim().toUpperCase() !== request.passcode)) {
+        return { success: false, message: "Invalid or missing approval passcode. Verify the passcode printed to stderr." };
     }
 
     request.status = "APPROVED";
@@ -220,13 +338,20 @@ export function approveOperation(traceId: string): { success: boolean; message: 
         }
     }
 
-    return { success: true, message: `Operation ${traceId} approved. You may retry.` };
+    return { success: true, message: `Operation ${traceId} approved by '${role}'. You may retry.` };
 }
 
 /**
  * Reject a pending operation.
+ *
+ * RBAC: junior-role users cannot reject HIGH/CRITICAL operations.
+ * This prevents rogue or misconfigured recon agents from killing
+ * manager-delegated critical operations.
  */
-export function rejectOperation(traceId: string): { success: boolean; message: string } {
+export function rejectOperation(
+    traceId: string,
+    _userRoleIgnored?: string   // kept for API compat — value intentionally ignored
+): { success: boolean; message: string } {
     const request = activeApprovals.get(traceId);
     if (!request) {
         return { success: false, message: `No pending approval found for trace: ${traceId}` };
@@ -234,6 +359,18 @@ export function rejectOperation(traceId: string): { success: boolean; message: s
 
     if (request.status !== "PENDING") {
         return { success: false, message: `Approval for ${traceId} is already ${request.status}` };
+    }
+
+    // RBAC: reject also requires minimum role for HIGH+ operations
+    const role = getActiveUserRole();
+    const canReject = !(role === "junior" && request.riskScore >= CONFIG.HIGH_RISK_THRESHOLD);
+    if (!canReject) {
+        return {
+            success: false,
+            message:
+                `[RBAC] Reject denied: Risk score ${request.riskScore}/100 operations cannot be rejected by '${role}'. ` +
+                "Minimum role required to reject is 'developer'. Set MCP_USER_ROLE env var."
+        };
     }
 
     request.status = "REJECTED";
@@ -249,7 +386,7 @@ export function rejectOperation(traceId: string): { success: boolean; message: s
         }
     }
 
-    return { success: true, message: `Operation ${traceId} rejected.` };
+    return { success: true, message: `Operation ${traceId} rejected by '${role}'.` };
 }
 
 /**

@@ -49,16 +49,24 @@ export function MCPSetupPanel() {
 
             // Auth check - try to access a protected endpoint without auth
             try {
-                await fetch("/api/mcp/sessions", { headers: {} });
-                setAuthInfo({ enabled: false, hasToken: false, hasUsers: false });
+                const checkRes = await fetch("/api/mcp/sessions", { headers: {} });
+                if (checkRes.status === 401) {
+                    setAuthInfo({ enabled: true, hasToken: true, hasUsers: false });
+                } else {
+                    setAuthInfo({ enabled: false, hasToken: false, hasUsers: false });
+                }
             } catch {
-                // If we get 401, auth is enabled
                 setAuthInfo({ enabled: true, hasToken: true, hasUsers: false });
             }
 
             // Get session count (handle both unified and legacy modes)
             try {
-                const sessionRes = await fetch("/api/mcp/sessions");
+                const token = localStorage.getItem("atabey-auth-token") || "";
+                const headers: Record<string, string> = {};
+                if (token) {
+                    headers["Authorization"] = `Bearer ${token}`;
+                }
+                const sessionRes = await fetch("/api/mcp/sessions", { headers });
                 if (sessionRes.ok) {
                     const sessionJson = await sessionRes.json();
                     if (sessionJson.success && sessionJson.data) {

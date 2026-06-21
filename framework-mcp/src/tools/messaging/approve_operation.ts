@@ -5,6 +5,8 @@ interface ApproveOperationArgs {
     action: "approve" | "reject" | "list";
     traceId?: string;
     reason?: string;
+    passcode?: string;
+    userRole?: string;
 }
 
 /**
@@ -66,7 +68,7 @@ export async function handleApproveOperation(
     }
 
     if (action === "approve") {
-        const result = approveOperation(traceId);
+        const result = approveOperation(traceId, args.passcode, args.userRole);
         return {
             content: [{
                 type: "text",

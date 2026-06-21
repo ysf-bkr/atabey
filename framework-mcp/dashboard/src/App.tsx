@@ -13,6 +13,7 @@ import {
     GitBranch,
     Github,
     LayoutDashboard,
+    Lock,
     Menu,
     MessageSquare,
     Moon,
@@ -21,6 +22,7 @@ import {
     Server,
     ShieldCheck,
     Sun,
+    Unlock,
     Wifi,
     X,
 } from "lucide-react";
@@ -159,66 +161,82 @@ function DashboardOverview({ onNavigate }: DashboardOverviewProps) {
                 </div>
             </div>
 
-            <div className="quick-stats-grid">
-                <div className="stat-card clickable" onClick={() => onNavigate("agents")}>
-                    <div className="stat-card-header"><Bot size={20} className="stat-icon" /><span className="stat-title">Specialists</span></div>
-                    <div className="stat-card-value">{activeAgentsCount} / {totalAgentsCount}</div>
-                    <div className="stat-card-desc">Governed specialist nodes active</div>
-                </div>
-
-                <div className="stat-card clickable" onClick={() => onNavigate("hermes")}>
-                    <div className="stat-card-header"><BarChart3 size={20} className="stat-icon" /><span className="stat-title">Hermes Queue</span></div>
-                    <div className="stat-card-value">{pendingMessages}</div>
-                    <div className="stat-card-desc">Pending messages in transit</div>
-                </div>
-
-                <div className="stat-card clickable" onClick={() => onNavigate("approvals")} style={{
-                    borderColor: pendingApprovalsCount > 0 ? "var(--color-accent-primary)" : undefined,
-                    background: pendingApprovalsCount > 0 ? "var(--color-accent-glow)" : undefined
-                }}>
-                    <div className="stat-card-header"><ShieldCheck size={20} className="stat-icon" /><span className="stat-title">HITL Gates</span></div>
-                    <div className="stat-card-value" style={{ color: pendingApprovalsCount > 0 ? "var(--color-accent-primary)" : undefined }}>{pendingApprovalsCount}</div>
-                    <div className="stat-card-desc">{pendingApprovalsCount > 0 ? "Manual overrides pending" : "All gates clear"}</div>
-                </div>
-
-                <div className="stat-card clickable" onClick={() => onNavigate("compliance")}>
-                    <div className="stat-card-header"><CheckCircle size={20} className="stat-icon" /><span className="stat-title">Gate Auditing</span></div>
-                    <div className="stat-card-value" style={{ color: totalViolations > 0 ? "var(--color-warning)" : undefined }}>{totalViolations}</div>
-                    <div className="stat-card-desc">Quality Gate violations</div>
-                </div>
-
-                <div className="stat-card clickable" onClick={() => onNavigate("privacy")} style={{ borderColor: piiDetectedCount > 0 ? "var(--color-accent-primary)" : undefined }}>
-                    <div className="stat-card-header"><ShieldCheck size={20} style={{ color: "var(--color-accent-primary)" }} /><span className="stat-title">GDPR / KVKK</span></div>
-                    <div className="stat-card-value" style={{ color: "var(--color-accent-primary)", fontSize: "1.1rem" }}>{piiMaskedCount > 0 ? `${piiMaskedCount} masked` : "Active"}</div>
-                    <div className="stat-card-desc">{piiDetectedCount > 0 ? `${piiDetectedCount} PII · ${restrictedCount} restricted` : "PII masking active"}</div>
-                </div>
-
-                <div className="stat-card clickable" onClick={() => onNavigate("discipline")} style={{ borderColor: inCooldown ? "var(--color-warning)" : undefined }}>
-                    <div className="stat-card-header"><Ban size={20} style={{ color: totalViolationsCount > 0 ? "var(--color-error)" : "var(--color-success)" }} /><span className="stat-title">Discipline</span></div>
-                    <div className="stat-card-value" style={{ color: totalViolationsCount > 0 ? "var(--color-error)" : "var(--color-success)", fontSize: "1.1rem" }}>
-                        {totalViolationsCount > 0 ? `${totalViolationsCount} violations` : "All Clean"}
+            <div style={{ marginBottom: "1.5rem" }}>
+                <h3 style={{ fontSize: "0.8rem", textTransform: "uppercase", color: "var(--color-text-secondary)", letterSpacing: "0.08em", marginBottom: "0.75rem", borderLeft: "3px solid var(--color-accent-primary)", paddingLeft: "8px", fontWeight: 700 }}>
+                    Active Session & Specialist Status
+                </h3>
+                <div className="quick-stats-grid">
+                    <div className="stat-card clickable" onClick={() => onNavigate("agents")}>
+                        <div className="stat-card-header"><Bot size={18} className="stat-icon" /><span className="stat-title">Specialists</span></div>
+                        <div className="stat-card-value">{activeAgentsCount} / {totalAgentsCount}</div>
+                        <div className="stat-card-desc">Governed specialist nodes active</div>
                     </div>
-                    <div className="stat-card-desc">{inCooldown ? "Agent(s) in cooldown" : "All agents compliant"}</div>
-                </div>
 
-                <div className="stat-card clickable" onClick={() => onNavigate("mcp")}>
-                    <div className="stat-card-header"><Server size={20} style={{ color: "var(--color-accent-primary)" }} /><span className="stat-title">MCP Server</span></div>
-                    <div className="stat-card-value" style={{ color: "var(--color-accent-primary)", fontSize: "1.1rem" }}>{activeSessions > 0 ? `${activeSessions} session(s)` : "Ready"}</div>
-                    <div className="stat-card-desc">{activeSessions > 0 ? "AI clients connected" : "Waiting for AI clients"}</div>
-                </div>
+                    <div className="stat-card clickable" onClick={() => onNavigate("hermes")}>
+                        <div className="stat-card-header"><BarChart3 size={18} className="stat-icon" /><span className="stat-title">Hermes Queue</span></div>
+                        <div className="stat-card-value">{pendingMessages}</div>
+                        <div className="stat-card-desc">Pending messages in transit</div>
+                    </div>
 
-                <div className="stat-card clickable" onClick={() => onNavigate("tokens")} style={{ borderColor: totalEstimatedCost > 0.1 ? "var(--color-warning)" : undefined }}>
-                    <div className="stat-card-header"><Cpu size={20} style={{ color: "var(--color-accent-muted)" }} /><span className="stat-title">Token Economy</span></div>
-                    <div className="stat-card-value" style={{ color: "var(--color-accent-muted)", fontSize: "1.1rem" }}>{totalToolCalls > 0 ? `${totalToolCalls} calls` : "Active"}</div>
-                    <div className="stat-card-desc">{totalEstimatedTokens > 0 ? `${(totalEstimatedTokens / 1000).toFixed(1)}K tokens · ~$${totalEstimatedCost.toFixed(2)}` : "Tracking tool call metrics"}</div>
+                    <div className="stat-card clickable" onClick={() => onNavigate("approvals")} style={{
+                        borderColor: pendingApprovalsCount > 0 ? "var(--color-accent-primary)" : undefined,
+                        background: pendingApprovalsCount > 0 ? "var(--color-accent-glow)" : undefined
+                    }}>
+                        <div className="stat-card-header"><ShieldCheck size={18} className="stat-icon" /><span className="stat-title">HITL Gates</span></div>
+                        <div className="stat-card-value" style={{ color: pendingApprovalsCount > 0 ? "var(--color-accent-primary)" : undefined }}>{pendingApprovalsCount}</div>
+                        <div className="stat-card-desc">{pendingApprovalsCount > 0 ? "Manual overrides pending" : "All gates clear"}</div>
+                    </div>
+
+                    <div className="stat-card clickable" onClick={() => onNavigate("mcp")}>
+                        <div className="stat-card-header"><Server size={18} style={{ color: "var(--color-accent-primary)" }} /><span className="stat-title">MCP Server</span></div>
+                        <div className="stat-card-value" style={{ color: "var(--color-accent-primary)", fontSize: "1.1rem" }}>{activeSessions > 0 ? `${activeSessions} session(s)` : "Ready"}</div>
+                        <div className="stat-card-desc">{activeSessions > 0 ? "AI clients connected" : "Waiting for AI clients"}</div>
+                    </div>
                 </div>
             </div>
 
-            <div className="dashboard-grid">
-                <AgentMonitor />
-                <HermesStats />
-                <div className="card-full"><ApprovalCenter /></div>
-                <div className="card-full"><LogViewer /></div>
+            <div style={{ marginBottom: "2rem" }}>
+                <h3 style={{ fontSize: "0.8rem", textTransform: "uppercase", color: "var(--color-text-secondary)", letterSpacing: "0.08em", marginBottom: "0.75rem", borderLeft: "3px solid var(--color-accent-primary)", paddingLeft: "8px", fontWeight: 700 }}>
+                    AI Policy & Governance Gates
+                </h3>
+                <div className="quick-stats-grid">
+                    <div className="stat-card clickable" onClick={() => onNavigate("compliance")}>
+                        <div className="stat-card-header"><CheckCircle size={18} className="stat-icon" /><span className="stat-title">Gate Auditing</span></div>
+                        <div className="stat-card-value" style={{ color: totalViolations > 0 ? "var(--color-warning)" : undefined }}>{totalViolations}</div>
+                        <div className="stat-card-desc">Quality Gate violations</div>
+                    </div>
+
+                    <div className="stat-card clickable" onClick={() => onNavigate("privacy")} style={{ borderColor: piiDetectedCount > 0 ? "var(--color-accent-primary)" : undefined }}>
+                        <div className="stat-card-header"><ShieldCheck size={18} style={{ color: "var(--color-accent-primary)" }} /><span className="stat-title">GDPR / KVKK</span></div>
+                        <div className="stat-card-value" style={{ color: "var(--color-accent-primary)", fontSize: "1.1rem" }}>{piiMaskedCount > 0 ? `${piiMaskedCount} masked` : "Active"}</div>
+                        <div className="stat-card-desc">{piiDetectedCount > 0 ? `${piiDetectedCount} PII · ${restrictedCount} restricted` : "PII masking active"}</div>
+                    </div>
+
+                    <div className="stat-card clickable" onClick={() => onNavigate("discipline")} style={{ borderColor: inCooldown ? "var(--color-warning)" : undefined }}>
+                        <div className="stat-card-header"><Ban size={18} style={{ color: totalViolationsCount > 0 ? "var(--color-error)" : "var(--color-success)" }} /><span className="stat-title">Discipline</span></div>
+                        <div className="stat-card-value" style={{ color: totalViolationsCount > 0 ? "var(--color-error)" : "var(--color-success)", fontSize: "1.1rem" }}>
+                            {totalViolationsCount > 0 ? `${totalViolationsCount} violations` : "All Clean"}
+                        </div>
+                        <div className="stat-card-desc">{inCooldown ? "Agent(s) in cooldown" : "All agents compliant"}</div>
+                    </div>
+
+                    <div className="stat-card clickable" onClick={() => onNavigate("tokens")} style={{ borderColor: totalEstimatedCost > 0.1 ? "var(--color-warning)" : undefined }}>
+                        <div className="stat-card-header"><Cpu size={18} style={{ color: "var(--color-accent-muted)" }} /><span className="stat-title">Token Economy</span></div>
+                        <div className="stat-card-value" style={{ color: "var(--color-accent-muted)", fontSize: "1.1rem" }}>{totalToolCalls > 0 ? `${totalToolCalls} calls` : "Active"}</div>
+                        <div className="stat-card-desc">{totalEstimatedTokens > 0 ? `${(totalEstimatedTokens / 1000).toFixed(1)}K tokens · ~$${totalEstimatedCost.toFixed(2)}` : "Tracking tool call metrics"}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="overview-sections-layout">
+                <div className="overview-left-column">
+                    <AgentMonitor />
+                    <ApprovalCenter />
+                </div>
+                <div className="overview-right-column">
+                    <HermesStats />
+                    <LogViewer />
+                </div>
             </div>
         </div>
     );
@@ -231,6 +249,11 @@ export default function App() {
         const saved = localStorage.getItem("atabey-theme");
         return (saved as "dark" | "light") || "dark";
     });
+    const [authToken, setAuthTokenState] = useState(() => localStorage.getItem("atabey-auth-token") || "");
+    const saveAuthToken = (val: string) => {
+        localStorage.setItem("atabey-auth-token", val);
+        setAuthTokenState(val);
+    };
     const wsConnected = useWS();
 
     useEffect(() => {
@@ -285,6 +308,21 @@ export default function App() {
                             </span>
                         </div>
                         <div className="main-header-right">
+                            <div className="auth-token-input-wrapper" style={{ position: "relative" }}>
+                                {authToken ? (
+                                    <Lock size={12} style={{ position: "absolute", left: "6px", top: "50%", transform: "translateY(-50%)", color: "var(--color-success)" }} />
+                                ) : (
+                                    <Unlock size={12} style={{ position: "absolute", left: "6px", top: "50%", transform: "translateY(-50%)", color: "var(--color-text-muted)" }} />
+                                )}
+                                <input
+                                    type="password"
+                                    placeholder="MCP Token..."
+                                    className="auth-token-input"
+                                    value={authToken}
+                                    onChange={(e) => saveAuthToken(e.target.value)}
+                                    title="Enter MCP_AUTH_TOKEN if configured"
+                                />
+                            </div>
                             <button className="theme-toggle-btn" onClick={toggleTheme} title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} style={{ marginRight: "0.5rem" }}>
                                 {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
                             </button>

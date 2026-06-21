@@ -9,6 +9,7 @@ This document outlines the current progress and future directions for the **Agen
 - [x] **Stateless MCP Server:** Fully compatible with Claude Code, Gemini CLI, and Cursor.
 - [x] **Project-Focus Scaffolding:** Initializer that configures agents based on project type (Fullstack, Backend-only, Frontend-only, Mobile).
 - [x] **Static Compliance Engine:** AST-based scanner to enforce code quality policies (zero type holes, zero DOM mutation, etc.).
+- [x] **RBAC and Tier Security:** Fully implemented role-based access control (RBAC), permission matrix matching, agent messaging verification, and human-in-the-loop passcode approval gates.
 
 ---
 
@@ -19,14 +20,15 @@ This document outlines the current progress and future directions for the **Agen
 - [ ] **Type Safety Coverage:**
   - Resolve type differences in framework tests.
   - Ensure 100% test coverage for `framework-mcp` tools.
-- [ ] **Continuous Integration (CI):**
+- [x] **Continuous Integration (CI):**
   - Add GitHub Actions for automated health checks (`atabey check`) on Pull Requests.
+  - Integrate SAST (Semgrep/CodeQL) and secret leak detection (Gitleaks).
 
 ---
 
 ## 🚀 Medium-term Features (Next 3-6 Months)
-- [ ] **LLM Gateway & PII Proxy:**
-  - Build a centralized server to mask PII data and cache embeddings dynamically across developer machines.
+- [ ] **Centralized Compliance & PII Ingest Server:**
+  - Build a centralized server to collect telemetry, aggregate logs, and manage shared organization-wide compliance rules.
 - [ ] **Automated Skill Learning:**
   - Let agents learn from developer corrections and persist skills in `.atabey/skills/`.
 - [ ] **Git-native collaboration:**
