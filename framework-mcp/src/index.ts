@@ -133,8 +133,19 @@ const server = new Server(
     { capabilities: { tools: {}, resources: {} } }
 );
 
-// Track multiple SSE sessions
-const sessions = new Map<string, SSEServerTransport>();
+// ─── Session Tracking (Multi-User) ────────────────────────────────
+
+interface McpSession {
+    transport: SSEServerTransport;
+    user: string;
+    clientName: string;
+    connectedAt: string;
+    lastActivity: string;
+    toolCalls: number;
+}
+
+// Track multiple SSE sessions with user identity
+const sessions = new Map<string, McpSession>();
 
 // ─── WebSocket Clients ────────────────────────────────────────────
 
@@ -549,13 +560,26 @@ function createUnifiedServer() {
         if (pathname === "/mcp/sse") {
             const transport = new SSEServerTransport("/mcp/messages", res);
             const sessionId = transport.sessionId;
-            sessions.set(sessionId, transport);
-            process.stderr.write(`[MCP] Client connected: ${sessionId} (total: ${sessions.size})\n`);
-            broadcastWS("mcp_session", { sessionId, action: "connected", total: sessions.size });
+            // Get user identity from auth header or default to anonymous
+            const { authenticate, getCurrentUser } = await import("./utils/auth.js");
+            const auth = authenticate(req);
+            const userName = auth.authenticated ? auth.user : getCurrentUser();
+            const clientName = "mcp-client";
+            const session: McpSession = {
+                transport,
+                user: userName,
+                clientName,
+                connectedAt: new Date().toISOString(),
+                lastActivity: new Date().toISOString(),
+                toolCalls: 0,
+            };
+            sessions.set(sessionId, session);
+            process.stderr.write(`[MCP] Client connected: ${sessionId} (user: ${userName}, total: ${sessions.size})\n`);
+            broadcastWS("mcp_session", { sessionId, user: userName, action: "connected", total: sessions.size });
             res.on("close", () => {
                 sessions.delete(sessionId);
-                process.stderr.write(`[MCP] Client disconnected: ${sessionId} (remaining: ${sessions.size})\n`);
-                broadcastWS("mcp_session", { sessionId, action: "disconnected", total: sessions.size });
+                process.stderr.write(`[MCP] Client disconnected: ${sessionId} (user: ${userName}, remaining: ${sessions.size})\n`);
+                broadcastWS("mcp_session", { sessionId, user: userName, action: "disconnected", total: sessions.size });
             });
             await server.connect(transport);
             return;
@@ -567,8 +591,9 @@ function createUnifiedServer() {
                 serveJson(res, 400, { error: "Invalid or missing sessionId" });
                 return;
             }
-            const transport = sessions.get(sessionId)!;
-            await transport.handlePostMessage(req, res);
+            const session = sessions.get(sessionId)!;
+            session.lastActivity = new Date().toISOString();
+            await session.transport.handlePostMessage(req, res);
             return;
         }
 
@@ -839,9 +864,16 @@ function createUnifiedServer() {
             return;
         }
 
-        // MCP Sessions
+        // MCP Sessions (with user identity)
         if (pathname === "/api/mcp/sessions") {
-            const sessionList = Array.from(sessions.keys()).map(id => ({ id, connectedAt: new Date().toISOString() }));
+            const sessionList = Array.from(sessions.entries()).map(([id, session]) => ({
+                id,
+                user: session.user,
+                clientName: session.clientName,
+                connectedAt: session.connectedAt,
+                lastActivity: session.lastActivity,
+                toolCalls: session.toolCalls,
+            }));
             serveJson(res, 200, { success: true, data: { total: sessions.size, sessions: sessionList } });
             return;
         }

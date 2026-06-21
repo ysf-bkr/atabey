@@ -5,12 +5,18 @@
  * When MCP_AUTH_TOKEN is set, all MCP and API requests require
  * Authorization: Bearer <token> header.
  *
+ * Supports multi-user setup via MCP_AUTH_USERS:
+ *   MCP_AUTH_USERS=alice:key1,bob:key2,cmdr:key3
+ *
+ * Each user gets their own API key. Tool calls and audit logs
+ * are tagged with the authenticated user's name.
+ *
  * Environment Variables:
- *   MCP_AUTH_TOKEN     - API key for authentication (optional)
+ *   MCP_AUTH_TOKEN     - Master API key for admin access (optional)
  *   MCP_AUTH_USERS     - Comma-separated list of user:token pairs (optional)
  *                        Example: "alice:key1,bob:key2"
  *
- * If neither is set, authentication is disabled (open access).
+ * If neither is set, authentication is disabled (open access / anonymous).
  */
 
 interface AuthUser {
@@ -42,7 +48,7 @@ export function initAuth(): void {
         process.stderr.write(`[AUTH] ${authUsers.length} user(s) configured: ${authUsers.map(u => u.name).join(", ")}\n`);
     }
     if (!masterToken && authUsers.length === 0) {
-        process.stderr.write("[AUTH] No authentication configured - OPEN ACCESS\n");
+        process.stderr.write("[AUTH] No authentication configured - OPEN ACCESS (anonymous users)\n");
         process.stderr.write("[AUTH] Set MCP_AUTH_TOKEN=<key> or MCP_AUTH_USERS=user1:key1,user2:key2 to enable\n");
     }
 }
@@ -53,7 +59,7 @@ export function initAuth(): void {
  */
 export function authenticate(req: { headers: Record<string, string | string[] | undefined> }): { authenticated: boolean; user: string } {
     if (!masterToken && authUsers.length === 0) {
-        // Auth disabled - allow all
+        // Auth disabled - allow all as anonymous
         return { authenticated: true, user: "anonymous" };
     }
 
@@ -81,6 +87,56 @@ export function authenticate(req: { headers: Record<string, string | string[] | 
 }
 
 /**
+ * Authenticate using a raw token string (for MCP stdio mode).
+ * In stdio mode, the user identity is set via environment.
+ */
+export function authenticateToken(token: string): { authenticated: boolean; user: string } {
+    if (!masterToken && authUsers.length === 0) {
+        return { authenticated: true, user: "anonymous" };
+    }
+
+    // Check master token
+    if (masterToken && token === masterToken) {
+        return { authenticated: true, user: "admin" };
+    }
+
+    // Check user tokens
+    for (const user of authUsers) {
+        if (token === user.token) {
+            return { authenticated: true, user: user.name };
+        }
+    }
+
+    return { authenticated: false, user: "" };
+}
+
+/**
+ * Get the current authenticated user identity for stdio mode.
+ * Reads from environment or returns "anonymous".
+ * For HTTP/SSE mode, use authenticate() on the request.
+ */
+export function getCurrentUser(): string {
+    // Stdio mode: user identity comes from env or git config
+    const envUser = process.env.MCP_USER;
+    if (envUser) return envUser;
+
+    // Try to get from git config
+    try {
+        const { execSync } = require("child_process");
+        const gitUser = execSync("git config user.name", { encoding: "utf8" }).trim();
+        if (gitUser) return gitUser;
+    } catch {
+        // git not available
+    }
+
+    // Try system user
+    const systemUser = process.env.USER || process.env.USERNAME;
+    if (systemUser) return systemUser;
+
+    return "anonymous";
+}
+
+/**
  * Generate authentication headers for MCP client configuration.
  */
 export function getAuthHeader(user: string, token: string): string {
@@ -92,6 +148,19 @@ export function getAuthHeader(user: string, token: string): string {
  */
 export function isAuthEnabled(): boolean {
     return !!masterToken || authUsers.length > 0;
+}
+
+/**
+ * Get list of configured users (without tokens).
+ */
+export function getConfiguredUsers(): string[] {
+    if (authUsers.length > 0) {
+        return authUsers.map(u => u.name);
+    }
+    if (masterToken) {
+        return ["admin"];
+    }
+    return ["anonymous"];
 }
 
 // Auto-initialize on load
