@@ -18,14 +18,6 @@ interface AuthInfo {
     hasUsers: boolean;
 }
 
-interface SessionInfo {
-    id: string;
-    user: string;
-    clientName: string;
-    connectedAt: string;
-    lastActivity: string;
-    toolCalls: number;
-}
 
 export function MCPSetupPanel() {
     const [status, setStatus] = useState<MCPStatus | null>(null);
@@ -33,7 +25,6 @@ export function MCPSetupPanel() {
     const [error, setError] = useState<string | null>(null);
     const [copied, setCopied] = useState<string | null>(null);
     const [authInfo, setAuthInfo] = useState<AuthInfo>({ enabled: false, hasToken: false, hasUsers: false });
-    const [sessions, setSessions] = useState<SessionInfo[]>([]);
 
     const fetchStatus = async () => {
         setLoading(true);
@@ -81,9 +72,6 @@ export function MCPSetupPanel() {
                     const sessionJson = await sessionRes.json();
                     if (sessionJson.success && sessionJson.data) {
                         setStatus(prev => prev ? { ...prev, sessions: sessionJson.data.total || 0 } : prev);
-                        if (sessionJson.data.sessions) {
-                            setSessions(sessionJson.data.sessions);
-                        }
                     }
                 }
             } catch { /* ignore - legacy dashboard server may not have this endpoint */ }

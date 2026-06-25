@@ -10,13 +10,13 @@ describe("EvaluationEngine", () => {
     beforeEach(() => {
         tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "atabey-eval-test-"));
         process.env.ATABEY_TEST_DIR = tempDir;
-        vi.stubGlobal("process", { ...process, cwd: () => tempDir });
+        vi.spyOn(process, "cwd").mockReturnValue(tempDir);
         fs.mkdirSync(path.join(tempDir, "memory"), { recursive: true });
     });
 
     afterEach(() => {
         delete process.env.ATABEY_TEST_DIR;
-        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
         if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true, force: true });
     });
 

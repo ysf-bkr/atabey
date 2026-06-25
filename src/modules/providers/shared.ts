@@ -1,8 +1,7 @@
 import path from "path";
 import fs from "fs";
 import os from "os";
-import { execSync } from "child_process";
-import { writeJsonFile, writeTextFile } from "../../shared/fs.js";
+import { runCommandQuiet, writeJsonFile, writeTextFile } from "../../shared/fs.js";
 import { ALL_AGENTS, toAntigravityJson } from "../agents/definitions.js";
 import { CORE_SKILLS } from "../skills/definitions.js";
 import { getPackageRoot } from "../../cli/utils/pkg.js";
@@ -107,7 +106,7 @@ ${ag.instructions.rules.map(r => `- ${r}`).join("\n")}
             logger.info(`Antigravity Plugin registered → ${globalPluginDir}/`);
 
             try {
-                execSync(`agy plugin install "${globalPluginDir}"`, { stdio: "ignore" });
+                runCommandQuiet("agy", ["plugin", "install", globalPluginDir], process.cwd());
                 logger.info("Antigravity Plugin installed in CLI.");
             } catch {
                 // Ignore if agy is not in PATH or fails

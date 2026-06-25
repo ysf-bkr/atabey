@@ -123,7 +123,7 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
                     return;
                 }
             } catch (e) {
-                console.warn("[AUTH-WARNING] Auth module error:", (e as Error).message);
+                UI.warning(`[AUTH-WARNING] Auth module error: ${(e as Error).message}`);
             }
         }
 

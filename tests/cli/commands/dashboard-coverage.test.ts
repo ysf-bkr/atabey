@@ -17,8 +17,10 @@ beforeAll(async () => {
     Storage.updateAgentStatus("@backend", "READY", "Idle");
 });
 
-afterAll(() => {
+afterAll(async () => {
     fs.rmSync(TEST_DIR, { recursive: true, force: true });
+    const { Storage } = await import("../../../src/shared/storage.js");
+    Storage.reset();
 });
 
 describe("Dashboard Server - HTTP API", () => {

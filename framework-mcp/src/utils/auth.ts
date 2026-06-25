@@ -122,6 +122,7 @@ export function getCurrentUser(): string {
 
     // Try to get from git config
     try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         const { execSync } = require("child_process");
         const gitUser = execSync("git config user.name", { encoding: "utf8" }).trim();
         if (gitUser) return gitUser;

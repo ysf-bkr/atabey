@@ -1,6 +1,6 @@
 {
   "name": "atabey",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "description": "MCP-Powered AI Governance & Autonomous Orchestration Framework. Plugs into Claude Code, Gemini CLI, and Cursor as an MCP server.",
   "author": "Yusuf BEKAR",
   "license": "AGPL-3.0",
@@ -27,7 +27,7 @@
     "privacy"
   ],
   "workspaces": [
-    "framework-mcp"
+    "mcp"
   ],
   "bin": {
     "atabey": "bin/cli.js"
@@ -92,7 +92,7 @@
     "vitest": "^3.0.0"
   },
   "atabey": {
-    "version": "0.0.15",
-    "initializedAt": "2026-06-20T15:11:43.308Z"
+    "version": "0.0.16",
+    "initializedAt": "2026-06-25T11:05:00.000Z"
   }
 }
