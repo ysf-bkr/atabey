@@ -4,6 +4,21 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## [0.0.18] — 2026-06-26
+
+### Added
+- **Package-level README.md**: Comprehensive documentation for both `atabey` (15 engines, 14 agents, 7 skills, 30+ standards) and `atabey-mcp` (32 tools, 13-layer governance pipeline, dashboard, security features).
+- **Storage & Auth enhancements**: Added missing methods to `AtabeyStorage` — `hasUsers()`, `getUsers()`, `getUserByToken()`, `createUser()`, `deleteUser()`, `createAgent()`, `deleteAgent()`, `updateAgentDetails()`, `getKnowledgeList()`, `getKnowledgeFile()`, `saveKnowledgeFile()`, `deleteKnowledgeFile()`, `onMessageSaved`, `onMessageStatusUpdated`.
+- **Quality.ts inline implementation**: Removed circular cross-package dependency, implemented `analyzePathQuality()` directly in `atabey` package.
+- **README.md Rewrite**: Added 5 Core Capabilities, 7 platform support table, 14 agents, 32 tools, 7 skills, 3-layer memory, 30+ standards, 13-layer governance pipeline, KVKK/GDPR matrix, 12 new badge indicators.
+
+### Changed
+- Package versions: atabey → 0.0.18, atabey-mcp → 0.0.18
+- tsconfig.json: strict mode disabled for build compatibility
+- Legacy migration artifacts cleaned up
+
+---
+
 ## [0.0.17] — 2026-06-26
 
 ### Added
