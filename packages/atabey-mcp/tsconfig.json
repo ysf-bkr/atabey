@@ -9,11 +9,9 @@
     "sourceMap": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "dist"
   },
-  "references": [
-    { "path": "packages/atabey" },
-    { "path": "packages/atabey-mcp" }
-  ],
-  "exclude": ["node_modules", "dist", "packages/*/dist"]
+  "include": ["src/mcp/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }
