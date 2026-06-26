@@ -29,7 +29,7 @@ export type HermesMessage = z.infer<typeof HermesMessageSchema>;
 
 let isLooping = false;
 
-export async function orchestrateCommand(options?: { maxIterations?: number }) {
+export async function orchestrateCommand(options?: { maxIterations?: number; signal?: AbortSignal }) {
     const readline = await import("readline");
     readline.cursorTo(process.stdout, 0, 0);
     readline.clearScreenDown(process.stdout);
@@ -40,6 +40,10 @@ export async function orchestrateCommand(options?: { maxIterations?: number }) {
     isLooping = true;
 
     while (isLooping) {
+        if (options?.signal?.aborted) {
+            isLooping = false;
+            break;
+        }
         try {
             // 1. Agent timeout check (30 min)
             const agents: AgentRow[] = Storage.getAllAgents();
@@ -99,6 +103,28 @@ export async function orchestrateCommand(options?: { maxIterations?: number }) {
                             }
                         }
 
+                        // Target agent: skip RoutingEngine if @manager explicitly specified
+                        const agentName: string = (msg.category === "DELEGATION" || msg.category === "SUBTASK") && String(msg.to) === "@manager"
+                            ? (() => {
+                                try {
+                                    const r = RoutingEngine.resolveWithDetails(msg.content);
+                                    logger.debug(`RoutingEngine: ${msg.content} → ${r.agent} (score: ${r.score})`);
+                                    return r.agent;
+                                } catch {
+                                    return String(msg.to);
+                                }
+                            })()
+                            : String(msg.to);
+                        // Extract task description
+                        let taskDescription = msg.content;
+                        try {
+                            const cleanedContent = stripMarkdownCodeBlocks(msg.content);
+                            const payload = JSON.parse(cleanedContent);
+                            taskDescription = payload.task || msg.content;
+                        } catch {
+                            taskDescription = msg.content;
+                        }
+
                         // Risk Engine check
                         let riskFlag = false;
                         try {
@@ -111,12 +137,33 @@ export async function orchestrateCommand(options?: { maxIterations?: number }) {
                             logger.debug("Risk engine not available, continuing without risk assessment", err);
                         }
 
+                        // CRUD Governance Engine check
+                        let governanceFlag = false;
+                        let governanceReason = "";
+                        try {
+                            const { GovernanceEngine } = await import("../../modules/engines/crud-governance.js");
+                            const operation = GovernanceEngine.classifyTask(taskDescription);
+                            if (operation) {
+                                const decision = await GovernanceEngine.evaluate(agentName, operation, taskDescription, msg.traceId);
+                                if (decision.requiresApproval) {
+                                    governanceFlag = true;
+                                    governanceReason = decision.reason;
+                                }
+                            }
+                        } catch (err) {
+                            logger.debug("Governance engine not available, continuing without governance check", err);
+                        }
+
                         // If human approval is required
-                        if ((msg.category === "ACTION" || msg.category === "ALERT" || riskFlag) && (msg.requiresApproval || riskFlag) && msg.status !== "APPROVED") {
+                        const needsApproval = msg.category === "ACTION" || msg.category === "ALERT" || riskFlag || governanceFlag;
+                        if (needsApproval && (msg.requiresApproval || riskFlag || governanceFlag) && msg.status !== "APPROVED") {
                             readline.cursorTo(process.stdout, 0, process.stdout.rows ? process.stdout.rows - 2 : 20);
                             readline.clearScreenDown(process.stdout);
                             UI.warning(`\n[WARN]  [APPROVAL REQUEST] Trace ${msg.traceId} requires approval:`);
                             UI.warning(`   Description: ${msg.content}`);
+                            if (governanceReason) {
+                                UI.warning(`   Reason: ${governanceReason}`);
+                            }
 
                             const approved = await askUserApproval(msg.traceId, msg.content);
 
@@ -140,28 +187,6 @@ export async function orchestrateCommand(options?: { maxIterations?: number }) {
                                 });
                                 continue;
                             }
-                        }
-
-                        // Target agent: skip RoutingEngine if @manager explicitly specified
-                        const agentName: string = (msg.category === "DELEGATION" || msg.category === "SUBTASK") && String(msg.to) === "@manager"
-                            ? (() => {
-                                try {
-                                    const r = RoutingEngine.resolveWithDetails(msg.content);
-                                    logger.debug(`RoutingEngine: ${msg.content} → ${r.agent} (score: ${r.score})`);
-                                    return r.agent;
-                                } catch {
-                                    return String(msg.to);
-                                }
-                            })()
-                            : String(msg.to);
-                        // Extract task description
-                        let taskDescription = msg.content;
-                        try {
-                            const cleanedContent = stripMarkdownCodeBlocks(msg.content);
-                            const payload = JSON.parse(cleanedContent);
-                            taskDescription = payload.task || msg.content;
-                        } catch {
-                            taskDescription = msg.content;
                         }
 
                         // Execute the task via AgentExecutor

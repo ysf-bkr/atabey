@@ -257,11 +257,11 @@ export type DecompressFilesArgs = z.infer<typeof DecompressFilesSchema>;
 
 // ─── Network Proxy Request ──────────────────────────────────────────
 export const HttpProxyRequestSchema = z.object({
-    url: z.string().url("Geçerli bir URL girilmelidir"),
+    url: z.string().url("A valid URL must be provided"),
     method: z.enum(["GET", "POST", "PUT", "DELETE"]).default("GET"),
     headers: z.record(z.string()).optional(),
     body: z.string().optional(),
-    proxyUrl: z.string().url("Geçerli bir proxy URL'i girilmelidir (örn: http://proxy:port)").optional(),
+    proxyUrl: z.string().url("A valid proxy URL must be provided (e.g. http://proxy:port)").optional(),
 }).strict();
 
 export type HttpProxyRequestArgs = z.infer<typeof HttpProxyRequestSchema>;

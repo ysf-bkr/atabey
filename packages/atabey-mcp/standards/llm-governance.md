@@ -6,7 +6,7 @@ This document outlines the security, safety, and discipline rules for interactin
 - **Input Sanitization:** All user-provided data must be sanitized before being sent to an LLM context to prevent Prompt Injection attacks (OWASP LLM01).
 - **Untrusted Content Isolation:** Content fetched from the web, files, or third parties is treated as untrusted data, never as instructions. Wrap it in clearly delimited, non-authoritative context blocks.
 - **PII Protection:** Absolutely no Personally Identifiable Information (PII) or customer-sensitive credentials should ever be included in prompts.
-- **Network Safety & Proxying:** Ajanlar dış dünyaya doğrudan erişemez. Harici web kaynaklarına veya API'lere erişmek için sadece \`http_proxy_request\` aracı kullanılmalıdır. Atabey, bu aracın çıktılarını otomatik olarak KVKK/GDPR kapsamında tarar ve PII bilgilerini maskeler.
+- **Network Safety & Proxying:** Agents cannot access the external world directly. Only the \`http_proxy_request\` tool must be used to access external web resources or APIs. Atabey automatically scans the outputs of this tool under KVKK/GDPR and masks PII data.
 - **Output Validation:** LLM output that drives an action (tool call, code execution, SQL) must be schema-validated and bounded by an allowlist before use (OWASP LLM02 — insecure output handling).
 
 ## 2. Token and Context Discipline

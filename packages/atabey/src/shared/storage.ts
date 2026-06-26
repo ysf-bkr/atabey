@@ -453,11 +453,12 @@ export class AtabeyStorage {
             rows = db.prepare("SELECT * FROM tasks").all() as TaskDbRow[];
         }
         return rows.map(r => {
-            let deps: string[] = [];
+            let deps: string[];
             try {
                 const parsed = JSON.parse(r.dependencies || "[]");
                 deps = Array.isArray(parsed) ? parsed : JSON.parse(parsed);
             } catch (err) {
+                deps = [];
                 logger.warn("Failed to parse task dependencies, using empty array", err);
             }
 

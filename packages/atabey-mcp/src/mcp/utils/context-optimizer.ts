@@ -347,7 +347,7 @@ export function smartTruncateFile(
 
     // Build truncated content from important lines
     const importantSet = new Set(importantLines);
-    let result: string[] = [];
+    const result: string[] = [];
     let lastKept = -1;
 
     for (let i = 0; i < Math.min(lines.length, maxLines * 2); i++) {

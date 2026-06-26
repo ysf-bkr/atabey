@@ -2,6 +2,28 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// Mock AgentExecutor globally so it propagates to orchestrate.ts
+const mockExecute = vi.fn().mockImplementation(async (task, traceId) => {
+    const { RoutingEngine } = await import("../../src/modules/engines/routing-engine.js");
+    const agent = RoutingEngine.resolveAgent(task);
+    const { AtabeyStorage } = await import("../../src/shared/storage.js");
+    AtabeyStorage.updateAgentStatus(agent.replace("@", ""), "COMPLETED", task);
+    return {
+        success: true,
+        agent,
+        output: `[MOCK] Completed: ${task}`,
+        attempts: 1
+    };
+});
+vi.mock("../../src/modules/engines/agent-executor.js", () => {
+    return {
+        AgentExecutor: {
+            execute: (...args: any[]) => mockExecute(...args)
+        }
+    };
+});
+
 import { orchestrateCommand, sendMessage } from "../../src/cli/commands/orchestrate.js";
 import * as memoryUtils from "../../src/cli/utils/memory.js";
 import { AtabeyStorage } from "../../src/shared/storage.js";
@@ -12,6 +34,7 @@ describe("Agent Integration Flow", () => {
     let messagesDir: string;
 
     beforeEach(() => {
+        AtabeyStorage.reset();
         tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "atabey-integration-test-"));
         memoryDir = path.join(tempDir, "memory");
         messagesDir = path.join(tempDir, "messages");
@@ -37,19 +60,8 @@ describe("Agent Integration Flow", () => {
         vi.restoreAllMocks();
     });
 
-    // TODO: Restore after Hermes polling mock is properly wired
-    // The AgentExecutor now uses 30s polling which blocks integration tests
-    it.skip("should allow Manager to delegate a task to Backend and complete it", async () => {
+    it("should allow Manager to delegate a task to Backend and complete it", async () => {
         const traceId = "test-flow-123";
-
-        // Mock AgentExecutor.execute to skip Hermes polling (30s timeout)
-        const { AgentExecutor } = await import("../../src/modules/engines/agent-executor.js");
-        vi.spyOn(AgentExecutor, "execute").mockResolvedValue({
-            success: true,
-            agent: "@backend",
-            output: "[MOCK] Backend API service created",
-            attempts: 1
-        });
 
         // 1. Manager delegates a backend-related task
         const taskPayload = {
@@ -58,6 +70,7 @@ describe("Agent Integration Flow", () => {
             priority: "P1",
             agent: "@backend"
         };
+
         await sendMessage({
             from: "@manager",
             to: "@backend",

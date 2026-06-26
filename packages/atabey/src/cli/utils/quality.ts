@@ -1,3 +1,6 @@
+import fs from "fs";
+import path from "path";
+
 /**
  * Code Quality utilities for Agent Atabey.
  *
@@ -26,8 +29,6 @@ export interface QualityAnalysisResult {
  * Scans for long functions, deep nesting, and `any` type usage.
  */
 export function analyzePathQuality(projectRoot: string, targetPath: string): QualityAnalysisResult {
-    const fs = require("fs") as typeof import("fs");
-    const path = require("path") as typeof import("path");
     const fullPath = path.join(projectRoot, targetPath);
 
     const issues: QualityIssue[] = [];

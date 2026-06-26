@@ -9,6 +9,11 @@ export const ColorPaletteSchema = z.object({
     accent: z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/),
 });
 
+export const GovernanceConfigSchema = z.object({
+    authorizedAgents: z.record(z.array(z.string())).optional(),
+    operationRisk: z.record(z.number()).optional(),
+});
+
 /**
  * Agent Atabey config.json Schema
  */
@@ -30,7 +35,8 @@ export const ConfigSchema = z.object({
         frontend: "apps/web",
         docs: "docs",
         tests: "tests"
-    })
+    }),
+    governance: GovernanceConfigSchema.optional()
 });
 
 /**

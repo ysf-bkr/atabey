@@ -284,6 +284,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             }
         } catch (e) { process.stderr.write(`[SILENT ROUTER] Error: ${(e as Error).message}\n`); }
 
+        // [CRUD GOVERNANCE] Verify agent permissions for high-risk operations
+        try {
+            const { GovernanceEngine } = await import("../../modules/engines/crud-governance.js");
+            const taskStr = name === "run_shell_command" ? (maskedArgs.command as string || "") : `${name} ${argsJson}`;
+            const operation = GovernanceEngine.classifyTask(taskStr);
+            if (operation) {
+                const decision = await GovernanceEngine.evaluate(detectedAgent, operation, taskStr, traceId);
+                if (decision.requiresApproval) {
+                    process.stderr.write(`[GOVERNANCE] Blocked: ${decision.reason}\n`);
+                    broadcastWS("governance_violation", { agent: detectedAgent, tool: name, error: decision.reason, timestamp: new Date().toISOString() });
+                    return { isError: true, content: [{ type: "text" as const, text: `[GOVERNANCE] Blocked: ${decision.reason}` }] };
+                }
+            }
+        } catch (e) {
+            process.stderr.write(`[GOVERNANCE] evaluate error: ${(e as Error).message}\n`);
+        }
+
         // [LOOP DETECTION] Check for infinite loop patterns
         try {
             const { recordAndCheck } = await import("./utils/loop-detector.js");

@@ -70,6 +70,28 @@ export function scaffoldFrameworkConfigs(
         theme: {
             palette: selectedPalette,
             colors: palette
+        },
+        governance: {
+            authorizedAgents: {
+                SCHEMA_CHANGE: ["@manager", "@database", "@architect"],
+                BULK_DELETE: ["@manager"],
+                ROLE_CHANGE: ["@manager"],
+                BILLING_CHANGE: ["@manager"],
+                PII_EXPORT: ["@manager", "@security"],
+                ENV_CHANGE: ["@manager", "@devops"],
+                PRODUCTION_DEPLOY: ["@manager", "@devops"],
+                FORCE_PUSH: ["@manager", "@git"],
+            },
+            operationRisk: {
+                SCHEMA_CHANGE: 70,
+                BULK_DELETE: 90,
+                ROLE_CHANGE: 80,
+                BILLING_CHANGE: 85,
+                PII_EXPORT: 95,
+                ENV_CHANGE: 75,
+                PRODUCTION_DEPLOY: 80,
+                FORCE_PUSH: 60,
+            }
         }
     };
     writeJsonFile(path.join(frameworkDir, "config.json"), config, dryRun);

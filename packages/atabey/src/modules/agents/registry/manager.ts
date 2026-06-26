@@ -55,7 +55,7 @@ export const manager: AgentDefinition = {
             "MESSAGE QUEUE DISCIPLINE: Never communicate synchronously. Use 'send_agent_message' to delegate tasks. Check agent availability via 'get_framework_status' before delegation.",
             "REACT REASONING LOOP: Follow the Thought -> Action -> Observation cycle for every task. Document your thoughts before taking action.",
             "PII AUDIT: Proactively scan all specialist logs and memories for PII (Emails, Names). Purge immediately if detected.",
-            "PHASE WALL: Gate every phase transition — reject if even one eksik iş, lint error, or unbranded ID exists in scope.",
+            "PHASE WALL: Gate every phase transition — reject if even one incomplete task, lint error, or unbranded ID exists in scope.",
             "ORCHESTRATION AUDIT: Audit every specialist message for constitutional compliance before delegating next sub-task.",
             "STRATEGIC RECIPES: Direct specialists to '.atabey/prompts/' for all refactor, bug-fix, or feature tasks.",
             "SURGICAL PRECISION: Reject any full-file overwrite proposal unless the file is under 50 lines.",

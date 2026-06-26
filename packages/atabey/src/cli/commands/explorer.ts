@@ -12,7 +12,7 @@ export async function explorerGraphCommand(targetPath: string) {
     files.forEach((f) => {
         const content = fs.readFileSync(f, "utf8");
         const name = path.basename(f, path.extname(f));
-        const imports = content.match(/from\s+['"]\.\.?\/[^'"]+['"]/g) || [];
+        const imports: string[] = content.match(/from\s+['"]\.\.?\/[^'"]+['"]/g) || [];
         imports.forEach((imp) => {
             const target = path.basename(imp.split(/['"]/)[1]);
             edges.push(`${name} --> ${target}`);

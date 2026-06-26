@@ -36,7 +36,7 @@ describe("Context Optimizer", () => {
             const largeText = "x".repeat(20000); // ~5000 tokens
             const result = checkTokenBudget("test-agent", "read_file", largeText);
             expect(result).toContain("TOKEN BUDGET");
-            expect(result).toContain("too large");
+            expect(result).toContain("exceeds");
         });
 
         it("should track token usage per agent", () => {
@@ -59,7 +59,7 @@ describe("Context Optimizer", () => {
         });
 
         it("should truncate large content with header note", () => {
-            const lines = Array.from({ length: 500 }, (_, i) => `const line${i} = ${i};`);
+            const lines = Array.from({ length: 1500 }, (_, i) => `const line${i} = ${i};`);
             const content = lines.join("\n");
             const result = smartTruncateFile(content, "large.ts", "default");
 

@@ -30,6 +30,8 @@ export interface AdapterSkillConfig {
         description: string;
         /** Special rules for this skill in this adapter */
         mandates: string[];
+        /** Whether the skill is disabled */
+        disabled?: boolean;
     }>;
     /** Adapter's native tool mapping (internal → platform) */
     toolMapping: Record<string, string>;

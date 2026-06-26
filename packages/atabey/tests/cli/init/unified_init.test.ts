@@ -9,15 +9,18 @@ import {
     MEMORY_FILES,
     NATIVE_AGENT_PATHS, UNIFIED_ADAPTER_SLUG
 } from "../../../src/shared/constants.js";
+import { AtabeyStorage } from "../../../src/shared/storage.js";
 
 describe("Unified Init (default all adapters)", () => {
     let tempDir: string;
     let prevAntigravityDir: string | undefined;
 
     beforeEach(() => {
+        AtabeyStorage.reset();
         const workspaceTemp = path.join(process.cwd(), "tests", ".temp-init");
         fs.mkdirSync(workspaceTemp, { recursive: true });
         tempDir = fs.mkdtempSync(path.join(workspaceTemp, "unified-init-"));
+        process.env.ATABEY_TEST_DIR = path.join(tempDir, ".atabey");
         // Keep global Antigravity plugin writes inside the temp workspace so the
         // suite never touches the real ~/.gemini/antigravity-cli directory.
         prevAntigravityDir = process.env.ANTIGRAVITY_GLOBAL_DIR;
@@ -26,6 +29,8 @@ describe("Unified Init (default all adapters)", () => {
     });
 
     afterEach(() => {
+        delete process.env.ATABEY_TEST_DIR;
+        AtabeyStorage.reset();
         fs.rmSync(tempDir, { recursive: true, force: true });
         if (prevAntigravityDir === undefined) {
             delete process.env.ANTIGRAVITY_GLOBAL_DIR;

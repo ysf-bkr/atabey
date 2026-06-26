@@ -86,7 +86,7 @@ tests/test-init/
 *.tmp
 *.temp
 .cache/
-.atabey/*.db
+.atabey/*.db*
 .atabey/finops/
 .atabey/telemetry/
 tests/.temp-init/

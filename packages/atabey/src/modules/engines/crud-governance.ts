@@ -18,6 +18,9 @@
 import { logger } from "../../shared/logger.js";
 import { AtabeyStorage } from "../../shared/storage.js";
 import { asAgentID, asTraceID } from "../../shared/types.js";
+import { getFrameworkDir } from "../../cli/utils/memory.js";
+import path from "path";
+import fs from "fs";
 
 export type HighRiskOperation =
     | "SCHEMA_CHANGE"
@@ -56,8 +59,8 @@ export interface GovernanceDecision {
  * 5. Only after human approval → operation proceeds
  */
 export class GovernanceEngine {
-    // Agents authorized to perform each operation type
-    private static AUTHORIZED_AGENTS: Record<HighRiskOperation, string[]> = {
+    // Default agents authorized to perform each operation type
+    private static readonly AUTHORIZED_AGENTS_DEFAULT: Record<HighRiskOperation, string[]> = {
         SCHEMA_CHANGE: ["@manager", "@database", "@architect"],
         BULK_DELETE: ["@manager"],
         ROLE_CHANGE: ["@manager"],
@@ -68,8 +71,8 @@ export class GovernanceEngine {
         FORCE_PUSH: ["@manager", "@git"],
     };
 
-    // Risk weight for each operation (used by RiskEngine)
-    private static OPERATION_RISK: Record<HighRiskOperation, number> = {
+    // Default risk weight for each operation (used by RiskEngine)
+    private static readonly OPERATION_RISK_DEFAULT: Record<HighRiskOperation, number> = {
         SCHEMA_CHANGE: 70,
         BULK_DELETE: 90,
         ROLE_CHANGE: 80,
@@ -79,6 +82,38 @@ export class GovernanceEngine {
         PRODUCTION_DEPLOY: 80,
         FORCE_PUSH: 60,
     };
+
+    private static getAuthorizedAgents(operation: HighRiskOperation): string[] {
+        try {
+            const frameworkDir = getFrameworkDir();
+            const configPath = path.join(frameworkDir, "config.json");
+            if (fs.existsSync(configPath)) {
+                const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+                if (config?.governance?.authorizedAgents?.[operation]) {
+                    return config.governance.authorizedAgents[operation];
+                }
+            }
+        } catch (e) {
+            logger.debug(`Failed to read authorized agents from config: ${e}`);
+        }
+        return GovernanceEngine.AUTHORIZED_AGENTS_DEFAULT[operation];
+    }
+
+    private static getOperationRisk(operation: HighRiskOperation): number {
+        try {
+            const frameworkDir = getFrameworkDir();
+            const configPath = path.join(frameworkDir, "config.json");
+            if (fs.existsSync(configPath)) {
+                const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+                if (typeof config?.governance?.operationRisk?.[operation] === "number") {
+                    return config.governance.operationRisk[operation];
+                }
+            }
+        } catch (e) {
+            logger.debug(`Failed to read operation risk from config: ${e}`);
+        }
+        return GovernanceEngine.OPERATION_RISK_DEFAULT[operation];
+    }
 
     /**
      * Evaluates whether an agent is allowed to perform a high-risk operation.
@@ -91,7 +126,7 @@ export class GovernanceEngine {
         traceId: string
     ): Promise<GovernanceDecision> {
         const normalizedAgent = agent.startsWith("@") ? agent : `@${agent}`;
-        const authorizedAgents = GovernanceEngine.AUTHORIZED_AGENTS[operation];
+        const authorizedAgents = GovernanceEngine.getAuthorizedAgents(operation);
 
         // Check if agent is authorized
         if (!authorizedAgents.includes(normalizedAgent)) {
@@ -130,7 +165,7 @@ export class GovernanceEngine {
         }
 
         // Authorized but still high-risk — requires human approval
-        const riskScore = GovernanceEngine.OPERATION_RISK[operation];
+        const riskScore = GovernanceEngine.getOperationRisk(operation);
 
         AtabeyStorage.saveLog({
             agent: normalizedAgent.replace("@", ""),

@@ -377,7 +377,7 @@ export class AtabeyStorage {
 
     public static getTasks(traceId?: TraceID): TaskRow[] {
         const rows: TaskDbRow[] = traceId ? this.getDB().prepare("SELECT * FROM tasks WHERE trace_id = ?").all(traceId) as TaskDbRow[] : this.getDB().prepare("SELECT * FROM tasks").all() as TaskDbRow[];
-        return rows.map((r: TaskDbRow) => { let deps: string[] = []; try { deps = JSON.parse(r.dependencies || "[]"); if (!Array.isArray(deps)) deps = []; } catch { deps = []; } return { id: asTaskID(r.id), traceId: r.trace_id as TraceID, description: r.description, agent: asAgentID(r.agent), status: r.status, priority: r.priority, dependencies: deps, createdAt: r.created_at }; });
+        return rows.map((r: TaskDbRow) => { let deps: string[]; try { deps = JSON.parse(r.dependencies || "[]"); if (!Array.isArray(deps)) deps = []; } catch { deps = []; } return { id: asTaskID(r.id), traceId: r.trace_id as TraceID, description: r.description, agent: asAgentID(r.agent), status: r.status, priority: r.priority, dependencies: deps, createdAt: r.created_at }; });
     }
 
     public static getLogs(agentName?: string): LogRow[] {

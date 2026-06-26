@@ -234,19 +234,19 @@ export class Storage {
                 const agentCount = db.prepare("SELECT COUNT(*) as count FROM agents").get() as { count: number };
                 if (agentCount.count === 0) {
                     const defaultAgents = [
-                        { name: "manager", desc: "Planlama, koordinasyon ve otonom delege etme uzmanı.", skills: '["planning", "routing", "governance"]' },
-                        { name: "security", desc: "Statik kod analizi, bağımlılık güvenliği ve politika gate denetçisi.", skills: '["security_audit", "compliance"]' },
-                        { name: "architect", desc: "Sistem mimarisi, tasarım desenleri ve dosya düzeni planlayıcı.", skills: '["architecture", "file_layout"]' },
-                        { name: "backend", desc: "API geliştirme, iş mantığı (business logic) ve entegrasyonlar.", skills: '["backend_development", "rest_api"]' },
-                        { name: "frontend", desc: "Kullanıcı arayüzleri, CSS stilleri ve görsel kalıplar.", skills: '["frontend_development", "css_styling"]' },
-                        { name: "quality", desc: "Kod kapsamı, test otomasyonu ve test suite denetimi.", skills: '["testing", "code_coverage"]' },
-                        { name: "database", desc: "SQL şemaları, tablo tasarımı, optimizasyon ve Kysely entegrasyonu.", skills: '["database_design", "sql_queries"]' },
-                        { name: "analyst", desc: "Gereksinim analizi, kullanıcı senaryoları ve spesifikasyon üretimi.", skills: '["requirements", "specifications"]' },
-                        { name: "mobile", desc: "React Native ve mobil platform standartları uyum denetçisi.", skills: '["mobile_standards"]' },
-                        { name: "native", desc: "C++, Rust ve gömülü platform standartları denetçisi.", skills: '["native_standards"]' },
-                        { name: "devops", desc: "Docker, CI/CD süreçleri, kabuk betikleri ve sistem otomasyonu.", skills: '["devops_automation", "docker_config"]' },
-                        { name: "explorer", desc: "Kod tabanında keşif, anlamsal arama ve kod okuma.", skills: '["codebase_search"]' },
-                        { name: "git", desc: "Versiyon kontrolü, commit oluşturma, branch yönetimi ve diff analizi.", skills: '["git_operations"]' }
+                        { name: "manager", desc: "Orchestration, governance, and planning specialist.", skills: '["planning", "routing", "governance"]' },
+                        { name: "security", desc: "Static code analysis, dependency security, and policy gate auditor.", skills: '["security_audit", "compliance"]' },
+                        { name: "architect", desc: "System design, design patterns, and file layout planner.", skills: '["architecture", "file_layout"]' },
+                        { name: "backend", desc: "API development, business logic, and integrations.", skills: '["backend_development", "rest_api"]' },
+                        { name: "frontend", desc: "User interfaces, CSS styling, and visual layouts.", skills: '["frontend_development", "css_styling"]' },
+                        { name: "quality", desc: "Code coverage, test automation, and test suite verification.", skills: '["testing", "code_coverage"]' },
+                        { name: "database", desc: "SQL schemas, table design, optimization, and Kysely integration.", skills: '["database_design", "sql_queries"]' },
+                        { name: "analyst", desc: "Requirements analysis, user scenarios, and specification generation.", skills: '["requirements", "specifications"]' },
+                        { name: "mobile", desc: "React Native and mobile platform standards auditor.", skills: '["mobile_standards"]' },
+                        { name: "native", desc: "C++, Rust, and embedded platform standards auditor.", skills: '["native_standards"]' },
+                        { name: "devops", desc: "Docker, CI/CD processes, shell scripting, and automation.", skills: '["devops_automation", "docker_config"]' },
+                        { name: "explorer", desc: "Codebase discovery, semantic search, and reading.", skills: '["codebase_search"]' },
+                        { name: "git", desc: "Version control, commit generation, branch management, and diff analysis.", skills: '["git_operations"]' }
                     ];
                     const insert = db.prepare(`
                         INSERT INTO agents (name, state, task, last_updated)
