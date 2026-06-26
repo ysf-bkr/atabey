@@ -1,11 +1,12 @@
 {
-  "name": "atabey",
+  "name": "atabey-monorepo",
   "version": "0.0.16",
-  "description": "MCP-Powered AI Governance & Autonomous Orchestration Framework. Plugs into Claude Code, Gemini CLI, and Cursor as an MCP server.",
+  "description": "MCP-Powered AI Governance & Autonomous Orchestration Framework — Monorepo",
   "author": "Yusuf BEKAR",
   "license": "AGPL-3.0",
   "readme": "README.md",
   "type": "module",
+  "private": true,
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ysf-bkr/atabey.git"
@@ -14,82 +15,40 @@
   "bugs": {
     "url": "https://github.com/ysf-bkr/atabey/issues"
   },
-  "keywords": [
-    "ai",
-    "governance",
-    "orchestration",
-    "agents",
-    "mcp",
-    "typescript",
-    "framework",
-    "kvkk",
-    "gdpr",
-    "privacy"
-  ],
   "workspaces": [
-    "mcp"
-  ],
-  "bin": {
-    "atabey": "bin/cli.js"
-  },
-  "main": "dist/src/cli/index.js",
-  "files": [
-    "bin",
-    "dist",
-    "templates",
-    "README.md",
-    "LICENSE",
-    "mcp.json",
-    "ATABEY.md",
-    "PRIVACY.md",
-    "framework-mcp/dist",
-    "framework-mcp/package.json"
+    "packages/atabey",
+    "packages/atabey-mcp"
   ],
   "engines": {
     "node": ">=18.0.0"
   },
   "scripts": {
-    "build": "npm run build:core && npm run build:mcp && npm run build:ui",
-    "build:core": "tsc",
-    "build:mcp": "npm run build --prefix framework-mcp",
-    "build:ui": "npm run build --prefix framework-mcp/dashboard",
-    "lint": "eslint .",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
+    "build": "npm run build --workspaces",
+    "build:atabey": "npm run build -w packages/atabey",
+    "build:mcp": "npm run build -w packages/atabey-mcp",
+    "build:dashboard": "npm run build -w packages/atabey-mcp dashboard",
+    "lint": "eslint packages/",
+    "test": "npm run test --workspaces --if-present",
+    "test:atabey": "npm run test -w packages/atabey",
+    "test:mcp": "npm run test -w packages/atabey-mcp",
+    "test:coverage": "npm run test:coverage --workspaces --if-present",
     "prepublishOnly": "npm run build",
-    "clean": "rm -rf dist node_modules framework-mcp/node_modules framework-mcp/dist",
-    "atabey:status": "atabey status",
-    "atabey:trace": "atabey trace:new",
-    "atabey:verify": "atabey verify-contract",
-    "atabey:check": "atabey check",
-    "atabey:test": "vitest run",
-    "atabey:test:watch": "vitest",
-    "atabey:build": "npm run build --prefix framework-mcp"
+    "clean": "rm -rf node_modules packages/*/node_modules packages/*/dist",
+    "atabey:status": "npm run atabey -w packages/atabey status",
+    "atabey:check": "npm run atabey -w packages/atabey check",
+    "atabey:test": "npm run test:atabey",
+    "atabey:build": "npm run build"
   },
   "publishConfig": {
     "access": "public"
   },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
-    "better-sqlite3": "^12.10.1",
-    "chalk": "^5.6.2",
-    "js-yaml": "^4.2.0",
-    "typescript": "^5.9.3",
-    "ws": "^8.21.0",
-    "zod": "^3.24.2"
-  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/better-sqlite3": "^7.6.13",
-    "@types/node": "^25.9.1",
-    "@types/ws": "^8.18.1",
-    "@vitest/coverage-v8": "^3.2.6",
     "eslint": "^10.4.0",
     "globals": "^17.6.0",
-    "tsx": "^4.22.3",
     "typescript-eslint": "^8.0.0",
-    "vitest": "^3.0.0"
+    "vitest": "^3.0.0",
+    "@vitest/coverage-v8": "^3.2.6"
   },
   "atabey": {
     "version": "0.0.16",

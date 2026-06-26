@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## [0.0.17] — 2026-06-26
+
+### Added
+- **README.md Comprehensive Rewrite**: Added 5 Core Capabilities Overview table (Tools, Memory, Agents, Skills, Knowledge Base) with scoring. Added Supported Platforms section (7 platforms with MCP mode, tools, skills details). Added 32 MCP Tools categorized listing. Added 7 Core Skills table with platform adaptation. Added 3-Layer Memory System with flow diagram. Added Knowledge Base (30+ Standards) by category. Added 13-Layer Governance Pipeline detailed breakdown. Added KVKK/GDPR Compliance matrix. Added 12 new badge indicators (MCP Tools, Agents, Platforms, Skills, Governance Score, Orchestration Score).
+
+### Enhancements
+- **Specialty Memory Success Learning** (`src/modules/engines/evaluation-engine.ts`): `updateSpecialtyMemory()` now also saves success lessons via `extractSuccessLesson()` when score >= 80. Agents now learn from both failures AND successes.
+- **Specialty Memory Auto-Injection** (`src/modules/engines/agent-executor.ts`): `readLearnedConventions()` is now called during agent execution and injected via `buildSilentContext()` in silent-router.ts. Agent lessons are automatically available in next session.
+- **Package versions**: atabey → 0.0.17, atabey-mcp → 0.0.17
+
+---
+
 ## [0.0.16] — 2026-06-21
 
 ### Added
