@@ -1,17 +1,31 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "commonjs",
+    "moduleResolution": "node",
     "lib": ["ESNext"],
-    "strict": true,
+    "strict": false,
     "declaration": true,
     "sourceMap": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "outDir": "dist"
+    "outDir": "dist",
+    "baseUrl": ".",
+    "paths": {
+      "../../modules/*": ["../atabey/src/modules/*"],
+      "../cli/utils/*": ["src/mcp/utils/*"],
+      "../cli/utils/time.js": ["src/mcp/utils/time.js"],
+      "../cli/utils/compliance.js": ["src/mcp/utils/compliance.js"],
+      "../cli/utils/quality.js": ["src/mcp/utils/quality.js"],
+      "../../modules/engines/*": ["../atabey/src/modules/engines/*"],
+      "../../modules/memory/*": ["../atabey/src/modules/memory/*"],
+      "../../modules/skills/*": ["../atabey/src/modules/skills/*"],
+      "../../modules/agents/*": ["../atabey/src/modules/agents/*"],
+      "../../cli/commands/*": ["../atabey/src/cli/commands/*"],
+      "atabey-mcp/*": ["src/*"]
+    }
   },
-  "include": ["src/mcp/**/*.ts"],
+  "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

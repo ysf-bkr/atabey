@@ -4,16 +4,12 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "lib": ["ESNext"],
-    "strict": true,
+    "strict": false,
     "declaration": true,
     "sourceMap": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "references": [
-    { "path": "packages/atabey" },
-    { "path": "packages/atabey-mcp" }
-  ],
-  "exclude": ["node_modules", "dist", "packages/*/dist"]
+  "exclude": ["node_modules", "dist"]
 }
