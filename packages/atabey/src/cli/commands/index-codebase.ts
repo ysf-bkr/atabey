@@ -28,6 +28,17 @@ export async function indexCodebaseCommand(dirPath: string = process.cwd()) {
         }
     }
 
+    // Also explicitly include .atabey/knowledge standards
+    const knowledgeDir = path.join(dirPath, ".atabey", "knowledge");
+    if (fs.existsSync(knowledgeDir)) {
+        const kFiles = fs.readdirSync(knowledgeDir);
+        for (const kf of kFiles) {
+            if (kf.endsWith(".md")) {
+                filesToIndex.push(path.join(knowledgeDir, kf));
+            }
+        }
+    }
+
     try {
         traverse(dirPath);
         UI.success(`Found ${filesToIndex.length} files to index.`);
@@ -42,11 +53,12 @@ export async function indexCodebaseCommand(dirPath: string = process.cwd()) {
             // Skip huge files
             if (content.length > 50000) continue; 
 
+            const isRule = file.includes(".atabey/knowledge");
             await CoreMemory.remember({
                 content,
-                category: "CODE_SNIPPET",
+                category: isRule ? "RULE" : "CODE_SNIPPET",
                 filePath: relativePath,
-                tags: ["codebase", path.extname(file).replace(".", "")]
+                tags: isRule ? ["knowledge", "standard"] : ["codebase", path.extname(file).replace(".", "")]
             });
             count++;
         }

@@ -83,6 +83,30 @@ export function getDocumentStorePath() {
     return path.join(frameworkDir, "memory");
 }
 
+async function indexKnowledgeBaseIntoVectorMemory(frameworkDir: string) {
+    try {
+        const { CoreMemory } = await import("../../modules/memory/core.js");
+        const knowledgeDir = path.join(frameworkDir, "knowledge");
+        if (fs.existsSync(knowledgeDir)) {
+            const files = fs.readdirSync(knowledgeDir);
+            for (const file of files) {
+                if (file.endsWith(".md")) {
+                    const filePath = path.join(knowledgeDir, file);
+                    const content = fs.readFileSync(filePath, "utf8");
+                    await CoreMemory.remember({
+                        content,
+                        category: "RULE",
+                        filePath: path.relative(process.cwd(), filePath),
+                        tags: ["knowledge", "standard"],
+                    });
+                }
+            }
+        }
+    } catch (e) {
+        logger.debug("Failed to automatically index knowledge base into vector store", e);
+    }
+}
+
 export function initDocumentStore(frameworkDir?: string) {
     const storePath = frameworkDir ? path.join(frameworkDir, "memory") : getDocumentStorePath();
     ensureDir(storePath);
@@ -108,6 +132,9 @@ export function initDocumentStore(frameworkDir?: string) {
 
     // Ensure the initial Markdown view is created
     syncMarkdownMemory(frameworkDir);
+
+    // Auto-index knowledge base files into vector memory
+    indexKnowledgeBaseIntoVectorMemory(frameworkDir || getFrameworkDir()).catch(() => {});
 }
 
 export function readState() {

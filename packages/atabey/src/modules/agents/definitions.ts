@@ -391,15 +391,11 @@ function buildSystemPrompt(
     ];
 
     if (ag.instructions.knowledgeFiles?.length) {
-        lines.push("", "## Governance Standards (Required Reading)");
-        lines.push("> Read and internalize the following standards before acting on any task.");
+        lines.push("", "## Governance Standards (Dynamic RAG)");
+        lines.push("> You have access to corporate standards via the 'search_knowledge' tool. You are required to follow these standards. Query them dynamically when relevant:");
         ag.instructions.knowledgeFiles.forEach((f: string) => {
-            const filePath = path.join(baseKnowledgeDir, f);
-            if (fs.existsSync(filePath)) {
-                lines.push("", `### 📘 ${f}`, "", fs.readFileSync(filePath, "utf8").trim());
-            } else {
-                lines.push("", `### 📘 ${f}`, `> [WARN] File not found at ${filePath}. Run atabey init to scaffold standards.`);
-            }
+            const standardTopic = f.replace("-standards.md", "").replace(".md", "");
+            lines.push(`- **${f}** — Dynamic search query: "${standardTopic}"`);
         });
     }
 
@@ -482,11 +478,11 @@ export function toAntigravityJson(ag: AgentDefinition, baseKnowledgeDir?: string
     const knowledgeBase = baseKnowledgeDir ?? path.join(getPackageRoot(), "templates/standards");
 
     const knowledgeSections = (ag.instructions.knowledgeFiles ?? []).map((f: string) => {
-        const filePath = path.join(knowledgeBase, f);
-        const content = fs.existsSync(filePath)
-            ? fs.readFileSync(filePath, "utf8").trim()
-            : `(${f} — file not found at build time)`;
-        return { title: `Required Reading — ${f}`, content };
+        const standardTopic = f.replace("-standards.md", "").replace(".md", "");
+        return {
+            title: `Required Reading — ${f}`,
+            content: `Comply with standard: ${f}. This standard is indexed in your Vector Memory. You MUST query it dynamically using the 'search_knowledge' tool (query: "${standardTopic}") when working on related tasks.`
+        };
     });
 
     // Read learned conventions from local memory if exist (Memory V2)
