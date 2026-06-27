@@ -65,9 +65,21 @@ if (nodeMajor < 18) {
 }
 
 // ─── Start CLI ────────────────────────────────────────────────────
-const cliPath = join(__dirname, "../dist/src/cli/index.js");
+const candidates = [
+    join(__dirname, "../dist/src/cli/index.js"),
+    join(__dirname, "../dist/atabey/src/cli/index.js"),
+    join(__dirname, "../dist/cli/index.js"),
+];
 
-if (!fs.existsSync(cliPath)) {
+let cliPath = "";
+for (const cand of candidates) {
+    if (fs.existsSync(cand)) {
+        cliPath = cand;
+        break;
+    }
+}
+
+if (!cliPath) {
     process.stderr.write(ERRORS.BUILD_REQUIRED);
     process.exit(1);
 }

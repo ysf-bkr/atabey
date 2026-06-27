@@ -11,12 +11,12 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "dist",
-    "baseUrl": "..",
+    "baseUrl": ".",
     "paths": {
-      "@atabey/shared": ["packages/shared/src/index.ts"],
-      "@atabey/shared/*": ["packages/shared/src/*"],
-      "atabey-mcp/src/mcp/utils/*": ["atabey-mcp/src/mcp/utils/*"],
-      "atabey-mcp/src/shared/*": ["atabey-mcp/src/shared/*"]
+      "@atabey/shared": ["../shared/src/index.ts"],
+      "@atabey/shared/*": ["../shared/src/*"],
+      "atabey-mcp/src/mcp/utils/*": ["../atabey-mcp/src/mcp/utils/*"],
+      "atabey-mcp/src/shared/*": ["../atabey-mcp/src/shared/*"]
     }
   },
   "include": ["src/**/*.ts"],

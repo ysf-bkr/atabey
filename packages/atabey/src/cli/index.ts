@@ -159,6 +159,13 @@ const COMMANDS: Record<string, { run: (args: string[]) => Promise<void>; descrip
         },
         description: "Security audit",
     },
+    index: {
+        run: async (args) => {
+            const { indexCodebaseCommand } = await import("./commands/index-codebase.js");
+            await indexCodebaseCommand(args[0] || process.cwd());
+        },
+        description: "Index codebase & rules into vector memory for dynamic RAG",
+    },
 };
 
 // ─── Aliases (shortcuts for power users) ───────────────────────────────────
