@@ -86,8 +86,8 @@ tests/test-init/
 *.tmp
 *.temp
 .cache/
-.atabey/*.db*
-.atabey/finops/
-.atabey/telemetry/
+**/.atabey/
+**/atabey.db*
+**/pending-events.jsonl
 tests/.temp-init/
 

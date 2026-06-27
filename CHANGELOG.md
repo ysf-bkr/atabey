@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## [0.0.19] — 2026-06-27
+
+### Fixed
+- **RegExp Stateful `lastIndex` Bug** (`packages/shared/pii.ts`): Fixed RegExp `lastIndex` status leakage in `containsPII` by resetting `lastIndex = 0` before and after testing, preventing false negatives on consecutive pattern matches.
+- **Lock Concurrency Race Condition** (`packages/shared/lock.ts`): Replaced check-then-act (SELECT then INSERT) pattern with SQLite atomic `INSERT OR IGNORE` in `DistributedLock.acquire`, preventing concurrency crashes and unique constraint violations under load.
+- **Monorepo Cross-Package Imports**: Fixed broken relative path imports (`../cli/...` and `../../modules/...`) in `packages/atabey-mcp` referencing `packages/atabey` package. Replaced relative paths with standard `atabey/src/*` path mappings to enable successful `tsc` type checking and compilation.
+- **Linter Console Warnings** (`packages/atabey-mcp/src/mcp/utils/web-config.ts`): Replaced forbidden `console.error` calls with standard `process.stderr.write` to satisfy ESLint `no-console` policy.
+
+### Changed
+- Package versions bumped to 0.0.19 across all workspaces.
+- Cleaned up redundant `.atabey` runtime state files from subdirectories and corrupt database backups.
+
+---
+
 ## [0.0.18] — 2026-06-26
 
 ### Added
