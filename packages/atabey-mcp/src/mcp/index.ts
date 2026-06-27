@@ -14,7 +14,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { WebSocket, WebSocketServer } from "ws";
 
-import { generateULID } from "../cli/utils/time.js";
+import { generateULID } from "atabey/src/cli/utils/time.js";
 import { Audit } from "../shared/audit.js";
 import { maskText, maskToolArgs, maskToolResult } from "../shared/pii.js";
 import { Storage } from "../shared/storage.js";
@@ -286,7 +286,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         // [CRUD GOVERNANCE] Verify agent permissions for high-risk operations
         try {
-            const { GovernanceEngine } = await import("../../modules/engines/crud-governance.js");
+            const { GovernanceEngine } = await import("atabey/src/modules/engines/crud-governance.js");
             const taskStr = name === "run_shell_command" ? (maskedArgs.command as string || "") : `${name} ${argsJson}`;
             const operation = GovernanceEngine.classifyTask(taskStr);
             if (operation) {
@@ -359,7 +359,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         // [HUMAN-IN-LOOP] Check risk gate before execution
         try {
-            const { RiskEngine } = await import("../../modules/engines/risk-engine.js");
+            const { RiskEngine } = await import("atabey/src/modules/engines/risk-engine.js");
             const riskContext = `${name} ${JSON.stringify(maskedArgs)}`;
             const riskResult = RiskEngine.assessTaskRisk(riskContext);
             if (riskResult.totalScore > 0) {
@@ -671,7 +671,7 @@ function createUnifiedServer() {
                     serveJson(res, 200, { success: true, data: results });
                     return;
                 }
-                const { CoreMemory } = await import("../../modules/memory/core.js");
+                const { CoreMemory } = await import("atabey/src/modules/memory/core.js");
                 const results = await CoreMemory.recall(query, { limit });
                 // [KVKK/GDPR] Mask PII in memory content before returning
                 const flattened = results.map(r => ({
@@ -926,7 +926,7 @@ function createUnifiedServer() {
         // Compliance
         if (pathname === "/api/compliance") {
             try {
-                const { scanProjectCompliance } = await import("../cli/utils/compliance.js");
+                const { scanProjectCompliance } = await import("atabey/src/cli/utils/compliance.js");
                 const targetPath = params.path || "src";
                 const scanPath = path.join(PROJECT_ROOT, targetPath);
                 const rawIssues = scanProjectCompliance(scanPath);
@@ -949,7 +949,7 @@ function createUnifiedServer() {
         // Quality
         if (pathname === "/api/quality") {
             try {
-                const { analyzePathQuality } = await import("../cli/utils/quality.js");
+                const { analyzePathQuality } = await import("atabey/src/cli/utils/quality.js");
                 const targetPath = params.path || "src";
                 const result = analyzePathQuality(PROJECT_ROOT, targetPath);
                 serveJson(res, 200, {
@@ -1269,7 +1269,7 @@ function createUnifiedServer() {
         // Adapter Skills
         if (pathname === "/api/adapters/skills") {
             try {
-                const { ADAPTER_SKILLS } = await import("../../modules/skills/adapter-skills.js");
+                const { ADAPTER_SKILLS } = await import("atabey/src/modules/skills/adapter-skills.js");
                 const summary = Object.entries(ADAPTER_SKILLS).map(([id, config]) => ({
                     id, skillCount: Object.keys(config.enabledSkills).length,
                     toolsCount: config.toolMapping ? Object.keys(config.toolMapping).length : 0,

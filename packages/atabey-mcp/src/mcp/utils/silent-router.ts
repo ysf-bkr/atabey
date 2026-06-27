@@ -14,8 +14,8 @@
  * - Stealth notifications (stderr/dashboard only, never chat)
  */
 
-import { EvaluationEngine } from "atabey-mcp/../modules/engines/evaluation-engine.js";
-import { RoutingEngine } from "atabey-mcp/../modules/engines/routing-engine.js";
+import { EvaluationEngine } from "atabey/src/modules/engines/evaluation-engine.js";
+import { RoutingEngine } from "atabey/src/modules/engines/routing-engine.js";
 
 // ─── Configuration ────────────────────────────────────────────────
 
@@ -45,7 +45,7 @@ async function loadAgentRules(): Promise<Map<string, AgentRules>> {
     if (agentRuleCache) return agentRuleCache;
 
     try {
-        const { ALL_AGENTS } = await import("../../modules/agents/definitions.js");
+        const { ALL_AGENTS } = await import("atabey/src/modules/agents/definitions.js");
         agentRuleCache = new Map();
         for (const agent of ALL_AGENTS) {
             agentRuleCache.set(agent.name, {

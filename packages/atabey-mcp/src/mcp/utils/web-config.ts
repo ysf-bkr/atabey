@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { getFrameworkDir } from "atabey-mcp/../cli/utils/memory.js";
+import { getFrameworkDir } from "atabey/src/cli/utils/memory.js";
 
 export interface WebConfig {
     projectPath: string;
@@ -88,20 +88,20 @@ export function startOrchestratorLoop(): { success: boolean; message: string } {
     activeOrchestratorAbortController = new AbortController();
 
     // Trigger orchestration loop asynchronously
-    import("../../cli/commands/orchestrate.js").then(async ({ orchestrateCommand }) => {
+    import("atabey/src/cli/commands/orchestrate.js").then(async ({ orchestrateCommand }) => {
         try {
             // Pass target path and abort signal
             process.env.ATABEY_TEST_DIR = config.projectPath;
             // Run loop
             await orchestrateCommand({ signal: activeOrchestratorAbortController?.signal });
         } catch (e) {
-            console.error("Orchestrator Loop Error:", e);
+            process.stderr.write(`Orchestrator Loop Error: ${(e as Error).message}\n`);
         } finally {
             isOrchestratorRunning = false;
         }
     }).catch(e => {
         isOrchestratorRunning = false;
-        console.error("Failed to load orchestrate command", e);
+        process.stderr.write(`Failed to load orchestrate command: ${(e as Error).message}\n`);
     });
 
     return { success: true, message: "Orchestrator started successfully." };

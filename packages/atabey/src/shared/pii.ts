@@ -143,7 +143,10 @@ export function maskObject(obj: unknown, depth = 0, strictMode = false): unknown
  */
 export function containsPII(text: string): boolean {
     for (const { pattern } of SENSITIVE_PATTERNS) {
-        if (pattern.test(text)) return true;
+        pattern.lastIndex = 0; // Reset RegExp state before test
+        const hasMatch = pattern.test(text);
+        pattern.lastIndex = 0; // Reset RegExp state after test
+        if (hasMatch) return true;
     }
     return false;
 }

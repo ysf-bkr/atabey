@@ -13,6 +13,8 @@
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
+      "atabey/*": ["../atabey/src/*"],
+      "atabey/src/*": ["../atabey/src/*"],
       "../../modules/*": ["../atabey/src/modules/*"],
       "../cli/utils/*": ["src/mcp/utils/*"],
       "../cli/utils/time.js": ["../atabey/src/cli/utils/time.ts"],
@@ -29,6 +31,8 @@
       "../../modules/agents/*": ["../atabey/src/modules/agents/*"],
       "../../cli/commands/*": ["../atabey/src/cli/commands/*"],
       "atabey-mcp/../src/shared/*": ["src/shared/*"],
+      "atabey-mcp/../modules/*": ["../atabey/src/modules/*"],
+      "atabey-mcp/../cli/utils/*": ["../atabey/src/cli/utils/*"],
       "atabey-mcp/utils/*": ["src/mcp/utils/*"],
       "atabey-mcp/shared/*": ["src/shared/*"],
       "atabey-mcp/*": ["src/mcp/*"]

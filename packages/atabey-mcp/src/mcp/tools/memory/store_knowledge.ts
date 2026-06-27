@@ -1,7 +1,7 @@
 import { ToolResult } from "../types.js";
-import { CoreMemory } from "atabey-mcp/../modules/memory/core.js";
-import { MemoryCategory } from "atabey-mcp/../modules/memory/types.js";
-import { asTraceID } from "atabey-mcp/../shared/types.js";
+import { CoreMemory } from "atabey/src/modules/memory/core.js";
+import { MemoryCategory } from "atabey/src/modules/memory/types.js";
+import { asTraceID } from "atabey/src/shared/types.js";
 
 interface StoreKnowledgeArgs {
     content: string;

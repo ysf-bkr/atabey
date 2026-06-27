@@ -77,30 +77,23 @@ export class DistributedLock {
         // Clean up stale locks first
         this.releaseStaleLocks();
 
-        // Check current lock status
-        const existing = db.prepare(
-            `SELECT * FROM ${this.TABLE} WHERE resource = ?`
-        ).get(resource) as LockInfo | undefined;
-
-        if (existing) {
-            // If force=true, override existing lock
-            if (options.force) {
-                db.prepare(`
-                    INSERT OR REPLACE INTO ${this.TABLE} (resource, ownerId, ownerName, acquiredAt, expiresAt, reason, traceId)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                `).run(resource, ownerId, ownerName, now.toISOString(), expiresAt, reason, options.traceId || null);
-                return true;
-            }
-            return false; // Already locked
+        // If force=true, override existing lock directly using INSERT OR REPLACE
+        if (options.force) {
+            db.prepare(`
+                INSERT OR REPLACE INTO ${this.TABLE} (resource, ownerId, ownerName, acquiredAt, expiresAt, reason, traceId)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            `).run(resource, ownerId, ownerName, now.toISOString(), expiresAt, reason, options.traceId || null);
+            return true;
         }
 
-        // Acquire new lock
-        db.prepare(`
-            INSERT INTO ${this.TABLE} (resource, ownerId, ownerName, acquiredAt, expiresAt, reason, traceId)
+        // Acquire new lock atomically using INSERT OR IGNORE.
+        // If the resource is already locked, changes will be 0.
+        const result = db.prepare(`
+            INSERT OR IGNORE INTO ${this.TABLE} (resource, ownerId, ownerName, acquiredAt, expiresAt, reason, traceId)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         `).run(resource, ownerId, ownerName, now.toISOString(), expiresAt, reason, options.traceId || null);
 
-        return true;
+        return result.changes > 0;
     }
 
     /**

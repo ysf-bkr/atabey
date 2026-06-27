@@ -1,6 +1,6 @@
 import { ToolResult } from "../types.js";
-import { CoreMemory } from "atabey-mcp/../modules/memory/core.js";
-import { MemoryCategory } from "atabey-mcp/../modules/memory/types.js";
+import { CoreMemory } from "atabey/src/modules/memory/core.js";
+import { MemoryCategory } from "atabey/src/modules/memory/types.js";
 
 interface SearchKnowledgeArgs {
     query: string;
