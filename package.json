@@ -16,6 +16,7 @@
     "url": "https://github.com/ysf-bkr/atabey/issues"
   },
   "workspaces": [
+    "packages/shared",
     "packages/atabey",
     "packages/atabey-mcp"
   ],

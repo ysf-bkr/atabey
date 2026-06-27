@@ -6,6 +6,7 @@ import { getFrameworkDir } from "../mcp/utils/memory.js";
 import { logger } from "./logger.js";
 import { maskText } from "./pii.js";
 import { AgentID, LogID, MessageID, TaskID, TraceID, asAgentID, asLogID, asMessageID, asTaskID } from "./types.js";
+import { databaseHolder } from "@atabey/shared";
 
 export interface AgentRow {
     name: AgentID;
@@ -113,6 +114,7 @@ export class AtabeyStorage {
             const dbPath = path.join(frameworkDir, "atabey.db");
             this.db = new Database(dbPath, { timeout: 5000 });
             this.db.pragma("journal_mode = WAL");
+            databaseHolder.setDB(this.db);
             this.initializeSchema();
         }
         return this.db;

@@ -36,6 +36,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
+    "@atabey/shared": "*",
     "atabey": "*"
   },
   "peerDependencies": {

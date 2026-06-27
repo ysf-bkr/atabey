@@ -11,13 +11,7 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "dist",
-    "baseUrl": "..",
-    "paths": {
-      "@atabey/shared": ["packages/shared/src/index.ts"],
-      "@atabey/shared/*": ["packages/shared/src/*"],
-      "atabey-mcp/src/mcp/utils/*": ["atabey-mcp/src/mcp/utils/*"],
-      "atabey-mcp/src/shared/*": ["atabey-mcp/src/shared/*"]
-    }
+    "baseUrl": "."
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]

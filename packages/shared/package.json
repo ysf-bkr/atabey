@@ -1,0 +1,26 @@
+{
+  "name": "@atabey/shared",
+  "version": "0.0.19",
+  "description": "Shared utility modules for Atabey AI Governance & Orchestration Layer",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./*.js": "./dist/*.js",
+    "./*": "./dist/*.js"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "peerDependencies": {
+    "better-sqlite3": "^12.10.1",
+    "chalk": "^5.6.2",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^25.9.1",
+    "typescript": "^5.9.3"
+  }
+}
