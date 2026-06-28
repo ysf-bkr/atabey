@@ -235,14 +235,15 @@ export class AtabeyStorage {
         const maskedSummary = maskText(log.summary);
         const maskedFindings = log.findings ? maskText(log.findings) : null;
 
-        // Get last log's hash
         let prevHash = "GENESIS";
         try {
             const lastRow = db.prepare("SELECT hash FROM logs ORDER BY id DESC LIMIT 1").get() as { hash: string } | undefined;
             if (lastRow && lastRow.hash) {
                 prevHash = lastRow.hash;
             }
-        } catch { /* use default */ }
+        } catch (err) {
+            logger.debug(`Failed to get last log hash, using default: ${(err as Error).message}`);
+        }
 
         // Compute hash
         const dataToHash = `${prevHash}|${agent}|${log.action}|${log.trace_id || ""}|${log.status}|${maskedSummary}|${timestamp}`;

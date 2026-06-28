@@ -4,7 +4,7 @@
     "module": "ESNext",
     "moduleResolution": "node",
     "lib": ["ESNext"],
-    "strict": false,
+    "strict": true,
     "declaration": true,
     "sourceMap": true,
     "esModuleInterop": true,

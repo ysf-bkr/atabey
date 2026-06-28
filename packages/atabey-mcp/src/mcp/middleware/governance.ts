@@ -1,6 +1,7 @@
 import { generateULID } from "atabey/src/cli/utils/time.js";
 import { maskToolArgs, maskToolResult } from "../../shared/pii.js";
 import { Storage } from "../../shared/storage.js";
+import { logger } from "../../shared/logger.js";
 import { TOOLS, toolHandlers, toolSchemas } from "../tools/index.js";
 
 function validateArgs(toolName: string, args: Record<string, unknown>): string | null {
@@ -56,7 +57,7 @@ export async function handleCallToolWithGovernance(
             const { Metrics } = await import("../utils/metrics.js");
             Metrics.logUsage(PROJECT_ROOT, clientAgent, toolName, estimatedTokens);
         } catch (e) {
-            process.stderr.write(`[METRICS] Error: ${(e as Error).message}\n`);
+            logger.error(`[METRICS] Error: ${(e as Error).message}`);
         }
 
         // [GOVERNANCE] Validate arguments against governance rules (pre-execution)
@@ -64,12 +65,12 @@ export async function handleCallToolWithGovernance(
             const { validateArgsAgainstRules } = await import("../utils/rules-engine.js");
             const governanceError = validateArgsAgainstRules(toolName, maskedArgs);
             if (governanceError) {
-                process.stderr.write(`[GOVERNANCE] Blocked: ${governanceError}\n`);
+                logger.warn(`[GOVERNANCE] Blocked: ${governanceError}`);
                 broadcastWS("governance_violation", { agent: clientAgent, tool: toolName, error: governanceError, timestamp: new Date().toISOString() });
                 return { isError: true, content: [{ type: "text" as const, text: governanceError }] };
             }
         } catch (e) {
-            process.stderr.write(`[GOVERNANCE] Module error: ${(e as Error).message}\n`);
+            logger.error(`[GOVERNANCE] Module error: ${(e as Error).message}`);
         }
 
         // [DISCIPLINE] Enforce AI discipline at tool level BEFORE execution
@@ -77,12 +78,12 @@ export async function handleCallToolWithGovernance(
             const { enforceDiscipline } = await import("../utils/discipline.js");
             const disciplineError = await enforceDiscipline(clientAgent, toolName, maskedArgs);
             if (disciplineError) {
-                process.stderr.write(`[DISCIPLINE] Blocked: ${disciplineError}\n`);
+                logger.warn(`[DISCIPLINE] Blocked: ${disciplineError}`);
                 broadcastWS("discipline_violation", { agent: clientAgent, tool: toolName, error: disciplineError, timestamp: new Date().toISOString() });
                 return { isError: true, content: [{ type: "text" as const, text: `[DISCIPLINE] ${disciplineError}` }] };
             }
         } catch (e) {
-            process.stderr.write(`[DISCIPLINE] Module error: ${(e as Error).message}\n`);
+            logger.error(`[DISCIPLINE] Module error: ${(e as Error).message}`);
         }
 
         // [SILENT ROUTER] Detect agent from context and inject rules
@@ -93,10 +94,10 @@ export async function handleCallToolWithGovernance(
             detectedAgent = detectAgent(toolName, maskedArgs);
             if (detectedAgent !== clientAgent) {
                 stealthNotify(detectedAgent, toolName, `Silently routed from ${clientAgent}`);
-                process.stderr.write(`[SILENT ROUTER] ${toolName} → ${detectedAgent} (from ${clientAgent})\n`);
+                logger.info(`[SILENT ROUTER] ${toolName} → ${detectedAgent} (from ${clientAgent})`);
             }
         } catch (e) {
-            process.stderr.write(`[SILENT ROUTER] Error: ${(e as Error).message}\n`);
+            logger.error(`[SILENT ROUTER] Error: ${(e as Error).message}`);
         }
 
         // [CRUD GOVERNANCE] Verify agent permissions for high-risk operations
@@ -107,13 +108,13 @@ export async function handleCallToolWithGovernance(
             if (operation) {
                 const decision = await GovernanceEngine.evaluate(detectedAgent, operation, taskStr, traceId);
                 if (decision.requiresApproval) {
-                    process.stderr.write(`[GOVERNANCE] Blocked: ${decision.reason}\n`);
+                    logger.warn(`[GOVERNANCE] Blocked: ${decision.reason}`);
                     broadcastWS("governance_violation", { agent: detectedAgent, tool: toolName, error: decision.reason, timestamp: new Date().toISOString() });
                     return { isError: true, content: [{ type: "text" as const, text: `[GOVERNANCE] Blocked: ${decision.reason}` }] };
                 }
             }
         } catch (e) {
-            process.stderr.write(`[GOVERNANCE] evaluate error: ${(e as Error).message}\n`);
+            logger.error(`[GOVERNANCE] evaluate error: ${(e as Error).message}`);
         }
 
         // [LOOP DETECTION] Check for infinite loop patterns
@@ -121,7 +122,7 @@ export async function handleCallToolWithGovernance(
             const { recordAndCheck } = await import("../utils/loop-detector.js");
             const loopAlert = recordAndCheck(detectedAgent, toolName, maskedArgs);
             if (loopAlert) {
-                process.stderr.write(`[LOOP DETECT] ${loopAlert.type}: ${loopAlert.detail}\n`);
+                logger.warn(`[LOOP DETECT] ${loopAlert.type}: ${loopAlert.detail}`);
                 broadcastWS("loop_detected", { agent: detectedAgent, tool: toolName, alert: loopAlert, timestamp: new Date().toISOString() });
                 if (loopAlert.severity === "critical" && loopAlert.cooldownUntil) {
                     const remaining = Math.ceil((loopAlert.cooldownUntil - Date.now()) / 1000);
@@ -132,7 +133,7 @@ export async function handleCallToolWithGovernance(
                 }
             }
         } catch (e) {
-            process.stderr.write(`[LOOP DETECT] Error: ${(e as Error).message}\n`);
+            logger.error(`[LOOP DETECT] Error: ${(e as Error).message}`);
         }
 
         // [FINOPS] Check budget BEFORE execution (record usage)
@@ -140,12 +141,12 @@ export async function handleCallToolWithGovernance(
             const { budgetManager } = await import("../utils/finops.js");
             const budgetError = budgetManager.recordUsage(detectedAgent, estimatedTokens);
             if (budgetError) {
-                process.stderr.write(`[FINOPS] Budget blocked: ${budgetError}\n`);
+                logger.warn(`[FINOPS] Budget blocked: ${budgetError}`);
                 broadcastWS("budget_blocked", { agent: detectedAgent, tool: toolName, error: budgetError, timestamp: new Date().toISOString() });
                 return { isError: true, content: [{ type: "text" as const, text: budgetError }] };
             }
         } catch (e) {
-            process.stderr.write(`[FINOPS] Error: ${(e as Error).message}\n`);
+            logger.error(`[FINOPS] Error: ${(e as Error).message}`);
         }
 
         // [LICENSE] Validate write content for license compliance (pre-execution)
@@ -157,13 +158,13 @@ export async function handleCallToolWithGovernance(
                 if (filePath && content) {
                     const licenseError = validateLicenseCompliance(filePath, content);
                     if (licenseError) {
-                        process.stderr.write(`[LICENSE] Blocked: ${licenseError}\n`);
+                        logger.warn(`[LICENSE] Blocked: ${licenseError}`);
                         broadcastWS("license_violation", { agent: detectedAgent, tool: toolName, error: licenseError, timestamp: new Date().toISOString() });
                         return { isError: true, content: [{ type: "text" as const, text: licenseError }] };
                     }
                 }
             } catch (e) {
-                process.stderr.write(`[LICENSE] Error: ${(e as Error).message}\n`);
+                logger.error(`[LICENSE] Error: ${(e as Error).message}`);
             }
         }
 
@@ -176,7 +177,7 @@ export async function handleCallToolWithGovernance(
                     AutoRollbackEngine.prepareWrite(filePath, traceId);
                 }
             } catch (e) {
-                process.stderr.write(`[AUTO-ROLLBACK] Prepare error: ${(e as Error).message}\n`);
+                logger.error(`[AUTO-ROLLBACK] Prepare error: ${(e as Error).message}`);
             }
         }
 
@@ -190,16 +191,16 @@ export async function handleCallToolWithGovernance(
                 const riskReason = riskResult.factors.map(f => f.description).join("; ") || "High-risk operation detected";
                 const gateResult = checkRiskGate(traceId, toolName, detectedAgent, riskResult.totalScore, riskReason, maskedArgs);
                 if (gateResult?.blocked) {
-                    process.stderr.write(`[RISK GATE] Blocked: ${riskReason} (score: ${riskResult.totalScore})\n`);
+                    logger.warn(`[RISK GATE] Blocked: ${riskReason} (score: ${riskResult.totalScore})`);
                     broadcastWS("risk_blocked", { agent: detectedAgent, tool: toolName, riskScore: riskResult.totalScore, traceId, timestamp: new Date().toISOString() });
                     return { isError: true, content: [{ type: "text" as const, text: gateResult.message! }] };
                 }
                 if (gateResult?.warning) {
-                    process.stderr.write(`[RISK WARNING] ${gateResult.warning}\n`);
+                    logger.warn(`[RISK WARNING] ${gateResult.warning}`);
                 }
             }
         } catch (e) {
-            process.stderr.write(`[RISK GATE] Error: ${(e as Error).message}\n`);
+            logger.error(`[RISK GATE] Error: ${(e as Error).message}`);
         }
 
         // Execute
@@ -232,7 +233,7 @@ export async function handleCallToolWithGovernance(
                     }
                 }
             } catch (e) {
-                process.stderr.write(`[AUTO-ROLLBACK] Validate error: ${(e as Error).message}\n`);
+                logger.error(`[AUTO-ROLLBACK] Validate error: ${(e as Error).message}`);
             }
         }
 
@@ -241,12 +242,12 @@ export async function handleCallToolWithGovernance(
             const { validateResponse } = await import("../utils/discipline.js");
             const responseError = validateResponse(toolName, result);
             if (responseError) {
-                process.stderr.write(`[DISCIPLINE] Response blocked: ${responseError}\n`);
+                logger.warn(`[DISCIPLINE] Response blocked: ${responseError}`);
                 broadcastWS("discipline_violation", { agent: detectedAgent, tool: toolName, error: responseError, timestamp: new Date().toISOString() });
                 return { isError: true, content: [{ type: "text" as const, text: `[DISCIPLINE] ${responseError}` }] };
             }
         } catch (e) {
-            process.stderr.write(`[DISCIPLINE] Response validation error: ${(e as Error).message}\n`);
+            logger.error(`[DISCIPLINE] Response validation error: ${(e as Error).message}`);
         }
 
         // [INJECTION PROTECTION] Sanitize prompt injection attempts in response text
@@ -258,7 +259,7 @@ export async function handleCallToolWithGovernance(
                     if (block.type === "text" && block.text) {
                         const scan = PromptInjectionProtection.sanitizeResponse(block.text);
                         if (scan.detected) {
-                            process.stderr.write(`[INJECTION PROTECTION] Neutralized prompt injection pattern: ${scan.patterns.join(", ")}\n`);
+                            logger.warn(`[INJECTION PROTECTION] Neutralized prompt injection pattern: ${scan.patterns.join(", ")}`);
                             Storage.saveLog({
                                 agent: detectedAgent,
                                 action: "INJECTION_DETECTION",
@@ -281,7 +282,7 @@ export async function handleCallToolWithGovernance(
                 }
             }
         } catch (err) {
-            process.stderr.write(`[INJECTION PROTECTION] Error: ${(err as Error).message}\n`);
+            logger.error(`[INJECTION PROTECTION] Error: ${(err as Error).message}`);
         }
 
         // [GOVERNANCE] Validate response against governance rules (post-execution)
@@ -290,11 +291,11 @@ export async function handleCallToolWithGovernance(
             const responseText = result.content?.filter(b => b.type === "text").map(b => b.text).join(" ") || "";
             const govResponseError = validateResponseAgainstRules(toolName, responseText);
             if (govResponseError) {
-                process.stderr.write(`[GOVERNANCE] Response violation: ${govResponseError}\n`);
+                logger.warn(`[GOVERNANCE] Response violation: ${govResponseError}`);
                 broadcastWS("governance_violation", { agent: detectedAgent, tool: toolName, error: govResponseError, timestamp: new Date().toISOString() });
             }
         } catch (e) {
-            process.stderr.write(`[GOVERNANCE] Response validation error: ${(e as Error).message}\n`);
+            logger.error(`[GOVERNANCE] Response validation error: ${(e as Error).message}`);
         }
 
         // [CONTEXT OPTIMIZER] Check token budget after execution
@@ -303,11 +304,11 @@ export async function handleCallToolWithGovernance(
             const responseText = result.content?.filter(b => b.type === "text").map(b => b.text).join(" ") || "";
             const budgetError = checkTokenBudget(detectedAgent, toolName, responseText);
             if (budgetError) {
-                process.stderr.write(`[TOKEN BUDGET] Warning: ${budgetError}\n`);
+                logger.warn(`[TOKEN BUDGET] Warning: ${budgetError}`);
                 broadcastWS("token_budget_warning", { agent: detectedAgent, tool: toolName, error: budgetError, timestamp: new Date().toISOString() });
             }
         } catch (e) {
-            process.stderr.write(`[TOKEN BUDGET] Error: ${(e as Error).message}\n`);
+            logger.error(`[TOKEN BUDGET] Error: ${(e as Error).message}`);
         }
 
         // [SILENT ROUTER] Build silent context injection
@@ -325,7 +326,7 @@ export async function handleCallToolWithGovernance(
                 }
             }
         } catch (e) {
-            process.stderr.write(`[SILENT ROUTER] Context injection error: ${(e as Error).message}\n`);
+            logger.error(`[SILENT ROUTER] Context injection error: ${(e as Error).message}`);
         }
 
         // Broadcast to dashboard WS

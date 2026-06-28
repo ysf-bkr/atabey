@@ -311,8 +311,8 @@ function createUnifiedServer() {
     httpServer.on("close", () => {
         clearInterval(broadcastInterval);
         wsClients.clear();
-        Storage.onMessageSaved = undefined;
-        Storage.onMessageStatusUpdated = undefined;
+        Storage.onMessageSaved = null;
+        Storage.onMessageStatusUpdated = null;
     });
 
     // ─── Start ───────────────────────────────────────────────

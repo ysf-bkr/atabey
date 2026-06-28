@@ -122,15 +122,14 @@ export async function checkCommand() {
     if (activeLayouts.length > 0) {
         UI.success(`Active agent layout(s): ${activeLayouts.join(", ")}`);
         
-        // Read expected agents from config.json to filter ALL_AGENTS checklist
         const configPath = path.join(frameworkDir, "config.json");
         let configuredAgents: string[] = [];
         if (fs.existsSync(configPath)) {
             try {
                 const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
                 configuredAgents = config.agents || [];
-            } catch {
-                // ignore read/parse errors
+            } catch (err) {
+                logger.debug(`Failed to parse config.json at ${configPath}: ${(err as Error).message}`);
             }
         }
 

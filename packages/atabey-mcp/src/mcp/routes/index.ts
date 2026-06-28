@@ -7,6 +7,7 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { Storage } from "../../shared/storage.js";
 import { Audit } from "../../shared/audit.js";
 import { maskText } from "../../shared/pii.js";
+import { logger } from "../../shared/logger.js";
 
 export interface McpSession {
     transport: SSEServerTransport;
@@ -95,7 +96,7 @@ export async function handleRequest(
         const { authenticate } = await import("../utils/auth.js");
         const auth = authenticate(req);
         if (!auth.authenticated) {
-            process.stderr.write(`[AUTH] Unauthorized request: ${pathname}\n`);
+            logger.warn(`[AUTH] Unauthorized request: ${pathname}`);
             serveJson(res, 401, { error: "Unauthorized. Provide Authorization: Bearer <token> header." });
             return;
         }
@@ -118,11 +119,11 @@ export async function handleRequest(
             toolCalls: 0,
         };
         sessions.set(sessionId, session);
-        process.stderr.write(`[MCP] Client connected: ${sessionId} (user: ${userName}, total: ${sessions.size})\n`);
+        logger.info(`[MCP] Client connected: ${sessionId} (user: ${userName}, total: ${sessions.size})`);
         broadcastWS("mcp_session", { sessionId, user: userName, action: "connected", total: sessions.size });
         res.on("close", () => {
             sessions.delete(sessionId);
-            process.stderr.write(`[MCP] Client disconnected: ${sessionId} (user: ${userName}, remaining: ${sessions.size})\n`);
+            logger.info(`[MCP] Client disconnected: ${sessionId} (user: ${userName}, remaining: ${sessions.size})`);
             broadcastWS("mcp_session", { sessionId, user: userName, action: "disconnected", total: sessions.size });
         });
         await server.connect(transport);
@@ -795,10 +796,11 @@ export async function handleRequest(
                         return;
                     }
 
-                    process.stderr.write(`[LOGIN ATTEMPT] username="${username}", token="${token}"\n`);
+                    const maskedToken = token.length > 8 ? `${token.slice(0, 4)}...${token.slice(-4)}` : "***";
+                    logger.info(`[LOGIN ATTEMPT] username="${username}", token="${maskedToken}"`);
                     const { authenticateToken } = await import("../utils/auth.js");
                     const result = authenticateToken(token);
-                    process.stderr.write(`[LOGIN RESULT] authenticated=${result.authenticated}, user="${result.user}"\n`);
+                    logger.info(`[LOGIN RESULT] authenticated=${result.authenticated}, user="${result.user}"`);
 
                     if (result.authenticated && (result.user === username || (result.user === "admin" && username === "admin"))) {
                         serveJson(res, 200, { success: true, user: { name: username, role: result.user === "admin" ? "admin" : "user" } });
@@ -806,7 +808,7 @@ export async function handleRequest(
                         serveJson(res, 401, { success: false, error: "Invalid username or token" });
                     }
                 } catch (err) {
-                    process.stderr.write(`[LOGIN ERROR] ${(err as Error).message}\n`);
+                    logger.error(`[LOGIN ERROR] ${(err as Error).message}`);
                     serveJson(res, 400, { success: false, error: (err as Error).message });
                 }
             });
