@@ -2,6 +2,7 @@
   "name": "atabey-shared",
   "version": "0.0.19",
   "description": "Shared utility modules for Atabey AI Governance & Orchestration Layer",
+  "license": "AGPL-3.0",
   "type": "module",
   "files": [
     "dist"

@@ -42,8 +42,18 @@ You (@backend): "Create a user login service with JWT authentication"
 
 **No separate terminal needed. No CLI commands for daily use.** Just chat with your AI and use `@agent` syntax.
 
-> [!NOTE]
-> **Execution Context:** The LLM inference/execution is handled entirely inside the developer's active AI interface (such as Claude Code or Cursor). Atabey acts as the context injector and policy engine, silently evaluating prompts, routing instructions, and checking output code against quality guidelines.
+## 🧠 How Atabey Relates to Your AI
+
+> [!IMPORTANT]
+> **Atabey does not write code.** The code is written by the AI assistant you are connected to (such as Claude Code, Gemini CLI, or Cursor). 
+> Atabey wraps your AI assistant with a powerful, deterministic software engineering discipline and governance layer:
+> 
+> 1. **Routing:** Directs instructions to the correct specialized virtual agent profile (`@backend`, `@security`, etc.).
+> 2. **Risk Engine:** Automatically scores operations for safety and halts risky actions (like mass deletions) for human approval.
+> 3. **Quality Gate:** Reviews the generated output against corporate standards, syntax correctness, and test metrics.
+> 4. **Memory:** Keeps track of past architectural decisions and specialty conventions so your AI assistant learns from history.
+> 
+> *We do not mimic the LLM; we discipline it.*
 
 ---
 
