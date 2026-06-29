@@ -1,1 +1,1 @@
-export * from "@atabey/shared/lock.js";
+export * from "atabey-shared/lock.js";

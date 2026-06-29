@@ -1,1 +1,1 @@
-export * from "@atabey/shared/pii.js";
+export * from "atabey-shared/pii.js";

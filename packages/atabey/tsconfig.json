@@ -13,8 +13,8 @@
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
-      "@atabey/shared": ["../shared/src/index.ts"],
-      "@atabey/shared/*": ["../shared/src/*"],
+      "atabey-shared": ["../shared/src/index.ts"],
+      "atabey-shared/*": ["../shared/src/*"],
       "atabey-mcp/src/mcp/utils/*": ["../atabey-mcp/src/mcp/utils/*"],
       "atabey-mcp/src/shared/*": ["../atabey-mcp/src/shared/*"]
     }

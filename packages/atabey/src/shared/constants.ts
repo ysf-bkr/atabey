@@ -1,1 +1,1 @@
-export * from "@atabey/shared/constants.js";
+export * from "atabey-shared/constants.js";

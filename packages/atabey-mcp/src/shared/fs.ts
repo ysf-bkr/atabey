@@ -1,1 +1,1 @@
-export * from "@atabey/shared/fs.js";
+export * from "atabey-shared/fs.js";

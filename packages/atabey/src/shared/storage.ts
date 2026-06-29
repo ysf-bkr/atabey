@@ -6,7 +6,7 @@ import { getFrameworkDir } from "../cli/utils/memory.js";
 import { logger } from "./logger.js";
 import { maskText } from "./pii.js";
 import { AgentID, LogID, MessageID, TaskID, TraceID, asAgentID, asLogID, asMessageID, asTaskID } from "./types.js";
-import { databaseHolder } from "@atabey/shared";
+import { databaseHolder } from "atabey-shared";
 
 export interface AgentRow {
     name: AgentID;

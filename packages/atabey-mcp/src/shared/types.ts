@@ -1,1 +1,1 @@
-export * from "@atabey/shared/types.js";
+export * from "atabey-shared/types.js";

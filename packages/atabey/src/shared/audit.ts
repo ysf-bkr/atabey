@@ -1,1 +1,1 @@
-export * from "@atabey/shared/audit.js";
+export * from "atabey-shared/audit.js";

@@ -13,8 +13,8 @@
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
-      "@atabey/shared": ["../shared/src/index.ts"],
-      "@atabey/shared/*": ["../shared/src/*"],
+      "atabey-shared": ["../shared/src/index.ts"],
+      "atabey-shared/*": ["../shared/src/*"],
       "atabey/*": ["../atabey/src/*"],
       "atabey/src/*": ["../atabey/src/*"],
       "../../modules/*": ["../atabey/src/modules/*"],

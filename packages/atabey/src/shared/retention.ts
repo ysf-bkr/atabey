@@ -1,1 +1,1 @@
-export * from "@atabey/shared/retention.js";
+export * from "atabey-shared/retention.js";

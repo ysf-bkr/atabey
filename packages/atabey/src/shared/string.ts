@@ -1,1 +1,1 @@
-export * from "@atabey/shared/string.js";
+export * from "atabey-shared/string.js";
