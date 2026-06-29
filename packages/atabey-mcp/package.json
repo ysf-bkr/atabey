@@ -23,7 +23,6 @@
   "files": [
     "bin",
     "dist",
-    "dashboard",
     "README.md",
     "LICENSE"
   ],
