@@ -13,6 +13,8 @@
 [![Governance Score](https://img.shields.io/badge/AI%20Governance-92%2F100-success)](https://github.com/ysf-bkr/atabey)
 [![Orchestration Score](https://img.shields.io/badge/Orchestration-90%2F100-success)](https://github.com/ysf-bkr/atabey)
 
+![Agent Atabey Dashboard Mockup](docs/assets/dashboard.jpg)
+
 **Agent Atabey** is an **MCP (Model Context Protocol) server** designed specifically for agentic developer workflows. It plugs directly into your AI coding interface — such as Claude Code, Gemini CLI, or Cursor — to govern, secure, and coordinate the terminal/CLI commands and file modification loops executed autonomously by these AI assistants.
 
 > [!NOTE]

@@ -4,6 +4,17 @@
   "description": "MCP-Powered AI Governance & Autonomous Orchestration Framework — MCP Server",
   "author": "Yusuf BEKAR",
   "license": "AGPL-3.0",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ai-agents",
+    "claude-code",
+    "cursor-ide",
+    "gemini-cli",
+    "governance",
+    "orchestration",
+    "typescript"
+  ],
   "type": "module",
   "repository": {
     "type": "git",

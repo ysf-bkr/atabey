@@ -3,6 +3,17 @@
   "version": "0.0.19",
   "description": "Shared utility modules for Atabey AI Governance & Orchestration Layer",
   "license": "AGPL-3.0",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ai-agents",
+    "claude-code",
+    "cursor-ide",
+    "gemini-cli",
+    "governance",
+    "orchestration",
+    "typescript"
+  ],
   "type": "module",
   "files": [
     "dist"
