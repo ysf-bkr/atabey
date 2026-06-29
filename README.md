@@ -15,6 +15,9 @@
 
 **Agent Atabey** is an **MCP (Model Context Protocol) server** designed specifically for agentic developer workflows. It plugs directly into your AI coding interface — such as Claude Code, Gemini CLI, or Cursor — to govern, secure, and coordinate the terminal/CLI commands and file modification loops executed autonomously by these AI assistants.
 
+> [!NOTE]
+> **Project Status (Pre-1.0):** Atabey is a serious, rapidly evolving, open-source governance layer for AI coding assistants. It is currently in active pre-1.0 development, moving towards a stable 1.0 release.
+
 > **Philosophy:** "Order from Chaos"
 > **Governance Context:** In an agentic workflow, the AI assistant runs the development tools, shell commands, and file edits. Atabey acts as the deterministic governance and safety layer over these AI execution loops.
 
@@ -233,6 +236,19 @@ npx atabey status
 # (Optional) Open the web dashboard
 npx atabey dashboard
 ```
+
+### Native Dependency & CI/CD Considerations
+
+Atabey utilizes `better-sqlite3` for local state persistence and high-performance vector operations. Since `better-sqlite3` includes native C++ modules, it requires binary compilation during installation under certain environments.
+
+If you encounter installation or test run issues (especially in restricted sandbox or CI/CD environments with no internet access or build tools):
+
+1. **Prebuilt Binaries:** npm will automatically try to download prebuilt binaries for your platform. Ensure your environment has outgoing network access to the GitHub/npmjs package registries.
+2. **Build Tools:** Ensure you have `python`, `make`, and a C++ compiler (like `gcc`/`g++`) installed on your system if you need to build from source.
+3. **CI/CD Environments:** For CI/CD test runners, you can bypass native sqlite3 compile-time issues by running with the `--ignore-scripts` flag if you only need the static analysis and typescript compilation checks:
+   ```bash
+   npm install --ignore-scripts
+   ```
 
 ---
 
