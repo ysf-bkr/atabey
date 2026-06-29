@@ -1,5 +1,5 @@
-import { maskText } from "atabey-mcp/../shared/pii.js";
-import { Metrics } from "atabey-mcp/utils/metrics.js";
+import { maskText } from "../../../shared/pii.js";
+import { Metrics } from "../../utils/metrics.js";
 import { HttpProxyRequestArgs, ToolResult } from "../types.js";
 
 // ─── CACHE STORAGE ──────────────────────────────────────────────────────────

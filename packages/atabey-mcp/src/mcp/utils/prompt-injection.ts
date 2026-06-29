@@ -8,7 +8,7 @@
  * hijacking the AI client (e.g., instructing it to delete files or ignore safety).
  */
 
-import { logger } from "atabey-mcp/../src/shared/logger.js";
+import { logger } from "../../shared/logger.js";
 
 // Common prompt injection signatures
 const INJECTION_PATTERNS = [

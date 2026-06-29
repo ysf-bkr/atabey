@@ -20,8 +20,8 @@
  * - HIGH (60-100): Blocked until approval
  */
 
-import { AtabeyStorage } from "atabey-mcp/../src/shared/storage.js";
-import { asAgentID, asTraceID } from "atabey-mcp/../src/shared/types.js";
+import { AtabeyStorage } from "../../shared/storage.js";
+import { asAgentID, asTraceID } from "../../shared/types.js";
 
 // ─── Configuration ────────────────────────────────────────────────
 

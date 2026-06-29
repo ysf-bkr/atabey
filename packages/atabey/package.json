@@ -12,7 +12,11 @@
   "bin": {
     "atabey": "./bin/cli.js"
   },
-  "main": "./dist/cli/index.js",
+  "main": "./dist/atabey/src/cli/index.js",
+  "exports": {
+    ".": "./dist/atabey/src/cli/index.js",
+    "./src/*": "./dist/atabey/src/*"
+  },
   "files": [
     "bin",
     "dist",

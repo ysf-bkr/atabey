@@ -1,4 +1,4 @@
-import { classifyData, containsPII, maskObject, maskText } from "atabey-mcp/../shared/pii.js";
+import { classifyData, containsPII, maskObject, maskText } from "../../../shared/pii.js";
 import { ToolResult } from "../types.js";
 
 /**

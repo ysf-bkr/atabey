@@ -31,7 +31,7 @@
 
 import fs from "fs";
 import path from "path";
-import { logger } from "atabey-mcp/../shared/logger.js";
+import { logger } from "../../shared/logger.js";
 
 export interface DeveloperWorkspace {
     developerId: string;

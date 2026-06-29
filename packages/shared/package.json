@@ -3,6 +3,9 @@
   "version": "0.0.19",
   "description": "Shared utility modules for Atabey AI Governance & Orchestration Layer",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {

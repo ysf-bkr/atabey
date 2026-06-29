@@ -8,9 +8,15 @@
     "frontend",
     "quality"
   ],
-  "unified": false,
+  "unified": true,
   "adapters": [
-    "gemini"
+    "gemini",
+    "claude",
+    "grok",
+    "cursor",
+    "codex",
+    "local",
+    "antigravity-cli"
   ],
   "backendLanguage": "Node.js (TypeScript)",
   "frontendFramework": "Vite (React)",

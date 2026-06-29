@@ -11,16 +11,16 @@ const __dirname = dirname(__filename);
 const ERRORS = {
     BUILD_REQUIRED: `
 ╔══════════════════════════════════════════════════════════╗
-║  🚧  Atabey is not built yet                           ║
+║  🚧  Atabey MCP is not built yet                         ║
 ╠══════════════════════════════════════════════════════════╣
-║  The compiled CLI was not found at:                     ║
-║    dist/src/cli/index.js                                ║
-║                                                         ║
-║  📋  To fix this, run:                                  ║
-║     npm run build                                       ║
-║                                                         ║
-║  💡  This compiles TypeScript source into JavaScript.   ║
-║     After build completes, run atabey again.            ║
+║  The compiled MCP server was not found at:               ║
+║    dist/mcp/index.js                                     ║
+║                                                          ║
+║  📋  To fix this, run:                                   ║
+║     npm run build                                        ║
+║                                                          ║
+║  💡  This compiles TypeScript source into JavaScript.    ║
+║     After build completes, run atabey-mcp again.          ║
 ╚══════════════════════════════════════════════════════════╝
 `,
     NODE_VERSION: `
@@ -43,9 +43,9 @@ const ERRORS = {
 `,
     SPAWN_FAILED: `
 ╔══════════════════════════════════════════════════════════╗
-║  ❌  Failed to start Atabey                             ║
+║  ❌  Failed to start Atabey MCP Server                  ║
 ╠══════════════════════════════════════════════════════════╣
-║  Could not launch the CLI process.                      ║
+║  Could not launch the server process.                   ║
 ║                                                         ║
 ║  📋  Common causes:                                     ║
 ║     • Out of memory                                     ║
@@ -64,16 +64,27 @@ if (nodeMajor < 18) {
     process.exit(1);
 }
 
-// ─── Start CLI ────────────────────────────────────────────────────
-const cliPath = join(__dirname, "../dist/src/cli/index.js");
+// ─── Start MCP Server ─────────────────────────────────────────────
+const candidates = [
+    join(__dirname, "../dist/mcp/index.js"),
+    join(__dirname, "../dist/atabey-mcp/src/mcp/index.js"),
+];
 
-if (!fs.existsSync(cliPath)) {
+let serverPath = "";
+for (const cand of candidates) {
+    if (fs.existsSync(cand)) {
+        serverPath = cand;
+        break;
+    }
+}
+
+if (!serverPath) {
     process.stderr.write(ERRORS.BUILD_REQUIRED);
     process.exit(1);
 }
 
 const cmd = "node";
-const child = spawn(cmd, [cliPath, ...process.argv.slice(2)], {
+const child = spawn(cmd, [serverPath, ...process.argv.slice(2)], {
     stdio: "inherit",
     shell: false
 });
@@ -86,7 +97,7 @@ child.on("error", (err) => {
 
 child.on("exit", (code) => {
     if (code !== 0 && code !== null) {
-        // Non-zero exit — the CLI already printed the error
+        // Non-zero exit — the server already printed the error
         process.exit(code);
     }
     process.exit(code ?? 0);

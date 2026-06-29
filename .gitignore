@@ -91,3 +91,16 @@ tests/test-init/
 **/pending-events.jsonl
 tests/.temp-init/
 
+# IDE/Agent settings & rules
+.agents/
+.claude/
+.cursor/
+.gemini/
+.grok/
+AGENTS.md
+CLAUDE.md
+CURSOR.md
+GROK.md
+LOCAL_AI.md
+copilot-instructions.md
+

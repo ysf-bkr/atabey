@@ -1,5 +1,5 @@
 import { ToolResult } from "../types.js";
-import { Storage } from "atabey-mcp/../shared/storage.js";
+import { Storage } from "../../../shared/storage.js";
 
 interface DeleteKnowledgeArgs {
     query?: string;
