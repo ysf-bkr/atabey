@@ -6,7 +6,7 @@
 [![MCP](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io)
 [![Type-Safety](https://img.shields.io/badge/Type--Safety-100%25-green.svg)](https://github.com/ysf-bkr/atabey)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![MCP Tools](https://img.shields.io/badge/MCP%20Tools-32-blue)](https://github.com/ysf-bkr/atabey)
+[![MCP Tools](https://img.shields.io/badge/MCP%20Tools-39-blue)](https://github.com/ysf-bkr/atabey)
 [![Agents](https://img.shields.io/badge/Specialized%20Agents-14-purple)](https://github.com/ysf-bkr/atabey)
 [![Platforms](https://img.shields.io/badge/Supported%20Platforms-7-orange)](https://github.com/ysf-bkr/atabey)
 [![Skills](https://img.shields.io/badge/Core%20Skills-7-yellow)](https://github.com/ysf-bkr/atabey)
@@ -56,7 +56,7 @@ You (@backend): "Create a user login service with JWT authentication"
 - [Installation](#installation)
 - [Profile-Based Setup](#profile-based-setup)
 - [14 Specialized Agents](#14-specialized-agents)
-- [32 MCP Tools](#32-mcp-tools)
+- [39 MCP Tools](#39-mcp-tools)
 - [7 Core Skills](#7-core-skills)
 - [3-Layer Memory System](#3-layer-memory-system)
 - [Knowledge Base (30+ Standards)](#knowledge-base-30-standards)
@@ -139,7 +139,7 @@ Atabey AL is built on **5 core capabilities** that work together seamlessly:
 
 | # | Capability | Description | Score |
 |---|-----------|-------------|-------|
-| 🛠️ | **32 MCP Tools** | File system, search, messaging, governance, memory, quality, network, orchestration | 95/100 |
+| 🛠️ | **39 MCP Tools** | File system, search, messaging, governance, memory, quality, network, orchestration | 95/100 |
 | 🧠 | **3-Layer Memory** | Vector Memory (TF-IDF/OpenAI), Project Memory, Specialty Memory (agent learning) | 93/100 |
 | 🤖 | **14 Specialized Agents** | 3-tier hierarchy (Supreme/Core/Recon) with state machine | 94/100 |
 | 🎯 | **7 Core Skills** | Platform-adaptive skills for 7 different AI platforms | 90/100 |
@@ -161,7 +161,7 @@ Atabey AL is built on **5 core capabilities** that work together seamlessly:
 ├──────────────────────────────────────────────────────────────────┤
 │                    ATABEY MCP SERVER                               │
 │   ┌──────────────────────────────────────────────────────────┐   │
-│   │  32 Tools · 13-Layer Governance Pipeline ·               │   │
+│   │  39 Tools · 13-Layer Governance Pipeline ·               │   │
 │  │  Risk Engine · Loop Detection · FinOps · Auto-Rollback  │   │
 │   └──────────────────────────────────────────────────────────┘   │
 ├──────────────────────────────────────────────────────────────────┤
@@ -308,7 +308,7 @@ User / External Request
 
 ---
 
-## 32 MCP Tools
+## 39 MCP Tools
 
 ### File System (6)
 `read_file`, `view_file`, `write_file`, `replace_text`, `batch_surgical_edit`, `patch_file`
@@ -515,7 +515,7 @@ atabey security [path]       Run security audit
 │    @backend Create login service (in Claude/Gemini/Cursor)      │
 ├──────────────────────────────────────────────────────────────────┤
 │                    MCP Server (atabey-mcp/)                       │
-│                    32 Tools · 13-Layer Governance                │
+│                    39 Tools · 13-Layer Governance                │
 │                    Zod Validation · PII Masking                  │
 ├──────────────────────────────────────────────────────────────────┤
 │                    src/cli/  30+ Commands                         │
