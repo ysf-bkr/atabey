@@ -3,7 +3,7 @@
     "atabey": {
       "command": "node",
       "args": [
-        "node_modules/atabey-mcp/dist/index.js"
+        "node_modules/atabey-mcp/dist/atabey-mcp/src/mcp/index.js"
       ],
       "env": {
         "ATABEY_PROJECT_ROOT": "/Users/ybekar/Desktop/Projeler/atabey"

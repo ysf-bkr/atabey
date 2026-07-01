@@ -166,7 +166,7 @@ export const MCP = {
     ROOT_CONFIG_FILE: "mcp.json",
     PROJECT_ROOT_ENV: "ATABEY_PROJECT_ROOT",
     TEST_DIR_ENV: "ATABEY_TEST_DIR",
-    SERVER_DIST_PATH: "atabey-mcp/dist/mcp/index.js",
+    SERVER_DIST_PATH: "../atabey-mcp/dist/atabey-mcp/src/mcp/index.js",
 } as const;
 
 export const ROOT_CONFIG_FILES = {

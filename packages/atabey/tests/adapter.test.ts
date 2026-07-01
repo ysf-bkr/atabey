@@ -117,7 +117,7 @@ describe("CLI Adapters", () => {
             const entry = buildMcpServerEntry("/path/to/project");
             expect(entry.command).toBe("node");
             // In tests, /path/to/project != packageRoot, so it falls back to node_modules path
-            expect(entry.args[0]).toMatch(/node_modules\/atabey-mcp\/dist\/index\.js|framework-mcp\/dist\/index\.js/);
+            expect(entry.args[0]).toMatch(/node_modules\/atabey-mcp\/dist\/atabey-mcp\/src\/mcp\/index\.js|framework-mcp\/dist\/index\.js/);
             expect(entry.env[MCP.PROJECT_ROOT_ENV]).toBe("/path/to/project");
         });
     });

@@ -38,10 +38,10 @@ export function buildMcpServerEntry(projectRoot: string) {
         // In local framework dev, always use the build path directly relative to project root
         let mcpServerPath = path.join(packageRoot, MCP.SERVER_DIST_PATH);
         if (!fs.existsSync(mcpServerPath)) {
-            mcpServerPath = path.join(packageRoot, "../atabey-mcp/dist/index.js");
+            mcpServerPath = path.join(packageRoot, "../atabey-mcp/dist/atabey-mcp/src/mcp/index.js");
         }
         if (!fs.existsSync(mcpServerPath)) {
-            mcpServerPath = path.join(projectRoot, "node_modules/atabey-mcp/dist/index.js");
+            mcpServerPath = path.join(projectRoot, "node_modules/atabey-mcp/dist/atabey-mcp/src/mcp/index.js");
         }
 
         if (!fs.existsSync(mcpServerPath)) {
@@ -52,7 +52,7 @@ export function buildMcpServerEntry(projectRoot: string) {
         // If we are initializing in a user's project:
         // We target the atabey-mcp package which is a dependency of atabey.
         // This ensures a stable path across different npm/pnpm/yarn setups.
-        relativePath = "node_modules/atabey-mcp/dist/index.js";
+        relativePath = "node_modules/atabey-mcp/dist/atabey-mcp/src/mcp/index.js";
 
         // Fallback check if it actually exists in a different location during init
         const localAtabeyPath = path.join(projectRoot, "node_modules/atabey", MCP.SERVER_DIST_PATH);

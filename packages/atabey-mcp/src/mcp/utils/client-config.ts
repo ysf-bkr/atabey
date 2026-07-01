@@ -80,7 +80,7 @@ export class ClientConfigGenerator {
 
         mcpServers["atabey-stdio"] = {
             command: "node",
-            args: [path.join(projectRoot, "mcp/dist/index.js")],
+            args: [path.join(projectRoot, "node_modules/atabey-mcp/dist/atabey-mcp/src/mcp/index.js")],
             env: {
                 ATABEY_PROJECT_ROOT: projectRoot,
                 MCP_USER: userName,
