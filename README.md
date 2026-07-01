@@ -90,7 +90,7 @@ You (@backend): "Create a user login service with JWT authentication"
 - [7 Core Skills](#7-core-skills)
 - [3-Layer Memory System](#3-layer-memory-system)
 - [Knowledge Base (30+ Standards)](#knowledge-base-30-standards)
-- [Multi-Layer Governance Pipeline](#13-layer-governance-pipeline)
+- [Multi-Layer Governance Pipeline](#multi-layer-governance-pipeline)
 - [Core Features](#core-features)
 - [Dashboard](#dashboard)
 - [CLI Reference](#cli-reference)
@@ -707,7 +707,7 @@ atabey security [path]       Run security audit
 │    @backend Create login service (in Claude/Gemini/Cursor)      │
 ├──────────────────────────────────────────────────────────────────┤
 │                    MCP Server (atabey-mcp/)                       │
-│                    39 Tools · 13-Layer Governance                │
+│                    39 Tools · Multi-Layer Governance                │
 │                    Zod Validation · PII Masking                  │
 ├──────────────────────────────────────────────────────────────────┤
 │                    src/cli/  30+ Commands                         │
