@@ -4,6 +4,22 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## [0.0.22] — 2026-07-02
+
+### Fixed
+- **Circular Package Dependencies**: Removed mutual `atabey` ↔ `atabey-mcp` dependencies in published packages. Both now depend only on `atabey-shared` to eliminate npm resolution issues.
+- **Leaky Exports**: Tightened `exports` maps:
+  - Removed `./src/*` and duplicate src aliases from `atabey` and `atabey-mcp`.
+  - Replaced wildcard `./*` + `./*.js` in `atabey-shared` with explicit module exports for better encapsulation and tree-shaking.
+- **Documentation Inaccuracies**: Standardized to "13 specialized agents". Updated all "13-layer governance pipeline" marketing claims to accurate "multi-layer governance pipeline" descriptions matching the actual implemented pre/post checks (PII mask, validation, discipline, loop detection, FinOps, CRUD governance, risk gate, etc.).
+- **Missing package metadata**: Added `"sideEffects": false` to all three published packages.
+
+### Changed
+- All package versions and internal dependency pins bumped to 0.0.22.
+- Version badges and dashboard UI strings updated to v0.0.22.
+
+---
+
 ## [0.0.19] — 2026-06-27
 
 ### Fixed
