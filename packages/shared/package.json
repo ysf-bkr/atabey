@@ -1,6 +1,6 @@
 {
   "name": "atabey-shared",
-  "version": "0.0.21",
+  "version": "0.0.22",
   "description": "Shared utility modules for Atabey — AI Governance & Multi-Agent Platform / Orchestrator",
   "author": "Yusuf BEKAR",
   "license": "AGPL-3.0",
@@ -24,6 +24,7 @@
     "typescript"
   ],
   "type": "module",
+  "sideEffects": false,
   "files": [
     "dist",
     "README.md",
@@ -33,8 +34,17 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": "./dist/index.js",
-    "./*.js": "./dist/*.js",
-    "./*": "./dist/*.js"
+    "./audit.js": "./dist/audit.js",
+    "./constants.js": "./dist/constants.js",
+    "./database.js": "./dist/database.js",
+    "./errors.js": "./dist/errors.js",
+    "./fs.js": "./dist/fs.js",
+    "./lock.js": "./dist/lock.js",
+    "./logger.js": "./dist/logger.js",
+    "./pii.js": "./dist/pii.js",
+    "./retention.js": "./dist/retention.js",
+    "./string.js": "./dist/string.js",
+    "./types.js": "./dist/types.js"
   },
   "scripts": {
     "build": "tsc",

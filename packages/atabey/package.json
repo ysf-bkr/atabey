@@ -1,6 +1,6 @@
 {
   "name": "atabey",
-  "version": "0.0.21",
+  "version": "0.0.22",
   "description": "Atabey — AI Governance & Multi-Agent Platform / Orchestrator — Core Engine",
   "author": "Yusuf BEKAR",
   "license": "AGPL-3.0",
@@ -16,6 +16,7 @@
     "typescript"
   ],
   "type": "module",
+  "sideEffects": false,
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ysf-bkr/atabey.git",
@@ -30,8 +31,7 @@
   "main": "./dist/atabey/src/cli/index.js",
   "types": "./dist/atabey/src/cli/index.d.ts",
   "exports": {
-    ".": "./dist/atabey/src/cli/index.js",
-    "./src/*": "./dist/atabey/src/*"
+    ".": "./dist/atabey/src/cli/index.js"
   },
   "files": [
     "bin",
@@ -54,8 +54,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "atabey-shared": "^0.0.21",
-    "atabey-mcp": "^0.0.21"
+    "atabey-shared": "^0.0.22"
   },
   "peerDependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

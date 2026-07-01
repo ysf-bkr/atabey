@@ -1,6 +1,6 @@
 {
   "name": "atabey-mcp",
-  "version": "0.0.21",
+  "version": "0.0.22",
   "description": "Atabey — AI Governance & Multi-Agent Platform / Orchestrator — MCP Server",
   "author": "Yusuf BEKAR",
   "license": "AGPL-3.0",
@@ -16,6 +16,7 @@
     "typescript"
   ],
   "type": "module",
+  "sideEffects": false,
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ysf-bkr/atabey.git",
@@ -32,9 +33,7 @@
   "exports": {
     ".": "./dist/atabey-mcp/src/mcp/index.js",
     "./utils/*": "./dist/atabey-mcp/src/mcp/utils/*",
-    "./shared/*": "./dist/atabey-mcp/src/shared/*",
-    "./src/mcp/utils/*": "./dist/atabey-mcp/src/mcp/utils/*",
-    "./src/shared/*": "./dist/atabey-mcp/src/shared/*"
+    "./shared/*": "./dist/atabey-mcp/src/shared/*"
   },
   "files": [
     "bin",
@@ -54,8 +53,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "atabey-shared": "^0.0.21",
-    "atabey": "^0.0.21"
+    "atabey-shared": "^0.0.22"
   },
   "peerDependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
