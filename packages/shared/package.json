@@ -6,7 +6,11 @@
   "license": "AGPL-3.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ysf-bkr/atabey.git"
+    "url": "git+https://github.com/ysf-bkr/atabey.git",
+    "directory": "packages/shared"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "keywords": [
     "mcp",
@@ -22,7 +26,8 @@
   "type": "module",
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

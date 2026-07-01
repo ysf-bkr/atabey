@@ -18,12 +18,17 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ysf-bkr/atabey.git"
+    "url": "git+https://github.com/ysf-bkr/atabey.git",
+    "directory": "packages/atabey"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "bin": {
-    "atabey": "./bin/cli.js"
+    "atabey": "bin/cli.js"
   },
   "main": "./dist/atabey/src/cli/index.js",
+  "types": "./dist/atabey/src/cli/index.d.ts",
   "exports": {
     ".": "./dist/atabey/src/cli/index.js",
     "./src/*": "./dist/atabey/src/*"
@@ -49,8 +54,8 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "atabey-shared": "*",
-    "atabey-mcp": "*"
+    "atabey-shared": "^0.0.21",
+    "atabey-mcp": "^0.0.21"
   },
   "peerDependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
