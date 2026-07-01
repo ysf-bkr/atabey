@@ -6,7 +6,7 @@ import {
     pathJoin,
     knowledgePath,
     unifiedAdapterPath,
-} from "../../src/shared/constants.js";
+} from "../src/constants.js";
 
 describe("shared/constants", () => {
     it("should define core framework directory", () => {

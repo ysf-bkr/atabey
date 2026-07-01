@@ -7,7 +7,7 @@ import {
     maskText,
     maskToolArgs,
     maskToolResult,
-} from "../../src/shared/pii.js";
+} from "../src/pii.js";
 
 describe("PII Masking Service", () => {
     describe("maskText", () => {

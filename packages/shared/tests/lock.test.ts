@@ -1,23 +1,19 @@
-import fs from "fs";
-import os from "os";
-import path from "path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { DistributedLock } from "../../src/shared/lock.js";
-import { Storage } from "../../src/shared/storage.js";
-
-const TEST_DIR = path.join(os.tmpdir(), "atabey-lock-test-" + Date.now());
+import { DistributedLock } from "../src/lock.js";
+import { databaseHolder } from "../src/database.js";
+import Database from "better-sqlite3";
 
 describe("DistributedLock Service", () => {
+    let db: Database.Database;
+
     beforeAll(() => {
-        process.env.ATABEY_TEST_DIR = TEST_DIR;
-        fs.mkdirSync(path.join(TEST_DIR, "logs"), { recursive: true });
-        Storage.setMetadata("phase", "PHASE_0");
+        db = new Database(":memory:");
+        databaseHolder.setDB(db);
         DistributedLock.initialize();
     });
 
     afterAll(() => {
-        fs.rmSync(TEST_DIR, { recursive: true, force: true });
-        Storage.reset();
+        db.close();
     });
 
     it("should acquire and release a lock", () => {

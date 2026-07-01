@@ -9,10 +9,6 @@ export default defineConfig({
         cache: false,
         alias: {
             "atabey-mcp/utils": path.resolve(__dirname, "./src/mcp/utils"),
-            "atabey-mcp/../modules": path.resolve(__dirname, "../atabey/src/modules"),
-            "atabey-mcp/../cli": path.resolve(__dirname, "../atabey/src/cli"),
-            "atabey-mcp/../src": path.resolve(__dirname, "../atabey/src"),
-            "atabey-mcp/../shared": path.resolve(__dirname, "./src/shared"),
             "atabey-mcp": path.resolve(__dirname, "./src"),
         },
         coverage: {
