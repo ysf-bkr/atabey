@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { MCP } from "../../shared/constants.js";
+import { MCP, ORCHESTRATOR } from "../../shared/constants.js";
 import { writeJsonFile } from "../utils/fs.js";
 import { getPackageRoot } from "../utils/pkg.js";
 import { UI } from "../utils/ui.js";
@@ -66,8 +66,16 @@ export function buildMcpServerEntry(projectRoot: string) {
         args: [relativePath],
         env: {
             [MCP.PROJECT_ROOT_ENV]: projectRoot,
+            [MCP.TRANSPORT_ENV]: MCP.TRANSPORT_STDIO,
+            [ORCHESTRATOR.AUTO_START_ENV]: "true",
         },
     };
+}
+
+/** Writes the canonical MCP block to project-root mcp.json (always refreshed). */
+export function writeRootMcpConfig(projectRoot: string): void {
+    const mcpBlock = { mcpServers: { [MCP.SERVER_NAME]: buildMcpServerEntry(projectRoot) } };
+    writeJsonFile(path.join(projectRoot, MCP.ROOT_CONFIG_FILE), mcpBlock);
 }
 
 export function runAdapterPostInit(adapter: AdapterConfig, projectRoot: string): void {
@@ -79,8 +87,5 @@ export function runAdapterPostInit(adapter: AdapterConfig, projectRoot: string):
         postInitFn(projectRoot, mcpBlock);
     }
 
-    const rootMcpPath = path.join(projectRoot, MCP.ROOT_CONFIG_FILE);
-    if (!fs.existsSync(rootMcpPath)) {
-        writeJsonFile(rootMcpPath, mcpBlock);
-    }
+    writeRootMcpConfig(projectRoot);
 }

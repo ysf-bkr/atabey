@@ -23,9 +23,16 @@ describe("Memory Utilities", () => {
     });
 
     describe("Framework Directories", () => {
-        it("should fallback to .gemini directory if no config is found", () => {
+        it("should fallback to .atabey directory if no config is found", () => {
             const frameworkDir = memoryUtils.getLocalFrameworkDir();
             expect(frameworkDir).toContain(".atabey");
+        });
+    });
+
+    describe("Project kind detection", () => {
+        it("should detect consumer project in isolated temp dir", () => {
+            expect(memoryUtils.detectProjectKind(tempDir)).toBe("consumer");
+            expect(memoryUtils.resolveProjectPaths(tempDir).backend).toBe("apps/backend");
         });
     });
 

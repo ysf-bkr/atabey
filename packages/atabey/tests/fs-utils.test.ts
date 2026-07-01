@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createTestDir, removeTestDir } from "./helpers/temp-dir.js";
 import {
     collectFiles,
     computeTypesHash,
@@ -9,18 +10,14 @@ import {
 } from "../src/cli/utils/fs.js";
 
 describe("FileSystem Utilities", () => {
-    const tempDir = path.join(process.cwd(), "tests", "temp-fs-test");
+    let tempDir: string;
 
     beforeEach(() => {
-        if (!fs.existsSync(tempDir)) {
-            fs.mkdirSync(tempDir, { recursive: true });
-        }
+        tempDir = createTestDir("fs-utils-");
     });
 
     afterEach(() => {
-        if (fs.existsSync(tempDir)) {
-            fs.rmSync(tempDir, { recursive: true, force: true });
-        }
+        removeTestDir(tempDir);
     });
 
     describe("updateGitIgnore", () => {

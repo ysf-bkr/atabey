@@ -220,7 +220,7 @@ async function main() {
 
 function showHelp() {
     process.stdout.write(`
-[ATABEY] v${getPackageVersion()} — AI Governance & Autonomous Orchestration
+[ATABEY] v${getPackageVersion()} — AI Governance & Multi-Agent Platform / Orchestrator
 
 Usage:
   atabey <command> [options]

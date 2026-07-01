@@ -2,13 +2,17 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import fs from "fs";
 import path from "path";
 import { logger, LogLevel, EnterpriseLogger } from "../src/shared/logger.js";
+import { createTestDir, removeTestDir } from "./helpers/temp-dir.js";
 
 describe("EnterpriseLogger", () => {
-    let stdoutWriteSpy: any;
-    let stderrWriteSpy: any;
-    const tempLogFile = path.join(process.cwd(), "tests", "temp-logger-test.log");
+    let stdoutWriteSpy: ReturnType<typeof vi.spyOn>;
+    let stderrWriteSpy: ReturnType<typeof vi.spyOn>;
+    let tempDir: string;
+    let tempLogFile: string;
 
     beforeEach(() => {
+        tempDir = createTestDir("logger-");
+        tempLogFile = path.join(tempDir, "test.log");
         stdoutWriteSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
         stderrWriteSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
         // Reset configure defaults
@@ -23,9 +27,7 @@ describe("EnterpriseLogger", () => {
     afterEach(() => {
         stdoutWriteSpy.mockRestore();
         stderrWriteSpy.mockRestore();
-        if (fs.existsSync(tempLogFile)) {
-            fs.unlinkSync(tempLogFile);
-        }
+        removeTestDir(tempDir);
     });
 
     it("should be a singleton instance", () => {

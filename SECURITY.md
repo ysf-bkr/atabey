@@ -7,7 +7,7 @@ We actively support and patch the following versions of Agent Atabey:
 | Version | Supported |
 | ------- | --------- |
 | < 0.0.x | ❌ No      |
-| >= 0.0.19 | ✅ Yes     |
+| >= 0.0.20 | ✅ Yes     |
 
 ## Reporting a Vulnerability
 

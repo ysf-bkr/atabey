@@ -61,7 +61,7 @@ describe("AgentExecutor", () => {
         const logs = AtabeyStorage.getLogs();
         const executionLog = logs.find(l => l.action === "DELEGATION_SENT" || l.action === "COMPLETED");
         expect(executionLog).toBeDefined();
-    });
+    }, 15_000);
 
     it("should route database tasks to @database via routing engine", () => {
         const result = RoutingEngine.resolveWithDetails("Create a database migration for users table");

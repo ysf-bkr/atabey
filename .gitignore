@@ -89,7 +89,9 @@ tests/test-init/
 **/.atabey/
 **/atabey.db*
 **/pending-events.jsonl
-tests/.temp-init/
+tests/.temp*/
+packages/atabey/tests/.temp/
+packages/atabey-mcp/tests/.temp/
 
 # IDE/Agent settings & rules
 .agents/

@@ -3,8 +3,10 @@ import os from "os";
 import path from "path";
 import { VectorStore } from "../../modules/memory/vector-store.js";
 import {
+    DEFAULT_CONSUMER_PATHS,
     FRAMEWORK,
     FRAMEWORK_DIR_CANDIDATES,
+    FRAMEWORK_MONOREPO_PATHS,
     MCP,
 } from "../../shared/constants.js";
 import { ensureDir, writeJsonFile, writeTextFile } from "../../shared/fs.js";
@@ -33,19 +35,75 @@ function findFrameworkDir(basePath: string): string | null {
     return null;
 }
 
+export type ProjectKind = "framework-monorepo" | "consumer";
+
+export function isAtabeyFrameworkMonorepo(basePath: string = CWD): boolean {
+    try {
+        const pkgPath = path.join(basePath, "package.json");
+        if (!fs.existsSync(pkgPath)) return false;
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8")) as {
+            name?: string;
+            private?: boolean;
+            workspaces?: string[];
+            atabey?: { frameworkRepo?: boolean };
+        };
+        if (pkg.atabey?.frameworkRepo === true) return true;
+        if (pkg.name === "atabey-monorepo") return true;
+        if (
+            pkg.private &&
+            Array.isArray(pkg.workspaces) &&
+            pkg.workspaces.some((w) => w.includes("packages/atabey"))
+        ) {
+            return true;
+        }
+    } catch (err) {
+        logger.debug("Failed to read package.json in isAtabeyFrameworkMonorepo", err);
+    }
+    return false;
+}
+
+export function detectProjectKind(basePath: string = CWD): ProjectKind {
+    return isAtabeyFrameworkMonorepo(basePath) ? "framework-monorepo" : "consumer";
+}
+
+/** @deprecated Use isAtabeyFrameworkMonorepo */
 export function isFrameworkDevelopmentRepo(): boolean {
+    if (isAtabeyFrameworkMonorepo()) return true;
     try {
         const pkgPath = path.join(CWD, "package.json");
         if (fs.existsSync(pkgPath)) {
             const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
-            if (pkg.name === "atabey") {
-                return true;
-            }
+            if (pkg.name === "atabey") return true;
         }
     } catch (err) {
         logger.debug("Failed to read package.json in isFrameworkDevelopmentRepo", err);
     }
     return false;
+}
+
+export type ProjectPaths = {
+    backend: string;
+    frontend: string;
+    mobile: string;
+    docs: string;
+    tests: string;
+};
+
+export function resolveProjectPaths(basePath: string = CWD): ProjectPaths {
+    if (detectProjectKind(basePath) === "framework-monorepo") {
+        return { ...FRAMEWORK_MONOREPO_PATHS };
+    }
+    try {
+        const frameworkDir = findFrameworkDir(basePath) || path.join(basePath, FRAMEWORK.CORE_DIR);
+        const configPath = path.join(frameworkDir, "config.json");
+        if (fs.existsSync(configPath)) {
+            const raw = JSON.parse(fs.readFileSync(configPath, "utf8")) as { paths?: Partial<ProjectPaths> };
+            if (raw.paths) return { ...DEFAULT_CONSUMER_PATHS, ...raw.paths };
+        }
+    } catch (err) {
+        logger.debug("Failed to resolve project paths from config.json", err);
+    }
+    return { ...DEFAULT_CONSUMER_PATHS };
 }
 
 export function getLocalFrameworkDir(): string {
@@ -187,19 +245,8 @@ export function initializeMemory(memoryPathOrBase: string, targetBaseOrDryRun?: 
     logger.info("[OK] Document store initialized.");
 }
 
-export function getConfiguredPaths(): { backend: string; frontend: string; mobile: string; docs: string; tests: string } {
-    const defaultPaths = { backend: "apps/backend", frontend: "apps/web", mobile: "apps/mobile", docs: "docs", tests: "tests" };
-    try {
-        const frameworkDir = getConfigDir();
-        const configPath = path.join(frameworkDir, "config.json");
-        if (fs.existsSync(configPath)) {
-            const rawConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
-            return rawConfig.paths || defaultPaths;
-        }
-    } catch (err) {
-        logger.debug("Critical config read failure", err);
-    }
-    return defaultPaths;
+export function getConfiguredPaths(): ProjectPaths {
+    return resolveProjectPaths(CWD);
 }
 
 export function updateDocumentStore(type: "state" | "task" | "history" | "status", data: unknown, id?: string | TraceID, frameworkDir?: string) {

@@ -1,7 +1,7 @@
 {
   "name": "atabey-shared",
-  "version": "0.0.19",
-  "description": "Shared utility modules for Atabey — AI Governance & Multi-Agent Orchestration Framework",
+  "version": "0.0.20",
+  "description": "Shared utility modules for Atabey — AI Governance & Multi-Agent Platform / Orchestrator",
   "license": "AGPL-3.0",
   "keywords": [
     "mcp",

@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createTestDir, removeTestDir } from "./helpers/temp-dir.js";
 import {
     buildMcpServerEntry,
     isAdapterShimFile,
@@ -61,21 +62,17 @@ describe("CLI Adapters", () => {
     });
 
     describe("remapFrameworkContent", () => {
-        const tempDir = path.join(process.cwd(), "tests", "temp-adapter-test");
-        let cwdSpy: any;
+        let tempDir: string;
+        let cwdSpy: ReturnType<typeof vi.spyOn>;
 
         beforeEach(() => {
-            if (!fs.existsSync(tempDir)) {
-                fs.mkdirSync(tempDir, { recursive: true });
-            }
+            tempDir = createTestDir("adapter-remap-");
             cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(tempDir);
         });
 
         afterEach(() => {
             cwdSpy.mockRestore();
-            if (fs.existsSync(tempDir)) {
-                fs.rmSync(tempDir, { recursive: true, force: true });
-            }
+            removeTestDir(tempDir);
         });
 
         it("should map simple tokens {{FRAMEWORK_DIR}} and {{ADAPTER}}", () => {
@@ -119,22 +116,20 @@ describe("CLI Adapters", () => {
             // In tests, /path/to/project != packageRoot, so it falls back to node_modules path
             expect(entry.args[0]).toMatch(/node_modules\/atabey-mcp\/dist\/atabey-mcp\/src\/mcp\/index\.js|framework-mcp\/dist\/index\.js/);
             expect(entry.env[MCP.PROJECT_ROOT_ENV]).toBe("/path/to/project");
+            expect(entry.env[MCP.TRANSPORT_ENV]).toBe(MCP.TRANSPORT_STDIO);
+            expect(entry.env.ATABEY_AUTO_START_ORCHESTRATOR).toBe("true");
         });
     });
 
     describe("scaffoldAgents", () => {
-        const tempDir = path.join(process.cwd(), "tests", "temp-scaffold-test");
+        let tempDir: string;
 
         beforeEach(() => {
-            if (!fs.existsSync(tempDir)) {
-                fs.mkdirSync(tempDir, { recursive: true });
-            }
+            tempDir = createTestDir("adapter-scaffold-");
         });
 
         afterEach(() => {
-            if (fs.existsSync(tempDir)) {
-                fs.rmSync(tempDir, { recursive: true, force: true });
-            }
+            removeTestDir(tempDir);
         });
 
         it("should respect dryRun and not create files", () => {

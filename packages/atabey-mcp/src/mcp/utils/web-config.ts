@@ -1,6 +1,11 @@
 import fs from "fs";
 import path from "path";
 import { getFrameworkDir } from "atabey/src/cli/utils/memory.js";
+import {
+    bootstrapOrchestrator,
+    isOrchestratorActive,
+    shutdownOrchestrator,
+} from "./orchestrator-bootstrap.js";
 
 export interface WebConfig {
     projectPath: string;
@@ -11,8 +16,6 @@ export interface WebConfig {
 }
 
 let cachedConfig: WebConfig | null = null;
-let isOrchestratorRunning = false;
-let activeOrchestratorAbortController: AbortController | null = null;
 
 function getConfigPath(): string {
     const dir = getFrameworkDir();
@@ -37,7 +40,6 @@ export function loadWebConfig(): WebConfig {
             // fallback
         }
     }
-    // Default config uses the parent folder as fallback project path
     cachedConfig = {
         projectPath: path.resolve(getFrameworkDir(), "../"),
         activeProvider: "gemini",
@@ -51,8 +53,7 @@ export function loadWebConfig(): WebConfig {
 export function saveWebConfig(config: Partial<WebConfig>): WebConfig {
     const current = loadWebConfig();
     const updated = { ...current, ...config };
-    
-    // Apply API keys to process.env so existing code modules can read them
+
     if (updated.geminiApiKey) process.env.GEMINI_API_KEY = updated.geminiApiKey;
     if (updated.anthropicApiKey) process.env.ANTHROPIC_API_KEY = updated.anthropicApiKey;
     if (updated.openaiApiKey) process.env.OPENAI_API_KEY = updated.openaiApiKey;
@@ -67,54 +68,38 @@ export function saveWebConfig(config: Partial<WebConfig>): WebConfig {
  * Orchestrator active state helpers
  */
 export function getOrchestratorState() {
+    const config = loadWebConfig();
     return {
-        running: isOrchestratorRunning,
-        projectPath: loadWebConfig().projectPath,
-        activeProvider: loadWebConfig().activeProvider
+        running: isOrchestratorActive(),
+        projectPath: config.projectPath,
+        activeProvider: config.activeProvider,
     };
 }
 
 export function startOrchestratorLoop(): { success: boolean; message: string } {
-    if (isOrchestratorRunning) {
-        return { success: false, message: "Orchestrator is already running." };
-    }
-    
     const config = loadWebConfig();
     if (!fs.existsSync(config.projectPath)) {
         return { success: false, message: `Project path does not exist: ${config.projectPath}` };
     }
 
-    isOrchestratorRunning = true;
-    activeOrchestratorAbortController = new AbortController();
-
-    // Trigger orchestration loop asynchronously
-    import("atabey/src/cli/commands/orchestrate.js").then(async ({ orchestrateCommand }) => {
-        try {
-            // Pass target path and abort signal
-            process.env.ATABEY_TEST_DIR = config.projectPath;
-            // Run loop
-            await orchestrateCommand({ signal: activeOrchestratorAbortController?.signal });
-        } catch (e) {
+    bootstrapOrchestrator(config.projectPath, { force: true })
+        .then((result) => {
+            if (!result.started) {
+                process.stderr.write(`[atabey-mcp] Orchestrator start skipped: ${result.message}\n`);
+            }
+        })
+        .catch((e) => {
             process.stderr.write(`Orchestrator Loop Error: ${(e as Error).message}\n`);
-        } finally {
-            isOrchestratorRunning = false;
-        }
-    }).catch(e => {
-        isOrchestratorRunning = false;
-        process.stderr.write(`Failed to load orchestrate command: ${(e as Error).message}\n`);
-    });
+        });
 
     return { success: true, message: "Orchestrator started successfully." };
 }
 
 export function stopOrchestratorLoop(): { success: boolean; message: string } {
-    if (!isOrchestratorRunning) {
-        return { success: false, message: "Orchestrator is not running." };
-    }
-    
-    if (activeOrchestratorAbortController) {
-        activeOrchestratorAbortController.abort();
-    }
-    isOrchestratorRunning = false;
+    shutdownOrchestrator()
+        .then(() => undefined)
+        .catch((e) => {
+            process.stderr.write(`Orchestrator stop error: ${(e as Error).message}\n`);
+        });
     return { success: true, message: "Orchestrator stopped." };
 }

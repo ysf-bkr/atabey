@@ -6,7 +6,9 @@
         "node_modules/atabey-mcp/dist/atabey-mcp/src/mcp/index.js"
       ],
       "env": {
-        "ATABEY_PROJECT_ROOT": "/Users/ybekar/Desktop/Projeler/atabey"
+        "ATABEY_PROJECT_ROOT": "/Users/ybekar/Desktop/Projeler/atabey",
+        "MCP_TRANSPORT": "stdio",
+        "ATABEY_AUTO_START_ORCHESTRATOR": "true"
       }
     }
   }

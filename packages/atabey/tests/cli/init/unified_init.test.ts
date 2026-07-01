@@ -10,6 +10,7 @@ import {
     NATIVE_AGENT_PATHS, UNIFIED_ADAPTER_SLUG
 } from "../../../src/shared/constants.js";
 import { AtabeyStorage } from "../../../src/shared/storage.js";
+import { createTestDir } from "../../helpers/temp-dir.js";
 
 describe("Unified Init (default all adapters)", () => {
     let tempDir: string;
@@ -17,9 +18,7 @@ describe("Unified Init (default all adapters)", () => {
 
     beforeEach(() => {
         AtabeyStorage.reset();
-        const workspaceTemp = path.join(process.cwd(), "tests", ".temp-init");
-        fs.mkdirSync(workspaceTemp, { recursive: true });
-        tempDir = fs.mkdtempSync(path.join(workspaceTemp, "unified-init-"));
+        tempDir = createTestDir("unified-init-");
         process.env.ATABEY_TEST_DIR = path.join(tempDir, ".atabey");
         // Keep global Antigravity plugin writes inside the temp workspace so the
         // suite never touches the real ~/.gemini/antigravity-cli directory.
@@ -58,7 +57,19 @@ describe("Unified Init (default all adapters)", () => {
         expect(fs.existsSync(path.join(tempDir, FRAMEWORK.UNIFIED_HUB_DIR, FRAMEWORK_SUBDIRS.SKILLS))).toBe(true);
         expect(fs.existsSync(path.join(tempDir, "GEMINI.md"))).toBe(true);
         expect(fs.existsSync(path.join(tempDir, "CLAUDE.md"))).toBe(true);
+        expect(fs.existsSync(path.join(tempDir, "GROK.md"))).toBe(true);
         expect(fs.existsSync(path.join(tempDir, "mcp.json"))).toBe(true);
+        const mcpCfg = JSON.parse(fs.readFileSync(path.join(tempDir, "mcp.json"), "utf8"));
+        expect(mcpCfg.mcpServers.atabey.env.MCP_TRANSPORT).toBe("stdio");
+        expect(mcpCfg.mcpServers.atabey.env.ATABEY_PROJECT_ROOT).toBe(tempDir);
+
+        // Unified init must register MCP for every adapter, not only the primary one
+        expect(fs.existsSync(path.join(tempDir, ".gemini", "mcp.json"))).toBe(true);
+        expect(fs.existsSync(path.join(tempDir, ".claude", "mcp_config.json"))).toBe(true);
+        expect(fs.existsSync(path.join(tempDir, ".grok", "mcp_config.json"))).toBe(true);
+        expect(fs.existsSync(path.join(tempDir, ".cursor", "mcp.json"))).toBe(true);
+        expect(fs.existsSync(path.join(tempDir, ".agents", "mcp_config.json"))).toBe(true);
+        expect(fs.existsSync(path.join(tempDir, ".atabey", "mcp_config.json"))).toBe(true);
 
         const config = JSON.parse(fs.readFileSync(path.join(tempDir, FRAMEWORK.CORE_DIR, "config.json"), "utf8"));
         expect(config.unified).toBe(true);

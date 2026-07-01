@@ -9,6 +9,7 @@ import {
 } from "../../platforms/index.js";
 import { SHIM_TEMPLATES } from "../../shims.js";
 import { writeJsonFile, writeTextFile } from "../../utils/fs.js";
+import { detectProjectKind, resolveProjectPaths } from "../../utils/memory.js";
 import { getPackageRoot, getPackageVersion } from "../../utils/pkg.js";
 
 import { TRANSLATIONS, type SupportedLanguage } from "../../utils/i18n.js";
@@ -21,6 +22,62 @@ const COLOR_PALETTES = {
     "Enterprise Slate": { primary: "#334155", secondary: "#94a3b8", accent: "#10b981" },
     "Deep Purple": { primary: "#8b5cf6", secondary: "#d8b4fe", accent: "#f59e0b" }
 };
+
+function buildProfileServiceConfig(profile: string): {
+    finops: Record<string, unknown>;
+    compliance: Record<string, unknown>;
+} {
+    const presets: Record<string, { finops: Record<string, unknown>; compliance: Record<string, unknown> }> = {
+        freelancer: {
+            finops: { tracking: true, enforcement: false, monthlyBudgetUsd: 0, agentMaxBudgetUsd: 0 },
+            compliance: { retentionEnabled: true, consentLogging: true, piiMasking: true, dataProcessingBasis: "legitimate_interest" },
+        },
+        team: {
+            finops: { tracking: true, enforcement: false, monthlyBudgetUsd: 0, agentMaxBudgetUsd: 25 },
+            compliance: { retentionEnabled: true, consentLogging: true, piiMasking: true, dataProcessingBasis: "contract" },
+        },
+        enterprise: {
+            finops: { tracking: true, enforcement: true, monthlyBudgetUsd: 500, agentMaxBudgetUsd: 50 },
+            compliance: { retentionEnabled: true, consentLogging: true, piiMasking: true, dataProcessingBasis: "consent" },
+        },
+    };
+    return presets[profile] || presets.freelancer;
+}
+
+/** Restrict governance authorizedAgents to agents actually scaffolded in this profile. */
+function buildGovernanceForAgents(activeAgents: string[]) {
+    const allow = (...handles: string[]) => {
+        const out = new Set<string>(["@manager"]);
+        for (const handle of handles) {
+            const name = handle.replace(/^@/, "");
+            if (activeAgents.includes(name)) out.add(handle.startsWith("@") ? handle : `@${name}`);
+        }
+        return Array.from(out);
+    };
+
+    return {
+        authorizedAgents: {
+            SCHEMA_CHANGE: allow("@database", "@architect"),
+            BULK_DELETE: ["@manager"],
+            ROLE_CHANGE: ["@manager"],
+            BILLING_CHANGE: ["@manager"],
+            PII_EXPORT: allow("@security"),
+            ENV_CHANGE: allow("@devops"),
+            PRODUCTION_DEPLOY: allow("@devops"),
+            FORCE_PUSH: allow("@git"),
+        },
+        operationRisk: {
+            SCHEMA_CHANGE: 70,
+            BULK_DELETE: 90,
+            ROLE_CHANGE: 80,
+            BILLING_CHANGE: 85,
+            PII_EXPORT: 95,
+            ENV_CHANGE: 75,
+            PRODUCTION_DEPLOY: 80,
+            FORCE_PUSH: 60,
+        },
+    };
+}
 
 export function scaffoldConstitution(targetDir: string, frameworkDir: string, adapterId: AdapterId, dryRun: boolean, language: SupportedLanguage = "tr") {
     if (dryRun) return;
@@ -57,13 +114,18 @@ export function scaffoldFrameworkConfigs(
     const language = options?.language || "tr";
     const t = TRANSLATIONS[language];
 
+    const projectKind = detectProjectKind(targetDir);
+    const paths = resolveProjectPaths(targetDir);
+
     const config = {
         name: FRAMEWORK_NAME,
         version: getPackageVersion(),
         profile: options?.profile || "custom",
+        projectKind,
         agents: options?.agents || [],
         unified: options?.unified || false,
         adapters: options?.adapters || [adapter.id],
+        paths,
         backendLanguage: options?.backendLanguage || "Node.js (TypeScript)",
         frontendFramework: options?.frontendFramework || "Vite (React)",
         language: language,
@@ -71,28 +133,12 @@ export function scaffoldFrameworkConfigs(
             palette: selectedPalette,
             colors: palette
         },
-        governance: {
-            authorizedAgents: {
-                SCHEMA_CHANGE: ["@manager", "@database", "@architect"],
-                BULK_DELETE: ["@manager"],
-                ROLE_CHANGE: ["@manager"],
-                BILLING_CHANGE: ["@manager"],
-                PII_EXPORT: ["@manager", "@security"],
-                ENV_CHANGE: ["@manager", "@devops"],
-                PRODUCTION_DEPLOY: ["@manager", "@devops"],
-                FORCE_PUSH: ["@manager", "@git"],
-            },
-            operationRisk: {
-                SCHEMA_CHANGE: 70,
-                BULK_DELETE: 90,
-                ROLE_CHANGE: 80,
-                BILLING_CHANGE: 85,
-                PII_EXPORT: 95,
-                ENV_CHANGE: 75,
-                PRODUCTION_DEPLOY: 80,
-                FORCE_PUSH: 60,
-            }
-        }
+        governance: buildGovernanceForAgents(options?.agents || []),
+        orchestrator: {
+            autoStart: true,
+            intervalMs: 1000,
+        },
+        ...buildProfileServiceConfig(options?.profile || "custom"),
     };
     writeJsonFile(path.join(frameworkDir, "config.json"), config, dryRun);
 
@@ -159,13 +205,10 @@ export function scaffoldShims(
             name.toLowerCase() === adapterId.split("-")[0].toLowerCase();
 
         if (unified || isSelectedAdapter) {
-            const shimContent = remapFrameworkContent(content, coreDir, adapterId);
-            // In unified mode, each adapter writes its OWN shimFile name.
-            // In single-adapter mode, use selected adapter's shimFile.
-            const shimAdapter = ADAPTERS[name as AdapterId] || adapter;
-            const shimFileName = (unified && !isSelectedAdapter)
-                ? (shimAdapter.shimFile || `${name.toUpperCase()}.md`)   // each adapter's own file
-                : (adapter.shimFile || `${name.toUpperCase()}.md`);       // selected adapter's file
+            const shimAdapterId = (unified ? name : adapterId) as AdapterId;
+            const shimAdapter = ADAPTERS[shimAdapterId] || adapter;
+            const shimContent = remapFrameworkContent(content, coreDir, shimAdapterId);
+            const shimFileName = shimAdapter.shimFile || `${name.toUpperCase()}.md`;
 
             if (!dryRun) writeTextFile(path.join(projectRoot, shimFileName), shimContent);
             if (isSelectedAdapter) {

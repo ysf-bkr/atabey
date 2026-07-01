@@ -1,6 +1,8 @@
-# [GOV] Agent Atabey — MCP-Powered AI Governance & Multi-Agent Workflow Layer for AI Coding Assistants
+# [GOV] Agent Atabey — AI Governance & Multi-Agent Platform / Orchestrator
 
-[![Version](https://img.shields.io/badge/Version-v0.0.19-blue.svg)](https://github.com/ysf-bkr/atabey)
+*Yapay Zeka Yönetişimi ve Çoklu Ajan Platformu / Orkestratörü*
+
+[![Version](https://img.shields.io/badge/Version-v0.0.20-blue.svg)](https://github.com/ysf-bkr/atabey)
 [![npm](https://img.shields.io/npm/v/atabey)](https://www.npmjs.com/package/atabey)
 [![npm-mcp](https://img.shields.io/npm/v/atabey-mcp)](https://www.npmjs.com/package/atabey-mcp)
 [![MCP](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io)
@@ -10,18 +12,28 @@
 [![Agents](https://img.shields.io/badge/Specialized%20Agents-14-purple)](https://github.com/ysf-bkr/atabey)
 [![Platforms](https://img.shields.io/badge/Supported%20Platforms-7-orange)](https://github.com/ysf-bkr/atabey)
 [![Skills](https://img.shields.io/badge/Core%20Skills-7-yellow)](https://github.com/ysf-bkr/atabey)
-[![Governance Score](https://img.shields.io/badge/AI%20Governance-92%2F100-success)](https://github.com/ysf-bkr/atabey)
-[![Orchestration Score](https://img.shields.io/badge/Orchestration-90%2F100-success)](https://github.com/ysf-bkr/atabey)
+[![Governance Score](https://img.shields.io/badge/AI%20Governance-76%2F100-yellow)](https://github.com/ysf-bkr/atabey)
+[![Orchestration Score](https://img.shields.io/badge/Orchestration-74%2F100-yellow)](https://github.com/ysf-bkr/atabey)
 
 ![Agent Atabey Dashboard Mockup](docs/assets/dashboard.jpg)
 
-**Agent Atabey** is an **MCP (Model Context Protocol) server** designed specifically for agentic developer workflows. It plugs directly into your AI coding interface — such as Claude Code, Gemini CLI, or Cursor — to govern, secure, and coordinate the terminal/CLI commands and file modification loops executed autonomously by these AI assistants.
+**Agent Atabey** is an **AI Governance & Multi-Agent Platform / Orchestrator** built on MCP (Model Context Protocol). It sits on top of your existing AI coding interfaces — Claude Code, Gemini CLI, Cursor, Codex, Grok, Antigravity, or local LLMs — and turns them into a governed, multi-agent software engineering system.
+
+| Layer | Role |
+|-------|------|
+| **Your AI IDE/CLI** | Writes code, runs tools, executes shell commands |
+| **Atabey MCP Server** | 39 tools · 13-layer governance · orchestration · memory |
+| **@manager + 13 specialists** | Delegation, quality gates, risk control, audit trail |
+| **`.atabey/` brain hub** | Constitution, memory, knowledge, registry, observability |
 
 > [!NOTE]
-> **Project Status (Pre-1.0):** Atabey is a serious, rapidly evolving, open-source governance layer for AI coding assistants. It is currently in active pre-1.0 development, moving towards a stable 1.0 release.
+> **Project Status (Pre-1.0):** Atabey is actively evolving toward a stable 1.0 release. The platform architecture is production-oriented; APIs may still change before 1.0.
 
 > **Philosophy:** "Order from Chaos"
-> **Governance Context:** In an agentic workflow, the AI assistant runs the development tools, shell commands, and file edits. Atabey acts as the deterministic governance and safety layer over these AI execution loops.
+>
+> **What Atabey is:** A deterministic governance and multi-agent orchestration middleware for AI coding assistants.
+>
+> **What Atabey is not:** A standalone LLM runtime (unlike LangGraph/CrewAI). Your connected AI assistant still generates code; Atabey disciplines, routes, validates, and coordinates it.
 
 ---
 
@@ -64,7 +76,10 @@ You (@backend): "Create a user login service with JWT authentication"
 
 ## 📋 Table of Contents
 
+- [Platform Architecture](#platform-architecture)
+- [Orchestration Flow](#orchestration-flow)
 - [Quick Start](#quick-start)
+- [MCP Connection (IDE/CLI)](#mcp-connection-idecli)
 - [5 Core Capabilities Overview](#5-core-capabilities-overview)
 - [How Atabey Plugs Into Your AI](#how-atabey-plugs-into-your-ai)
 - [Supported Platforms](#supported-platforms)
@@ -82,7 +97,101 @@ You (@backend): "Create a user login service with JWT authentication"
 - [Architecture](#architecture)
 - [Security](#security)
 - [KVKK/GDPR Compliance](#kvkkgdpr-compliance)
+- [EU AI Act Alignment](#eu-ai-act-alignment)
+- [Token Economy & FinOps](#token-economy--finops)
 - [Contributing](#contributing)
+
+---
+
+## Platform Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         USER / DEVELOPER                                 │
+│              @manager planla · @backend API yaz · @quality audit       │
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                │
+        ┌───────────────────────┼───────────────────────┐
+        ▼                       ▼                       ▼
+┌───────────────┐      ┌───────────────┐      ┌───────────────┐
+│ Claude Code   │      │ Gemini CLI    │      │ Cursor IDE    │
+│ .claude/      │      │ .gemini/      │      │ .cursor/      │
+└───────┬───────┘      └───────┬───────┘      └───────┬───────┘
+        │                      │                      │
+        └──────────────────────┼──────────────────────┘
+                               │ MCP (stdio) — IDE default
+                               ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    ATABEY MCP SERVER (atabey-mcp)                        │
+│  Governance Pipeline · Hermes Queue · Orchestrator · Vector Memory       │
+│  Risk Engine · FinOps · Auto-Rollback · Human-in-the-Loop               │
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  .atabey/  Brain & Memory (SSOT)     │  .agents/  Unified Agent Hub    │
+│  ATABEY.md · memory/ · knowledge/     │  7 platform mirrors + skills    │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Monorepo layout:**
+
+| Package | Purpose |
+|---------|---------|
+| `packages/atabey` | CLI, adapters, agent export, init |
+| `packages/atabey-mcp` | MCP server, governance middleware, dashboard API |
+| `packages/shared` | Shared constants, PII, audit, storage (SSOT) |
+
+---
+
+## Orchestration Flow
+
+```mermaid
+sequenceDiagram
+    participant U as Developer
+    participant AI as AI Assistant
+    participant MCP as Atabey MCP
+    participant M as @manager
+    participant S as Specialists
+    participant G as Governance
+
+    U->>AI: @manager Auth modülünü planla ve dağıt
+    AI->>MCP: get_framework_status / read_project_memory
+    MCP->>G: PII mask · risk scan
+    MCP-->>AI: Phase, trace, agent states
+
+    AI->>MCP: send_agent_message → @backend
+    U->>AI: @backend JWT servisi yaz
+    AI->>MCP: write_file (governed)
+    MCP->>G: Quality gate · auto-rollback snapshot
+    MCP-->>AI: Approved output
+
+    AI->>MCP: orchestrate_loop
+    MCP-->>AI: Hermes queue processed
+
+    AI->>MCP: send_agent_message → @quality AUDIT
+    MCP->>G: Compliance · lint
+    MCP-->>AI: APPROVED / REJECTED
+```
+
+**Orchestrator auto-start (default):** When your IDE connects to the MCP server (`mcp.json`), Atabey automatically boots the headless **AgentLoop** orchestrator in the background. No separate terminal is required for daily multi-agent work.
+
+```bash
+# Optional — interactive TUI dashboard loop
+npx atabey orchestrate
+
+# Optional — unified HTTP server + dashboard UI
+MCP_TRANSPORT=unified MCP_PORT=5858 npx atabey-mcp
+```
+
+Disable auto-start: set `"orchestrator": { "autoStart": false }` in `.atabey/config.json` or `ATABEY_AUTO_START_ORCHESTRATOR=false` in `mcp.json`.
+
+### Project kinds
+
+| Kind | Where | App paths (`apps/backend`, `apps/web`) |
+|------|-------|----------------------------------------|
+| **consumer** | Your application repo after `atabey init` | ✅ Scaffolded by init |
+| **framework-monorepo** | This GitHub repository (`packages/*`) | ❌ Not applicable — use `packages/atabey`, `packages/atabey-mcp/dashboard` |
 
 ---
 
@@ -90,13 +199,31 @@ You (@backend): "Create a user login service with JWT authentication"
 
 ### 1. Initialize Atabey in Your Project
 
+> **Consumer projects:** `atabey init` scaffolds `apps/backend`, `apps/web`, `docs/`, etc.  
+> The **Atabey framework monorepo** itself does not contain `apps/*` — those paths appear only after you install Atabey in your own application repository.
+
 ```bash
+# Single platform (your app repo)
 npx atabey init gemini --profile freelancer --yes
+
+# All 7 platforms (recommended for teams)
+npx atabey init gemini --unified --profile team --yes
+
+# Framework monorepo maintainers only (this repository)
+npm install          # postinstall runs atabey:setup if .atabey/ is missing
+npm run atabey:setup # or run manually
 ```
 
-### 2. Connect to Your AI Interface
+### 2. Verify MCP & Platform Health
 
-Atabey generates an `mcp.json` config. Point your AI assistant to it:
+```bash
+npx atabey check     # MCP transport, unified layout, AL registry, compliance
+npx atabey status    # Phase, trace, agent states
+```
+
+### 3. Connect to Your AI Interface (MCP auto-starts)
+
+`atabey init` generates `mcp.json` with **`MCP_TRANSPORT=stdio`** and **`ATABEY_AUTO_START_ORCHESTRATOR=true`**. Your IDE spawns the MCP server automatically — orchestrator included. Point your AI assistant to it:
 
 **Claude Code:**
 ```json
@@ -107,7 +234,8 @@ Atabey generates an `mcp.json` config. Point your AI assistant to it:
       "args": ["-y", "atabey-mcp"],
       "env": {
         "MCP_TRANSPORT": "stdio",
-        "ATABEY_PROJECT_ROOT": "/path/to/your/project"
+        "ATABEY_PROJECT_ROOT": "/path/to/your/project",
+        "ATABEY_AUTO_START_ORCHESTRATOR": "true"
       }
     }
   }
@@ -121,20 +249,54 @@ gemini config set mcpServers.atabey.args "[\"-y\", \"atabey-mcp\"]"
 gemini config set mcpServers.atabey.env "{\"MCP_TRANSPORT\": \"stdio\", \"ATABEY_PROJECT_ROOT\": \"/path/to/your/project\"}"
 ```
 
-**Cursor:**
+**Cursor** (`.cursor/mcp.json` — auto-generated by init):
+
 ```json
 {
   "mcpServers": {
     "atabey": {
-      "command": "npx",
-      "args": ["-y", "atabey-mcp"],
-      "env": { "MCP_TRANSPORT": "stdio" }
+      "command": "node",
+      "args": ["node_modules/atabey-mcp/dist/atabey-mcp/src/mcp/index.js"],
+      "env": {
+        "MCP_TRANSPORT": "stdio",
+        "ATABEY_PROJECT_ROOT": "/path/to/your/project",
+        "ATABEY_AUTO_START_ORCHESTRATOR": "true"
+      }
     }
   }
 }
 ```
 
-### 3. Start Using in AI Chat
+> [!IMPORTANT]
+> **MCP transport modes**
+> - **`stdio`** (default) — Claude, Cursor, Gemini, Codex, Grok. Set by `atabey init` and `atabey mcp install`.
+> - **`unified`** — HTTP/SSE server on port 5858 for dashboard and remote clients: `MCP_TRANSPORT=unified MCP_PORT=5858 atabey-mcp`
+>
+> Repair a broken config: `atabey mcp install`
+
+---
+
+## MCP Connection (IDE/CLI)
+
+| Step | Command | Result |
+|------|---------|--------|
+| Init | `atabey init gemini --unified --yes` | Agents + 7 adapter MCP configs + shims |
+| Repair | `atabey mcp install` | Refreshes root `mcp.json` (stdio + auto-orchestrator) |
+| IDE connect | Open Claude / Cursor / Gemini | MCP + orchestrator start automatically |
+| Debug | `atabey mcp start` | Manual stdio MCP for troubleshooting |
+| Health | `atabey check` | Validates `MCP_TRANSPORT`, unified layout, AL registry |
+
+**Platform orchestration strength:**
+
+| Platform | Orchestration | Best role |
+|----------|---------------|-----------|
+| Claude Code | Full (7 skills) | Primary orchestrator |
+| Gemini CLI | Strong (6 skills) | Commander / strategist |
+| Local LLM | Strong | Offline / private |
+| Antigravity CLI | Strong | Custom agent JSON |
+| Cursor / Grok / Codex | Limited (4 skills) | Implementer / editor |
+
+### 4. Start Using in AI Chat
 
 Open your AI interface and simply type:
 
@@ -154,12 +316,14 @@ Atabey AL is built on **5 core capabilities** that work together seamlessly:
 
 | # | Capability | Description | Score |
 |---|-----------|-------------|-------|
-| 🛠️ | **39 MCP Tools** | File system, search, messaging, governance, memory, quality, network, orchestration | 95/100 |
-| 🧠 | **3-Layer Memory** | Vector Memory (TF-IDF/OpenAI), Project Memory, Specialty Memory (agent learning) | 93/100 |
-| 🤖 | **14 Specialized Agents** | 3-tier hierarchy (Supreme/Core/Recon) with state machine | 94/100 |
-| 🎯 | **7 Core Skills** | Platform-adaptive skills for 7 different AI platforms | 90/100 |
-| 📚 | **30+ Knowledge Standards** | Governance, security, architecture, compliance, deployment standards | 92/100 |
-| **🎯** | **Overall** | **AI Governance & Multi-Agent Orchestration** | **93/100** |
+| 🛠️ | **39 MCP Tools** | File system, search, messaging, governance, memory, quality, network, orchestration | 82/100 |
+| 🧠 | **3-Layer Memory** | Vector Memory (TF-IDF/OpenAI), Project Memory, Specialty Memory (agent learning) | 78/100 |
+| 🤖 | **14 Specialized Agents** | 3-tier hierarchy (Supreme/Core/Recon) with state machine | 80/100 |
+| 🎯 | **7 Core Skills** | Platform-adaptive skills for 7 different AI platforms | 72/100 |
+| 📚 | **30+ Knowledge Standards** | Governance, security, architecture, compliance, deployment standards | 85/100 |
+| **🎯** | **Overall** | **AI Governance & Multi-Agent Platform / Orchestrator** | **74/100** |
+
+> Scores reflect pre-1.0 maturity: strong governance and MCP tooling; orchestration depth varies by platform adapter.
 
 ---
 
@@ -467,7 +631,7 @@ Agents learn from both successes and failures. Lessons stored in `.atabey/memory
 Pre-write snapshots, post-write governance scan, automatic rollback + regenerate instructions for the AI.
 
 ### Token Economy & Cost Tracking
-Per-agent token/cost tracking, monthly budgets, 50/80/90/100% alert thresholds, auto-shutdown.
+Per-agent token/cost tracking via MCP governance middleware. Budget enforcement is **config-driven** in `.atabey/config.json` (`finops` section) and auto-starts with the MCP server. See [Token Economy & FinOps](#token-economy--finops).
 
 ### Prompt Injection Protection
 OWASP LLM01 compliant sanitization detected via role-playing, system prompt override, delimiters, and context manipulation patterns.
@@ -594,14 +758,89 @@ Deterministic rules: AST compliance parsing, strict TypeScript type validation (
 
 ## KVKK/GDPR Compliance
 
+> **Scope:** Technical compliance tooling — not legal certification. Pair with your DPO/legal counsel for production deployments.
+
 | Feature | KVKK | GDPR | Status |
 |---------|------|------|--------|
-| PII Masking (20+ patterns) | Art. 4, 5, 11, 12 | Art. 5, 32 | ✅ |
-| Data Retention (30/90 days) | Art. 5, 7 | Art. 5, 17 | ✅ |
-| Right to Erasure | Art. 7 | Art. 17 | ✅ |
-| Audit Trail | Art. 11 | Art. 30 | ✅ |
-| Data Classification | Art. 6 | Art. 9 | ✅ |
-| Consent Management | Art. 5 | Art. 7 | ✅ |
+| PII Masking (20+ patterns) | Art. 4, 5, 11, 12 | Art. 5, 32 | ✅ Implemented |
+| Data Retention (30/90 days) | Art. 5, 7 | Art. 5, 17 | ✅ Auto-cleanup on MCP boot |
+| Right to Erasure | Art. 7 | Art. 17 | ✅ `/api/audit/erase` + trace erase |
+| Audit Trail | Art. 11 | Art. 30 | ✅ SQLite audit log |
+| Data Classification | Art. 6 | Art. 9 | ✅ Category-based retention |
+| Consent Logging | Art. 5 | Art. 7 | ✅ `.atabey/compliance/consent-log.json` |
+
+Configure in `.atabey/config.json`:
+
+```json
+{
+  "compliance": {
+    "retentionEnabled": true,
+    "consentLogging": true,
+    "piiMasking": true,
+    "dataProcessingBasis": "consent"
+  }
+}
+```
+
+Dashboard API: `GET /api/compliance/consent`, `GET /api/compliance/retention`
+
+---
+
+## EU AI Act Alignment
+
+Atabey provides **process and governance alignment** with the EU AI Act via `.atabey/knowledge/llm-governance.md` (scaffolded on `atabey init`):
+
+| EU AI Act principle | Atabey implementation |
+|---------------------|----------------------|
+| Human oversight | Human-in-the-Loop, risk score ≥ 60 → approval |
+| Risk classification | High-risk ops (auth, billing, moderation) gated by `@manager` |
+| Transparency | AI-generated output labeling rules in llm-governance |
+| Data protection | PII masking, retention, erasure (KVKK/GDPR layer) |
+| Robustness & safety | Loop detection, injection protection (OWASP LLM01), auto-rollback |
+
+> **Not included:** CE marking, conformity assessment, DPIA templates, or legal EU AI Act certification. Use Atabey as a **technical control layer** alongside legal review.
+
+---
+
+## Token Economy & FinOps
+
+FinOps **auto-starts** when the MCP server boots. Defaults are profile-based:
+
+| Profile | Tracking | Budget enforcement |
+|---------|----------|-------------------|
+| `freelancer` | ✅ Always | ❌ Off (track only) |
+| `team` | ✅ Always | ❌ Off by default |
+| `enterprise` | ✅ Always | ✅ $500/mo default |
+
+Configure in `.atabey/config.json`:
+
+```json
+{
+  "finops": {
+    "tracking": true,
+    "enforcement": true,
+    "monthlyBudgetUsd": 200,
+    "agentMaxBudgetUsd": 40,
+    "team": "my-team",
+    "alertThresholds": [50, 80, 90, 100],
+    "costPer1kTokensUsd": 0.003
+  }
+}
+```
+
+Environment overrides (optional):
+
+```bash
+ATABEY_BUDGET_ENABLED=true
+ATABEY_BUDGET_MONTHLY=200
+ATABEY_BUDGET_AGENT_MAX=40
+```
+
+- **Tracking mode:** logs estimated tokens per MCP tool call, exposes `/api/finops`
+- **Enforcement mode:** blocks tool calls when monthly/agent budget exceeded
+- **Alerts:** stderr warnings at 50/80/90/100% thresholds
+
+Check status: `atabey status` · Dashboard: `GET /api/finops`
 
 ---
 

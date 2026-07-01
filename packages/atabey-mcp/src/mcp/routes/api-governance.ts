@@ -24,6 +24,50 @@ export async function handleGovernanceRoutes(
         return true;
     }
 
+    // Consent log (KVKK Art. 5 / GDPR Art. 7)
+    if (pathname === "/api/compliance/consent" && method === "GET") {
+        try {
+            const { listConsentRecords, getConsentStats } = await import("../utils/consent.js");
+            serveJson(res, 200, {
+                success: true,
+                data: { records: listConsentRecords(100), stats: getConsentStats() },
+            });
+        } catch (e) { serveJson(res, 500, { success: false, error: (e as Error).message }); }
+        return true;
+    }
+
+    if (pathname === "/api/compliance/consent" && method === "POST") {
+        try {
+            let body = "";
+            req.on("data", chunk => { body += chunk.toString(); });
+            req.on("end", async () => {
+                try {
+                    const parsed = JSON.parse(body);
+                    const { recordConsent } = await import("../utils/consent.js");
+                    const record = recordConsent({
+                        subject: String(parsed.subject || "anonymous"),
+                        purpose: String(parsed.purpose || "ai-assisted-development"),
+                        granted: parsed.granted !== false,
+                        legalBasis: parsed.legalBasis,
+                        expiresAt: parsed.expiresAt,
+                        metadata: parsed.metadata,
+                    });
+                    serveJson(res, 200, { success: true, data: record });
+                } catch (err) { serveJson(res, 400, { success: false, error: (err as Error).message }); }
+            });
+        } catch (e) { serveJson(res, 500, { success: false, error: (e as Error).message }); }
+        return true;
+    }
+
+    // Retention stats (KVKK/GDPR)
+    if (pathname === "/api/compliance/retention" && method === "GET") {
+        try {
+            const { DataRetention } = await import("../../shared/retention.js");
+            serveJson(res, 200, { success: true, data: DataRetention.getStats() });
+        } catch (e) { serveJson(res, 500, { success: false, error: (e as Error).message }); }
+        return true;
+    }
+
     // Audit Erase (GDPR/KVKK Right to Erasure)
     if (pathname === "/api/audit/erase" && method === "POST") {
         try {

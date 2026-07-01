@@ -2,6 +2,7 @@
   "name": "Agent Atabey",
   "version": "0.0.19",
   "profile": "freelancer",
+  "projectKind": "framework-monorepo",
   "agents": [
     "manager",
     "backend",
@@ -18,6 +19,13 @@
     "local",
     "antigravity-cli"
   ],
+  "paths": {
+    "backend": "packages/atabey",
+    "frontend": "packages/atabey-mcp/dashboard",
+    "mobile": "apps/mobile",
+    "docs": "docs",
+    "tests": "packages"
+  },
   "backendLanguage": "Node.js (TypeScript)",
   "frontendFramework": "Vite (React)",
   "language": "tr",
@@ -29,12 +37,29 @@
       "accent": "#f43f5e"
     }
   },
+  "orchestrator": {
+    "autoStart": true,
+    "intervalMs": 1000
+  },
+  "finops": {
+    "tracking": true,
+    "enforcement": false,
+    "monthlyBudgetUsd": 0,
+    "agentMaxBudgetUsd": 0,
+    "team": "atabey-framework",
+    "alertThresholds": [50, 80, 90, 100],
+    "costPer1kTokensUsd": 0.003
+  },
+  "compliance": {
+    "retentionEnabled": true,
+    "consentLogging": true,
+    "piiMasking": true,
+    "dataProcessingBasis": "legitimate_interest"
+  },
   "governance": {
     "authorizedAgents": {
       "SCHEMA_CHANGE": [
-        "@manager",
-        "@database",
-        "@architect"
+        "@manager"
       ],
       "BULK_DELETE": [
         "@manager"
@@ -46,20 +71,16 @@
         "@manager"
       ],
       "PII_EXPORT": [
-        "@manager",
-        "@security"
+        "@manager"
       ],
       "ENV_CHANGE": [
-        "@manager",
-        "@devops"
+        "@manager"
       ],
       "PRODUCTION_DEPLOY": [
-        "@manager",
-        "@devops"
+        "@manager"
       ],
       "FORCE_PUSH": [
-        "@manager",
-        "@git"
+        "@manager"
       ]
     },
     "operationRisk": {

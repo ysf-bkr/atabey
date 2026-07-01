@@ -134,13 +134,26 @@ export const MEMORY_FILES = {
 
 // ─── Monorepo default paths ───────────────────────────────────────────────────
 
-export const DEFAULT_MONOREPO_PATHS = {
+/** Default layout scaffolded into consumer projects after `atabey init`. */
+export const DEFAULT_CONSUMER_PATHS = {
     backend: "apps/backend",
     frontend: "apps/web",
     mobile: "apps/mobile",
     docs: "docs",
     tests: "tests",
 } as const;
+
+/** Paths inside the Atabey framework source monorepo (not consumer apps/). */
+export const FRAMEWORK_MONOREPO_PATHS = {
+    backend: "packages/atabey",
+    frontend: "packages/atabey-mcp/dashboard",
+    mobile: "apps/mobile",
+    docs: "docs",
+    tests: "packages",
+} as const;
+
+/** @deprecated Use DEFAULT_CONSUMER_PATHS */
+export const DEFAULT_MONOREPO_PATHS = DEFAULT_CONSUMER_PATHS;
 
 /** Cursor rule globs per agent role (enterprise monorepo layout). */
 export const CURSOR_AGENT_GLOBS: Record<string, string> = {
@@ -166,7 +179,20 @@ export const MCP = {
     ROOT_CONFIG_FILE: "mcp.json",
     PROJECT_ROOT_ENV: "ATABEY_PROJECT_ROOT",
     TEST_DIR_ENV: "ATABEY_TEST_DIR",
+    TRANSPORT_ENV: "MCP_TRANSPORT",
+    /** IDE clients (Claude, Cursor, Gemini) spawn MCP via stdio JSON-RPC. */
+    TRANSPORT_STDIO: "stdio",
+    /** HTTP/SSE unified server for dashboard, multi-session, and remote clients. */
+    TRANSPORT_UNIFIED: "unified",
     SERVER_DIST_PATH: "../atabey-mcp/dist/atabey-mcp/src/mcp/index.js",
+} as const;
+
+/** Headless Hermes orchestrator (AgentLoop) — auto-starts with MCP server by default. */
+export const ORCHESTRATOR = {
+    AUTO_START_ENV: "ATABEY_AUTO_START_ORCHESTRATOR",
+    INTERVAL_MS_ENV: "ATABEY_ORCHESTRATOR_INTERVAL_MS",
+    DEFAULT_AUTO_START: true,
+    DEFAULT_INTERVAL_MS: 1000,
 } as const;
 
 export const ROOT_CONFIG_FILES = {

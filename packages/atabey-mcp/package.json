@@ -1,7 +1,7 @@
 {
   "name": "atabey-mcp",
-  "version": "0.0.19",
-  "description": "Atabey — AI Governance & Multi-Agent Orchestration Framework — MCP Server",
+  "version": "0.0.20",
+  "description": "Atabey — AI Governance & Multi-Agent Platform / Orchestrator — MCP Server",
   "author": "Yusuf BEKAR",
   "license": "AGPL-3.0",
   "keywords": [

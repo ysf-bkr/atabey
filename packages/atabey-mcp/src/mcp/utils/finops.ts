@@ -27,27 +27,43 @@ import path from "path";
 
 // ─── Configuration ────────────────────────────────────────────────
 
-const CONFIG = {
-    /** Team name for budget grouping */
-    TEAM: process.env.ATABEY_BUDGET_TEAM || "default",
-    /** Monthly budget in USD (0 = unlimited) */
-    MONTHLY_BUDGET: parseFloat(process.env.ATABEY_BUDGET_MONTHLY || "0"),
-    /** Max spend per agent in USD (0 = unlimited) */
-    AGENT_MAX_BUDGET: parseFloat(process.env.ATABEY_BUDGET_AGENT_MAX || "0"),
-    /** Enterprise server URL for budget policy sync */
-    SYNC_URL: process.env.ATABEY_BUDGET_SYNC_URL || "",
-    /** Sync token */
-    SYNC_TOKEN: process.env.ATABEY_BUDGET_SYNC_TOKEN || "",
-    /** Budget alert thresholds (percentages) */
-    ALERT_THRESHOLDS: (process.env.ATABEY_BUDGET_ALERT_THRESHOLDS || "50,80,90,100")
-        .split(",").map(t => parseInt(t.trim(), 10)).filter(t => !isNaN(t)),
-    /** Cost per 1K tokens (USD) – default: $0.003 for Claude */
-    COST_PER_1K_TOKENS: parseFloat(process.env.ATABEY_COST_PER_1K_TOKENS || "0.003"),
-    /** Sync interval in ms */
-    SYNC_INTERVAL_MS: parseInt(process.env.ATABEY_BUDGET_SYNC_INTERVAL || "60000", 10),
-    /** Enable/disable budget enforcement */
-    ENABLED: process.env.ATABEY_BUDGET_ENABLED === "true",
-};
+interface FinOpsRuntimeConfig {
+    TEAM: string;
+    MONTHLY_BUDGET: number;
+    AGENT_MAX_BUDGET: number;
+    SYNC_URL: string;
+    SYNC_TOKEN: string;
+    ALERT_THRESHOLDS: number[];
+    COST_PER_1K_TOKENS: number;
+    SYNC_INTERVAL_MS: number;
+    /** Track usage and expose metrics */
+    ENABLED: boolean;
+    /** Block tool calls when budget exceeded */
+    ENFORCE_BLOCKING: boolean;
+}
+
+function buildDefaultConfig(): FinOpsRuntimeConfig {
+    return {
+        TEAM: process.env.ATABEY_BUDGET_TEAM || "default",
+        MONTHLY_BUDGET: parseFloat(process.env.ATABEY_BUDGET_MONTHLY || "0"),
+        AGENT_MAX_BUDGET: parseFloat(process.env.ATABEY_BUDGET_AGENT_MAX || "0"),
+        SYNC_URL: process.env.ATABEY_BUDGET_SYNC_URL || "",
+        SYNC_TOKEN: process.env.ATABEY_BUDGET_SYNC_TOKEN || "",
+        ALERT_THRESHOLDS: (process.env.ATABEY_BUDGET_ALERT_THRESHOLDS || "50,80,90,100")
+            .split(",").map(t => parseInt(t.trim(), 10)).filter(t => !isNaN(t)),
+        COST_PER_1K_TOKENS: parseFloat(process.env.ATABEY_COST_PER_1K_TOKENS || "0.003"),
+        SYNC_INTERVAL_MS: parseInt(process.env.ATABEY_BUDGET_SYNC_INTERVAL || "60000", 10),
+        ENABLED: process.env.ATABEY_BUDGET_ENABLED === "true",
+        ENFORCE_BLOCKING: process.env.ATABEY_BUDGET_ENABLED === "true" &&
+            parseFloat(process.env.ATABEY_BUDGET_MONTHLY || "0") > 0,
+    };
+}
+
+let CONFIG: FinOpsRuntimeConfig = buildDefaultConfig();
+
+export function applyFinOpsRuntimeConfig(overrides: Partial<FinOpsRuntimeConfig>): void {
+    CONFIG = { ...CONFIG, ...overrides };
+}
 
 // ─── Types ────────────────────────────────────────────────────────
 
@@ -173,8 +189,8 @@ export class BudgetManager {
         this.state.monthlySpend += cost;
         this.state.agentSpend[agent] = (this.state.agentSpend[agent] || 0) + cost;
 
-        // Check team budget
-        if (CONFIG.MONTHLY_BUDGET > 0 && this.state.monthlySpend > CONFIG.MONTHLY_BUDGET) {
+        // Check team budget (blocking only when enforcement enabled)
+        if (CONFIG.ENFORCE_BLOCKING && CONFIG.MONTHLY_BUDGET > 0 && this.state.monthlySpend > CONFIG.MONTHLY_BUDGET) {
             this.state.blocked = true;
             this.state.blockReason = `Team "${CONFIG.TEAM}" exceeded monthly budget of $${CONFIG.MONTHLY_BUDGET.toFixed(2)}`;
             this.saveState();
@@ -182,8 +198,8 @@ export class BudgetManager {
             return `[FINOPS] ⛔ ${this.state.blockReason}`;
         }
 
-        // Check agent budget
-        if (CONFIG.AGENT_MAX_BUDGET > 0 && (this.state.agentSpend[agent] || 0) > CONFIG.AGENT_MAX_BUDGET) {
+        // Check agent budget (blocking only when enforcement enabled)
+        if (CONFIG.ENFORCE_BLOCKING && CONFIG.AGENT_MAX_BUDGET > 0 && (this.state.agentSpend[agent] || 0) > CONFIG.AGENT_MAX_BUDGET) {
             this.state.blocked = true;
             this.state.blockReason = `Agent "${agent}" exceeded max budget of $${CONFIG.AGENT_MAX_BUDGET.toFixed(2)}`;
             this.saveState();

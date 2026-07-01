@@ -2,7 +2,9 @@ import { spawn } from "child_process";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { MCP } from "../../shared/constants.js";
 import { logger } from "../../shared/logger.js";
+import { buildMcpServerEntry, writeRootMcpConfig } from "../platforms/core.js";
 import { UI } from "../utils/ui.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -41,16 +43,19 @@ async function startMcpServer() {
     UI.intent("[MCP]", "Starting Agent Atabey MCP Server...");
 
     // Find the framework-mcp entry point
-    let mcpPath = path.resolve(__dirname, "../../../atabey-mcp/dist/mcp/index.js");
+    let mcpPath = path.resolve(__dirname, "../../../atabey-mcp/dist/atabey-mcp/src/mcp/index.js");
     let runner = "node";
 
     if (!fs.existsSync(mcpPath)) {
-        mcpPath = path.resolve(__dirname, "../../../atabey-mcp/src/mcp/index.ts");
-        runner = "npx";
+        mcpPath = path.join(process.cwd(), "node_modules/atabey-mcp/dist/atabey-mcp/src/mcp/index.js");
         if (!fs.existsSync(mcpPath)) {
-            UI.error(`MCP Server entry point not found at ${mcpPath}`);
-            UI.info("Try running 'npm run build' first.");
-            process.exit(70);
+            mcpPath = path.resolve(__dirname, "../../../atabey-mcp/src/mcp/index.ts");
+            runner = "npx";
+            if (!fs.existsSync(mcpPath)) {
+                UI.error(`MCP Server entry point not found at ${mcpPath}`);
+                UI.info("Try running 'npm run build' first.");
+                process.exit(70);
+            }
         }
     }
 
@@ -67,7 +72,8 @@ async function startMcpServer() {
         env: {
             ...process.env,
             ATABEY_PROJECT_ROOT: process.cwd(),
-            MCP_TRANSPORT: "stdio"
+            [MCP.TRANSPORT_ENV]: MCP.TRANSPORT_STDIO,
+            ATABEY_AUTO_START_ORCHESTRATOR: "true",
         }
     });
 
@@ -88,25 +94,15 @@ async function startMcpServer() {
 async function installMcpConfig() {
     process.stdout.write("[MCP] Installing Agent Atabey MCP configuration...\n");
 
-    // Generate mcp.json configuration for AI interfaces
-    const configPath = path.resolve(process.cwd(), "mcp.json");
-    const mcpConfig = {
-        mcpServers: {
-            atabey: {
-                command: "atabey",
-                args: ["mcp", "start"],
-                env: {
-                    MCP_TRANSPORT: "stdio",
-                    ATABEY_PROJECT_ROOT: process.cwd()
-                }
-            }
-        }
-    };
+    const projectRoot = process.cwd();
+    writeRootMcpConfig(projectRoot);
 
-    fs.writeFileSync(configPath, JSON.stringify(mcpConfig, null, 2));
-    process.stdout.write(`[OK] Created mcp.json at ${configPath}\n`);
-    process.stdout.write("[INFO] This config is used by Claude Code, Gemini CLI, and Cursor to connect to Atabey.\n");
-    process.stdout.write("[INFO] Point your AI interface's MCP config to this file.\n");
+    const configPath = path.resolve(projectRoot, MCP.ROOT_CONFIG_FILE);
+    const entry = buildMcpServerEntry(projectRoot);
+    process.stdout.write(`[OK] Created ${MCP.ROOT_CONFIG_FILE} at ${configPath}\n`);
+    process.stdout.write(`[INFO] Transport: ${entry.env[MCP.TRANSPORT_ENV]} (IDE-compatible stdio)\n`);
+    process.stdout.write("[INFO] Used by Claude Code, Gemini CLI, Cursor, Codex, and Grok.\n");
+    process.stdout.write("[INFO] For HTTP/SSE unified mode: MCP_TRANSPORT=unified MCP_PORT=5858\n");
 }
 
 async function checkMcpStatus() {

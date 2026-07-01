@@ -5,6 +5,7 @@ import readline from "readline";
 
 import {
     ADAPTER_IDS,
+    ADAPTERS,
     mirrorUnifiedAgentsToNative,
     resolveAdapter,
     resolveAgentsDir,
@@ -13,7 +14,7 @@ import {
     type AdapterId,
 } from "../platforms/index.js";
 import { ensureDir } from "../utils/fs.js";
-import { getConfiguredPaths, initializeMemory } from "../utils/memory.js";
+import { initializeMemory, resolveProjectPaths } from "../utils/memory.js";
 import { getPackageRoot, getPackageVersion, mergePackageJson } from "../utils/pkg.js";
 import { UI } from "../utils/ui.js";
 
@@ -378,7 +379,7 @@ export async function initCommand(adapterName: string, options: { unified?: bool
 
     scaffoldStandards(path.join(projectRoot, coreDir), dryRun);
 
-    const pathsMap = getConfiguredPaths();
+    const pathsMap = resolveProjectPaths(projectRoot);
 
     if (isUnified) {
         for (const id of ADAPTER_IDS) {
@@ -414,7 +415,13 @@ export async function initCommand(adapterName: string, options: { unified?: bool
         mergePackageJson(pkgJsonPath, sourcePkgPath);
     }
 
-    runAdapterPostInit(adapter, projectRoot);
+    if (isUnified) {
+        for (const id of ADAPTER_IDS) {
+            runAdapterPostInit(ADAPTERS[id], projectRoot);
+        }
+    } else {
+        runAdapterPostInit(adapter, projectRoot);
+    }
 
     UI.success(`\n[START] ${FRAMEWORK_NAME} (v${getPackageVersion()}) ${t.init_success}`);
     process.stdout.write(`\n- Brain & Memory Hub: ${coreDir}/\n`);
@@ -424,4 +431,5 @@ export async function initCommand(adapterName: string, options: { unified?: bool
     process.stdout.write("  1. Run 'npm install' to install dependencies.\n");
     process.stdout.write("  2. Run 'atabey status' to verify the environment.\n");
     process.stdout.write("  3. Open your AI Assistant (Claude/Gemini/Cursor) and start using @agent commands.\n");
+    process.stdout.write("  4. Open your AI Assistant — MCP auto-starts the orchestrator. Optional: 'atabey orchestrate' for TUI.\n");
 }

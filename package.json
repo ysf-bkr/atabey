@@ -1,7 +1,7 @@
 {
   "name": "atabey-monorepo",
-  "version": "0.0.19",
-  "description": "Atabey — AI Governance & Multi-Agent Orchestration Framework — Monorepo",
+  "version": "0.0.20",
+  "description": "Atabey — AI Governance & Multi-Agent Platform / Orchestrator — Monorepo",
   "author": "Yusuf BEKAR",
   "license": "AGPL-3.0",
   "keywords": [
@@ -49,11 +49,14 @@
     "clean": "rm -rf node_modules packages/*/node_modules packages/*/dist",
     "atabey:status": "atabey status",
     "atabey:check": "atabey check",
+    "atabey:setup": "atabey init gemini --unified --profile freelancer --yes --lang tr",
+    "atabey:orchestrate": "atabey orchestrate",
     "atabey:test": "vitest run",
     "atabey:build": "npm run build -w packages/atabey-mcp",
     "atabey:trace": "atabey trace:new",
     "atabey:verify": "atabey verify-contract",
-    "atabey:test:watch": "vitest"
+    "atabey:test:watch": "vitest",
+    "postinstall": "node scripts/atabey-postinstall.mjs"
   },
   "publishConfig": {
     "access": "public"
@@ -68,11 +71,12 @@
     "typescript": "^5.9.3",
     "@types/node": "^25.9.1",
     "tsx": "^4.22.3",
-    "atabey": "^0.0.19"
+    "atabey": "^0.0.20"
   },
   "atabey": {
-    "version": "0.0.19",
-    "initializedAt": "2026-06-29T15:07:12.699Z"
+    "version": "0.0.20",
+    "frameworkRepo": true,
+    "initializedAt": "2026-07-01T21:10:41.392Z"
   },
   "dependencies": {
     "atabey-mcp": "*",

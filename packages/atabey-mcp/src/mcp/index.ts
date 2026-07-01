@@ -19,6 +19,8 @@ import { RESOURCES, handleReadResource } from "./resources/index.js";
 import { TOOLS } from "./tools/index.js";
 import { handleRequest } from "./routes/index.js";
 import { handleCallToolWithGovernance } from "./middleware/governance.js";
+import { bootstrapComplianceServices, shutdownComplianceServices } from "./utils/compliance-bootstrap.js";
+import { bootstrapOrchestrator, shutdownOrchestrator } from "./utils/orchestrator-bootstrap.js";
 
 // ─── Paths ────────────────────────────────────────────────────────
 
@@ -83,7 +85,7 @@ const serverVersion = pkg.version;
 // Validate environment variables with friendly messages
 const PROJECT_ROOT = process.env.ATABEY_PROJECT_ROOT || process.cwd();
 if (!process.env.ATABEY_PROJECT_ROOT) {
-    const transportMode = process.env.MCP_TRANSPORT || "unified";
+    const transportMode = process.env.MCP_TRANSPORT || "stdio";
     if (transportMode !== "stdio") {
         process.stderr.write(`
 ╔══════════════════════════════════════════════════════════╗
@@ -300,7 +302,7 @@ function createUnifiedServer() {
 // ─── Startup ──────────────────────────────────────────────────────
 
 async function run() {
-    const transportMode = process.env.MCP_TRANSPORT || "unified";
+    const transportMode = process.env.MCP_TRANSPORT || "stdio";
 
     process.on("uncaughtException", (error: Error) => {
         process.stderr.write(`[atabey-mcp] Uncaught exception: ${error.message}\n`);
@@ -311,9 +313,13 @@ async function run() {
     });
 
     const shutdown = async () => {
+        try { await shutdownComplianceServices(); } catch { /* ignore */ }
+        try { await shutdownOrchestrator(); } catch { /* ignore */ }
         try { await server.close(); } catch { /* ignore */ }
         process.exit(0);
     };
+
+    bootstrapComplianceServices(PROJECT_ROOT);
     process.on("SIGINT", shutdown);
     process.on("SIGTERM", shutdown);
 
@@ -321,8 +327,14 @@ async function run() {
         const transport = new StdioServerTransport();
         process.stderr.write("[atabey-mcp] Stdio mode (single client).\n");
         await server.connect(transport);
+        bootstrapOrchestrator(PROJECT_ROOT).catch((e) => {
+            process.stderr.write(`[atabey-mcp] Orchestrator bootstrap failed: ${(e as Error).message}\n`);
+        });
     } else {
         createUnifiedServer();
+        bootstrapOrchestrator(PROJECT_ROOT).catch((e) => {
+            process.stderr.write(`[atabey-mcp] Orchestrator bootstrap failed: ${(e as Error).message}\n`);
+        });
     }
 }
 

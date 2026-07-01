@@ -36,7 +36,26 @@ export const ConfigSchema = z.object({
         docs: "docs",
         tests: "tests"
     }),
-    governance: GovernanceConfigSchema.optional()
+    governance: GovernanceConfigSchema.optional(),
+    orchestrator: z.object({
+        autoStart: z.boolean().default(true),
+        intervalMs: z.number().int().positive().default(1000),
+    }).optional(),
+    finops: z.object({
+        tracking: z.boolean().default(true),
+        enforcement: z.boolean().default(false),
+        monthlyBudgetUsd: z.number().nonnegative().default(0),
+        agentMaxBudgetUsd: z.number().nonnegative().default(0),
+        team: z.string().optional(),
+        alertThresholds: z.array(z.number().int().min(1).max(100)).optional(),
+        costPer1kTokensUsd: z.number().positive().default(0.003),
+    }).optional(),
+    compliance: z.object({
+        retentionEnabled: z.boolean().default(true),
+        consentLogging: z.boolean().default(true),
+        piiMasking: z.boolean().default(true),
+        dataProcessingBasis: z.enum(["consent", "legitimate_interest", "contract"]).default("legitimate_interest"),
+    }).optional(),
 });
 
 /**
