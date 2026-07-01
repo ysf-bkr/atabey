@@ -4,7 +4,6 @@ import http from "http";
 import { WebSocket } from "ws";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { Storage } from "../../shared/storage.js";
 import { logger } from "../../shared/logger.js";
 
 import { handleCommonRoutes } from "./api-common.js";

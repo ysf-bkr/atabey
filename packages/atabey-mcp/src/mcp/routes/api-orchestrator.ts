@@ -2,7 +2,6 @@ import http from "http";
 import { RouteContext, serveJson } from "./types.js";
 import { Storage } from "../../shared/storage.js";
 import { maskText } from "../../shared/pii.js";
-import { logger } from "../../shared/logger.js";
 
 export async function handleOrchestratorRoutes(
     pathname: string,

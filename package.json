@@ -1,7 +1,7 @@
 {
   "name": "atabey-monorepo",
   "version": "0.0.19",
-  "description": "MCP-Powered AI Governance & Autonomous Orchestration Framework — Monorepo",
+  "description": "Atabey — AI Governance & Multi-Agent Orchestration Framework — Monorepo",
   "author": "Yusuf BEKAR",
   "license": "AGPL-3.0",
   "keywords": [

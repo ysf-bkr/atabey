@@ -14,8 +14,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { WebSocket, WebSocketServer } from "ws";
 
-import { Audit } from "../shared/audit.js";
-import { maskText } from "../shared/pii.js";
 import { Storage } from "../shared/storage.js";
 import { RESOURCES, handleReadResource } from "./resources/index.js";
 import { TOOLS } from "./tools/index.js";
@@ -213,41 +211,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         broadcastWS,
     });
 });
-
-// ─── API Helpers ──────────────────────────────────────────────────
-
-function serveJson(res: http.ServerResponse, statusCode: number, data: unknown) {
-    res.writeHead(statusCode, { "Content-Type": "application/json" });
-    res.end(JSON.stringify(data));
-}
-
-function serveFile(res: http.ServerResponse, filePath: string, contentType: string) {
-    if (fs.existsSync(filePath)) {
-        try {
-            const content = fs.readFileSync(filePath);
-            res.writeHead(200, { "Content-Type": contentType });
-            res.end(content);
-        } catch (e) {
-            res.writeHead(500);
-            res.end((e as Error).message);
-        }
-    } else {
-        res.writeHead(404);
-        res.end("Not Found");
-    }
-}
-
-function parseUrl(url: string): { pathname: string; params: Record<string, string> } {
-    const [pathname, queryString] = url.split("?");
-    const params: Record<string, string> = {};
-    if (queryString) {
-        queryString.split("&").forEach((pair) => {
-            const [key, value] = pair.split("=");
-            params[decodeURIComponent(key)] = decodeURIComponent(value || "");
-        });
-    }
-    return { pathname, params };
-}
 
 // ─── Unified HTTP Server ──────────────────────────────────────────
 

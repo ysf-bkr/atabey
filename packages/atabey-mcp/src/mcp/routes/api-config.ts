@@ -12,7 +12,6 @@ export async function handleConfigRoutes(
     res: http.ServerResponse,
     context: RouteContext
 ): Promise<boolean> {
-    const { HOST, PORT } = context;
 
     // Knowledge Base List
     if (pathname === "/api/knowledge" && req.method === "GET") {
