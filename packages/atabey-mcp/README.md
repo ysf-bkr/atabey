@@ -1,12 +1,12 @@
 # [GOV] Atabey MCP — MCP Server for AI Governance & Multi-Agent Platform / Orchestrator
 
-[![Version](https://img.shields.io/badge/Version-v0.0.21-blue.svg)](https://github.com/ysf-bkr/atabey)
+[![Version](https://img.shields.io/badge/Version-v0.0.22-blue.svg)](https://github.com/ysf-bkr/atabey)
 [![npm](https://img.shields.io/npm/v/atabey-mcp)](https://www.npmjs.com/package/atabey-mcp)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![MCP](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io)
 [![MCP Tools](https://img.shields.io/badge/MCP%20Tools-32-blue)](https://github.com/ysf-bkr/atabey)
 
-**Atabey MCP** is the MCP (Model Context Protocol) server component of the Agent Atabey framework. It provides 32 MCP tools, a 13-layer governance pipeline, vector memory, risk engine, loop detection, FinOps budget management, auto-rollback, prompt injection protection, and a real-time WebSocket dashboard.
+**Atabey MCP** is the MCP (Model Context Protocol) server component of the Agent Atabey framework. It provides 32 MCP tools, a multi-layer governance pipeline (validation, PII masking, discipline, loop detection, FinOps, CRUD governance, risk gating, and more), vector memory, risk engine, loop detection, FinOps budget management, auto-rollback, prompt injection protection, and a real-time WebSocket dashboard.
 
 ---
 
@@ -15,7 +15,7 @@
 | Capability | Description |
 |-----------|-------------|
 | **MCP Tools** | 32 tools across 8 categories: file system, search, messaging, governance, memory, quality, network, orchestration |
-| **Governance Pipeline** | 13-layer pre/post execution validation: PII masking, risk gate, discipline, loop detection, FinOps, license scan, auto-rollback, injection protection |
+| **Governance Pipeline** | Multi-layer pre/post execution validation: PII masking, risk gate, discipline, loop detection, FinOps, license scan, CRUD governance, and more |
 | **Memory** | Vector memory with TF-IDF/OpenAI embeddings, project memory, knowledge base |
 | **Dashboard** | Real-time WebSocket dashboard with 12 live modules |
 | **Auth** | Bearer token authentication for HTTP/SSE mode |
@@ -117,7 +117,7 @@ MCP_TRANSPORT=http MCP_PORT=5858 atabey-mcp
 
 ---
 
-## 🔐 13-Layer Governance Pipeline
+## 🔐 Multi-Layer Governance Pipeline
 
 Every MCP tool call passes through this pipeline:
 

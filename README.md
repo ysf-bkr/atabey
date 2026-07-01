@@ -2,14 +2,14 @@
 
 *Yapay Zeka Yönetişimi ve Çoklu Ajan Platformu / Orkestratörü*
 
-[![Version](https://img.shields.io/badge/Version-v0.0.21-blue.svg)](https://github.com/ysf-bkr/atabey)
+[![Version](https://img.shields.io/badge/Version-v0.0.22-blue.svg)](https://github.com/ysf-bkr/atabey)
 [![npm](https://img.shields.io/npm/v/atabey)](https://www.npmjs.com/package/atabey)
 [![npm-mcp](https://img.shields.io/npm/v/atabey-mcp)](https://www.npmjs.com/package/atabey-mcp)
 [![MCP](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io)
 [![Type-Safety](https://img.shields.io/badge/Type--Safety-100%25-green.svg)](https://github.com/ysf-bkr/atabey)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![MCP Tools](https://img.shields.io/badge/MCP%20Tools-39-blue)](https://github.com/ysf-bkr/atabey)
-[![Agents](https://img.shields.io/badge/Specialized%20Agents-14-purple)](https://github.com/ysf-bkr/atabey)
+[![Agents](https://img.shields.io/badge/Specialized%20Agents-13-purple)](https://github.com/ysf-bkr/atabey)
 [![Platforms](https://img.shields.io/badge/Supported%20Platforms-7-orange)](https://github.com/ysf-bkr/atabey)
 [![Skills](https://img.shields.io/badge/Core%20Skills-7-yellow)](https://github.com/ysf-bkr/atabey)
 [![Governance Score](https://img.shields.io/badge/AI%20Governance-76%2F100-yellow)](https://github.com/ysf-bkr/atabey)
@@ -22,7 +22,7 @@
 | Layer | Role |
 |-------|------|
 | **Your AI IDE/CLI** | Writes code, runs tools, executes shell commands |
-| **Atabey MCP Server** | 39 tools · 13-layer governance · orchestration · memory |
+| **Atabey MCP Server** | 39 tools · multi-layer governance (10+ checks) · orchestration · memory |
 | **@manager + 13 specialists** | Delegation, quality gates, risk control, audit trail |
 | **`.atabey/` brain hub** | Constitution, memory, knowledge, registry, observability |
 
@@ -49,7 +49,7 @@ You (@backend): "Create a user login service with JWT authentication"
      │  Intercepts @agent command
      │  Routes via RoutingEngine (TF-IDF + Semantic)
      │  Routes to @backend specialist
-     │  13-Layer Governance Pipeline validates
+     │  Multi-Layer Governance Pipeline validates
      │  Quality Gate checks output
      │  Stores in Vector Memory
      │
@@ -85,12 +85,12 @@ You (@backend): "Create a user login service with JWT authentication"
 - [Supported Platforms](#supported-platforms)
 - [Installation](#installation)
 - [Profile-Based Setup](#profile-based-setup)
-- [14 Specialized Agents](#14-specialized-agents)
+- [13 Specialized Agents](#13-specialized-agents)
 - [39 MCP Tools](#39-mcp-tools)
 - [7 Core Skills](#7-core-skills)
 - [3-Layer Memory System](#3-layer-memory-system)
 - [Knowledge Base (30+ Standards)](#knowledge-base-30-standards)
-- [13-Layer Governance Pipeline](#13-layer-governance-pipeline)
+- [Multi-Layer Governance Pipeline](#13-layer-governance-pipeline)
 - [Core Features](#core-features)
 - [Dashboard](#dashboard)
 - [CLI Reference](#cli-reference)
@@ -318,7 +318,7 @@ Atabey AL is built on **5 core capabilities** that work together seamlessly:
 |---|-----------|-------------|-------|
 | 🛠️ | **39 MCP Tools** | File system, search, messaging, governance, memory, quality, network, orchestration | 82/100 |
 | 🧠 | **3-Layer Memory** | Vector Memory (TF-IDF/OpenAI), Project Memory, Specialty Memory (agent learning) | 78/100 |
-| 🤖 | **14 Specialized Agents** | 3-tier hierarchy (Supreme/Core/Recon) with state machine | 80/100 |
+| 🤖 | **13 Specialized Agents** | 3-tier hierarchy (Supreme/Core/Recon) with state machine | 80/100 |
 | 🎯 | **7 Core Skills** | Platform-adaptive skills for 7 different AI platforms | 72/100 |
 | 📚 | **30+ Knowledge Standards** | Governance, security, architecture, compliance, deployment standards | 85/100 |
 | **🎯** | **Overall** | **AI Governance & Multi-Agent Platform / Orchestrator** | **74/100** |
@@ -340,7 +340,7 @@ Atabey AL is built on **5 core capabilities** that work together seamlessly:
 ├──────────────────────────────────────────────────────────────────┤
 │                    ATABEY MCP SERVER                               │
 │   ┌──────────────────────────────────────────────────────────┐   │
-│   │  39 Tools · 13-Layer Governance Pipeline ·               │   │
+│   │  39 Tools · Multi-Layer Governance Pipeline ·               │   │
 │  │  Risk Engine · Loop Detection · FinOps · Auto-Rollback  │   │
 │   └──────────────────────────────────────────────────────────┘   │
 ├──────────────────────────────────────────────────────────────────┤
@@ -351,7 +351,7 @@ Atabey AL is built on **5 core capabilities** that work together seamlessly:
 ```
 
 Atabey is **not a separate execution engine**. It is a context-aware governance and policy middleware that intercepts, validates, and routes the actions of AI coding assistants:
-- **14 Specialized Agent Contexts** (injected templates to structure AI reasoning)
+- **13 Specialized Agent Contexts** (injected templates to structure AI reasoning)
 - **Deterministic Quality Gates** (AST analysis + lint + governance validation)
 - **Risk Gate & Heuristic Scanning** (blocking dangerous commands, requiring human approval)
 - **Persistent Vector Memory** (TF-IDF + OpenAI embeddings, cosine similarity search)
@@ -458,7 +458,7 @@ npx atabey init gemini --profile enterprise
 
 | Feature | What You Get |
 |---------|-------------|
-| **Agents** | All 14 agents (Supreme + Core + Recon) |
+| **Agents** | All 13 agents (Supreme + Core + Recon) |
 | **Setup Time** | ~1 minute |
 | **Security** | Human-in-the-Loop, KVKK PII masking, audit log |
 | **Governance** | Full governance with circuit breakers |
@@ -466,7 +466,7 @@ npx atabey init gemini --profile enterprise
 
 ---
 
-## 14 Specialized Agents
+## 13 Specialized Agents
 
 | Agent | Tier | Capability | Role | Freelancer | Team | Enterprise |
 |-------|------|:----------:|------|:----------:|:----:|:----------:|
@@ -584,7 +584,7 @@ Agent knowledge files are automatically embedded into system prompts at build ti
 
 ---
 
-## 13-Layer Governance Pipeline
+## Multi-Layer Governance Pipeline
 
 Every MCP tool call passes through this pipeline:
 

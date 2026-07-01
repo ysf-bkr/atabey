@@ -1,6 +1,6 @@
 # [GOV] Atabey — AI Governance & Multi-Agent Platform / Orchestrator (Core Engine)
 
-[![Version](https://img.shields.io/badge/Version-v0.0.21-blue.svg)](https://github.com/ysf-bkr/atabey)
+[![Version](https://img.shields.io/badge/Version-v0.0.22-blue.svg)](https://github.com/ysf-bkr/atabey)
 [![npm](https://img.shields.io/npm/v/atabey)](https://www.npmjs.com/package/atabey)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
@@ -14,7 +14,7 @@
 |-----------|-------------|
 | **CLI** | 30+ commands for initialization, orchestration, status, compliance, memory |
 | **Engines** | 15 engines: routing, risk, quality, evaluation, health, planning, phase, contract, policy, discovery, session, agent-executor, agent-loop, crud-governance, file-lock |
-| **Agents** | 14 specialized agent definitions with 3-tier hierarchy (Supreme/Core/Recon) |
+| **Agents** | 13 specialized agent definitions with 3-tier hierarchy (Supreme/Core/Recon) |
 | **Memory** | 3-layer memory: vector (TF-IDF/OpenAI), project, specialty |
 | **Skills** | 7 core skills with 5 platform adapter mappings |
 | **Providers** | 7 platform adapters: Claude, Gemini, Cursor, Codex, Antigravity, Grok, Local |
@@ -41,7 +41,7 @@ npx atabey status
 
 ---
 
-## 🎯 14 Specialized Agents
+## 🎯 13 Specialized Agents
 
 | Agent | Tier | Capability | Role |
 |-------|------|:----------:|------|

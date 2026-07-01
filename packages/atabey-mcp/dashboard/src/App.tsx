@@ -157,7 +157,7 @@ function DashboardOverview({ onNavigate }: DashboardOverviewProps) {
                     </p>
                 </div>
                 <div className="hero-meta">
-                    <span className="hero-badge">v0.0.21</span>
+                    <span className="hero-badge">v0.0.22</span>
                 </div>
             </div>
 
@@ -292,7 +292,7 @@ export default function App() {
                             <span className="ws-dot" style={{ background: wsConnected ? "var(--color-success)" : "var(--color-error)", boxShadow: wsConnected ? "0 0 6px var(--color-success)" : "none" }} />
                             {wsConnected ? "WS Live" : "WS Offline"}
                         </div>
-                        <div style={{ marginTop: 6, opacity: 0.6 }}>Atabey Governance Engine v0.0.21</div>
+                        <div style={{ marginTop: 6, opacity: 0.6 }}>Atabey Governance Engine v0.0.22</div>
                     </div>
                 </aside>
                 <div className="main-area">
