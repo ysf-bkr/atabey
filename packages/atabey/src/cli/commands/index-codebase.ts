@@ -9,7 +9,7 @@ import { UI } from "../utils/ui.js";
 export async function indexCodebaseCommand(dirPath: string = process.cwd()) {
     UI.intent("Codebase RAG", `Indexing workspace at ${dirPath} into Vector Memory...`);
 
-    const ignoreDirs = ["node_modules", "dist", ".git", ".atabey", "framework-mcp", "coverage"];
+    const ignoreDirs = ["node_modules", "dist", ".git", ".atabey", "packages", "framework-mcp", "coverage"];
     const validExtensions = [".ts", ".js", ".tsx", ".jsx", ".md", ".json"];
 
     const filesToIndex: string[] = [];

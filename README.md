@@ -2,7 +2,7 @@
 
 *Yapay Zeka Yönetişimi ve Çoklu Ajan Platformu / Orkestratörü*
 
-[![Version](https://img.shields.io/badge/Version-v0.0.22-blue.svg)](https://github.com/ysf-bkr/atabey)
+[![Version](https://img.shields.io/badge/Version-v0.0.23-blue.svg)](https://github.com/ysf-bkr/atabey)
 [![npm](https://img.shields.io/npm/v/atabey)](https://www.npmjs.com/package/atabey)
 [![npm-mcp](https://img.shields.io/npm/v/atabey-mcp)](https://www.npmjs.com/package/atabey-mcp)
 [![MCP](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io)
@@ -355,7 +355,7 @@ Atabey is **not a separate execution engine**. It is a context-aware governance 
 - **Deterministic Quality Gates** (AST analysis + lint + governance validation)
 - **Risk Gate & Heuristic Scanning** (blocking dangerous commands, requiring human approval)
 - **Persistent Vector Memory** (TF-IDF + OpenAI embeddings, cosine similarity search)
-- **Audit trails** (every action logged, KVKK/GDPR compliant)
+- **Audit trails** (every action logged, supporting KVKK/GDPR technical alignment)
 
 ---
 
@@ -467,6 +467,9 @@ npx atabey init gemini --profile enterprise
 ---
 
 ## 13 Specialized Agents
+
+> [!NOTE]
+> **Execution Model:** Atabey's specialized agents are virtual profiles powered by dynamically injected system role definitions and context templates. They do not run as 13 parallel, independent LLM API instances. Instead, your single host AI assistant (e.g., Claude Code, Gemini CLI) takes on these roles sequentially, routed by the TF-IDF engine, while Atabey enforces boundaries, state machine constraints, and quality checks during role switches.
 
 | Agent | Tier | Capability | Role | Freelancer | Team | Enterprise |
 |-------|------|:----------:|------|:----------:|:----:|:----------:|
@@ -736,11 +739,11 @@ Deterministic rules: AST compliance parsing, strict TypeScript type validation (
 - All function inputs validated with Zod schemas
 - Type safety enforced in governance pipeline
 
-### PII Masking (KVKK/GDPR Compliant)
+### PII Masking (KVKK/GDPR Technical Alignment)
 - All logs scanned for Personally Identifiable Information
 - Sensitive data automatically masked (20+ patterns)
-- Turkish KVKK (Law No. 6698) and EU GDPR compliant
-- **Right to Erasure** (KVKK Art. 7 / GDPR Art. 17) supported
+- Designed to assist with Turkish KVKK (Law No. 6698) and EU GDPR controls
+- **Right to Erasure** (KVKK Art. 7 / GDPR Art. 17) technical support
 
 ### Human-in-the-Loop
 - Risk score ≥ 60 requires human approval
@@ -752,11 +755,11 @@ Deterministic rules: AST compliance parsing, strict TypeScript type validation (
 - File Size Limits: Prevents >1MB files
 - Loop Detection: Blocks >10 consecutive same-tool calls
 - Cooldown Mechanism: Automatic when limits exceeded
-- Injection Protection: OWASP LLM01 compliant
+- Injection Protection: Aligned with OWASP LLM01 guidelines
 
 ---
 
-## KVKK/GDPR Compliance
+## KVKK/GDPR Technical Alignment
 
 > **Scope:** Technical compliance tooling — not legal certification. Pair with your DPO/legal counsel for production deployments.
 

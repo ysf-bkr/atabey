@@ -95,7 +95,7 @@ This file (`./ATABEY.md`) and the `.atabey/knowledge/` folder represent the "Sup
 - **CLI-Driven Orchestration:** All agent interactions and task delegations must be traceable via CLI.
 - **Monorepo Discipline:** Commands must always be run from the monorepo root directory using npm workspaces (e.g., `npm run dev --workspace=web`).
 - **Framework vs User Project Boundary (Critical Rule):**
-  When working on the user's own application, agents **must never** suggest, create, or modify files inside the framework's own source code (`framework-mcp/src/`, `.atabey/agents/`, `bin/cli.js`, etc.).
+  When working on the user's own application, agents **must never** suggest, create, or modify files inside the framework's own source code (`node_modules/atabey-mcp/src/`, `node_modules/atabey/src/`, `.atabey/agents/`, etc.).
   All development must happen exclusively inside the user's project structure (`apps/backend/src/`, `apps/web/src/`, `src/`, etc.).
   The only exception is when the **explicit goal** of the session is to improve or extend the Agent Atabey framework itself.
   Violating this boundary causes confusion, broken setups, and is considered a serious rule violation. @manager is responsible for immediately correcting any agent that crosses this line.
@@ -351,7 +351,7 @@ All factors contributing to the risk score are recorded in the task trace for au
 
 ## [MCP] MCP SERVER CONFIGURATION
 
-The `framework-mcp/` package provides MCP (Model Context Protocol) server integration with 30+ tools across 8 categories.
+The `atabey-mcp` package provides MCP (Model Context Protocol) server integration with 30+ tools across 8 categories.
 
 ### 1. MCP Tool Categories
 | Category | Tools | Purpose |
@@ -380,7 +380,7 @@ The `framework-mcp/` package provides MCP (Model Context Protocol) server integr
 atabey mcp setup
 
 # Direct (for IDE integration)
-node framework-mcp/dist/index.js
+node node_modules/atabey-mcp/dist/atabey-mcp/src/mcp/index.js
 ```
 
 ---

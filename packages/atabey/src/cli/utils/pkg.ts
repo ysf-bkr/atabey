@@ -221,8 +221,8 @@ export function mergePackageJson(targetPath: string, sourcePath: string): void {
   if (!targetPkg.name) targetPkg.name = path.basename(process.cwd());
   if (!targetPkg.version) targetPkg.version = "0.0.12";
   if (!targetPkg.type) targetPkg.type = "module";
-  // DO NOT add framework-mcp to workspaces in consumer projects
-  // if (!targetPkg.workspaces) targetPkg.workspaces = ["framework-mcp"];
+  // DO NOT add atabey-mcp to workspaces in consumer projects
+  // if (!targetPkg.workspaces) targetPkg.workspaces = ["atabey-mcp"];
 
   // Add metadata
   targetPkg.atabey = {

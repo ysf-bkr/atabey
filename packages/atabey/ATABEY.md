@@ -6,7 +6,7 @@
 ## [RULE 1] Always Work Inside the Project Directory
 - **NEVER write to `/tmp`, `/var/tmp`, `temp` or similar locations.** All files, logs, and state must remain inside the project directory.
 - All work is done under `apps/`, `src/`, `docs/`, `tests/`.
-- Do not touch framework files (`framework-mcp/src/`, `bin/`, `.atabey/agents/`).
+- Do not touch framework files (`packages/atabey-mcp/src/`, `packages/atabey/bin/`, `.atabey/agents/`).
 
 ## [RULE 2] Hierarchy
 1. **ATABEY.md** — Supreme Law

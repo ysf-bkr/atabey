@@ -1,6 +1,6 @@
 # [GOV] Atabey — AI Governance & Multi-Agent Platform / Orchestrator (Core Engine)
 
-[![Version](https://img.shields.io/badge/Version-v0.0.22-blue.svg)](https://github.com/ysf-bkr/atabey)
+[![Version](https://img.shields.io/badge/Version-v0.0.23-blue.svg)](https://github.com/ysf-bkr/atabey)
 [![npm](https://img.shields.io/npm/v/atabey)](https://www.npmjs.com/package/atabey)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
@@ -220,9 +220,9 @@ src/
 
 ---
 
-## 🔒 Security & Compliance
+## 🔒 Security & Technical Alignment
 
-### KVKK/GDPR Compliance
+### KVKK/GDPR Alignment
 
 | Feature | KVKK | GDPR | Status |
 |---------|------|------|--------|

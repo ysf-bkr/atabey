@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## [0.0.23] — 2026-07-02
+
+### Fixed
+- **Missing CLI Dependencies**: Moved `typescript` from devDependencies to dependencies in `atabey` and `atabey-mcp` to resolve `ERR_MODULE_NOT_FOUND` on execution via `npx`.
+- **Legacy Framework References**: Replaced old `framework-mcp` folder paths in the rulebooks (`ATABEY.md`, `ATABEY_FULL.md`) and indexing commands with the correct package names (`atabey-mcp`).
+
+### Improved
+- **Compliance Terminology**: Softened absolute KVKK/GDPR compliance claims in documentation to focus on technical alignment controls.
+- **Agent Model Transparency**: Added execution details to `README.md` clarifying that the 13 specialized agent contexts are dynamic roles assumed sequentially by the host AI assistant.
+
 ## [0.0.22] — 2026-07-02
 
 ### Fixed
