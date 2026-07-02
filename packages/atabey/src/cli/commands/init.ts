@@ -303,13 +303,15 @@ async function runInteractiveInit(profile?: InitProfile, presetLanguage?: Suppor
 }
 
 export async function initCommand(adapterName: string, options: { unified?: boolean; dryRun?: boolean; yes?: boolean; profile?: InitProfile; focus?: string; language?: SupportedLanguage }) {
-    const adapterId = (adapterName || "gemini") as AdapterId;
-    const adapter = resolveAdapter(adapterId);
+    const rawAdapterId = (adapterName || "gemini");
+    const adapter = resolveAdapter(rawAdapterId);
 
     if (!adapter) {
-        UI.error(`Unknown adapter: ${adapterId}`);
+        UI.error(`Unknown adapter: ${rawAdapterId}`);
         process.exit(1);
     }
+
+    const adapterId = adapter.id;
 
     const projectRoot = process.cwd();
     const isUnified = options.unified || false;
