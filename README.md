@@ -28,7 +28,7 @@
 > **Project Status (Pre-1.0 / Active Open-Source Experiment):**
 > Atabey is currently in **pre-alpha (v0.0.x)** and is actively being developed as an open-source experiment by a single developer. While the core features (TF-IDF routing, regex PII masking, deterministic rules) are functional, it is **not yet production-ready for enterprise environments**.
 >
-> ⚠️ **Before using or deploying, please review [BLINDSPOTS.md](BLINDSPOTS.md) for a detailed list of known limitations, security sandboxing issues, and the development roadmap.**
+> ⚠️ **Before using or deploying, please review [BLINDSPOTS.md](./BLINDSPOTS.md) for a detailed list of known limitations, security sandboxing issues, and the development roadmap.**
 
 > **Philosophy:** "Order from Chaos"
 >
