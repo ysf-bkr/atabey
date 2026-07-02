@@ -12,8 +12,6 @@
 [![Agents](https://img.shields.io/badge/Specialized%20Agents-13-purple)](https://github.com/ysf-bkr/atabey)
 [![Platforms](https://img.shields.io/badge/Supported%20Platforms-7-orange)](https://github.com/ysf-bkr/atabey)
 [![Skills](https://img.shields.io/badge/Core%20Skills-7-yellow)](https://github.com/ysf-bkr/atabey)
-[![Governance Score](https://img.shields.io/badge/AI%20Governance-76%2F100-yellow)](https://github.com/ysf-bkr/atabey)
-[![Orchestration Score](https://img.shields.io/badge/Orchestration-74%2F100-yellow)](https://github.com/ysf-bkr/atabey)
 
 ![Agent Atabey Dashboard Mockup](docs/assets/dashboard.jpg)
 
@@ -30,7 +28,7 @@
 > **Project Status (Pre-1.0 / Active Open-Source Experiment):**
 > Atabey is currently in **pre-alpha (v0.0.x)** and is actively being developed as an open-source experiment by a single developer. While the core features (TF-IDF routing, regex PII masking, deterministic rules) are functional, it is **not yet production-ready for enterprise environments**.
 >
-> ⚠️ **Before using or deploying, please review [BLINDSPOTS.md](file:///Users/ybekar/Desktop/Projeler/atabey/BLINDSPOTS.md) for a detailed list of known limitations, security sandboxing issues, and the development roadmap.**
+> ⚠️ **Before using or deploying, please review [BLINDSPOTS.md](BLINDSPOTS.md) for a detailed list of known limitations, security sandboxing issues, and the development roadmap.**
 
 > **Philosophy:** "Order from Chaos"
 >
