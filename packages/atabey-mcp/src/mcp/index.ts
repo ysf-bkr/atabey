@@ -15,10 +15,10 @@ import { fileURLToPath } from "url";
 import { WebSocket, WebSocketServer } from "ws";
 
 import { Storage } from "../shared/storage.js";
-import { RESOURCES, handleReadResource } from "./resources/index.js";
-import { TOOLS } from "./tools/index.js";
-import { handleRequest } from "./routes/index.js";
 import { handleCallToolWithGovernance } from "./middleware/governance.js";
+import { RESOURCES, handleReadResource } from "./resources/index.js";
+import { handleRequest } from "./routes/index.js";
+import { TOOLS } from "./tools/index.js";
 import { bootstrapComplianceServices, shutdownComplianceServices } from "./utils/compliance-bootstrap.js";
 import { bootstrapOrchestrator, shutdownOrchestrator } from "./utils/orchestrator-bootstrap.js";
 
@@ -104,16 +104,33 @@ if (!process.env.ATABEY_PROJECT_ROOT) {
 }
 
 const FRAMEWORK_DIR = process.env.ATABEY_FRAMEWORK_DIR || path.join(PROJECT_ROOT, ".atabey");
-let UI_DIST_PATH = path.join(__dirname, "../../dashboard");
-if (!fs.existsSync(UI_DIST_PATH) || !fs.existsSync(path.join(UI_DIST_PATH, "index.html"))) {
-    UI_DIST_PATH = path.join(__dirname, "../../dashboard/dist");
+
+// Resolve dashboard UI dist path across monorepo and npm install layouts
+function resolveDashboardPath(): string {
+    const candidates = [
+        // Monorepo dev layout (source)
+        path.join(__dirname, "../../dashboard"),
+        // Monorepo dev layout (built)
+        path.join(__dirname, "../../dashboard/dist"),
+        // npm global install layout
+        path.join(__dirname, "../../dashboard/dist"),
+        // npm local install (node_modules/atabey-mcp)
+        path.join(PROJECT_ROOT, "node_modules/atabey-mcp/dashboard/dist"),
+        path.join(PROJECT_ROOT, "node_modules/atabey-mcp/dashboard"),
+        // Project root layouts
+        path.join(PROJECT_ROOT, "dist/dashboard"),
+        path.join(PROJECT_ROOT, "mcp/dist/dashboard"),
+    ];
+    for (const candidate of candidates) {
+        const indexPath = path.join(candidate, "index.html");
+        if (fs.existsSync(indexPath)) {
+            return candidate;
+        }
+    }
+    // Fallback — will show placeholder in the dashboard route handler
+    return "";
 }
-if (!fs.existsSync(UI_DIST_PATH) || !fs.existsSync(path.join(UI_DIST_PATH, "index.html"))) {
-    UI_DIST_PATH = path.join(PROJECT_ROOT, "dist/dashboard");
-}
-if (!fs.existsSync(UI_DIST_PATH) || !fs.existsSync(path.join(UI_DIST_PATH, "index.html"))) {
-    UI_DIST_PATH = path.join(PROJECT_ROOT, "mcp/dist/dashboard");
-}
+let UI_DIST_PATH = resolveDashboardPath();
 
 // ─── Ports ────────────────────────────────────────────────────────
 

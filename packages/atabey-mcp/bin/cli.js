@@ -66,8 +66,8 @@ if (nodeMajor < 18) {
 
 // ─── Start MCP Server ─────────────────────────────────────────────
 const candidates = [
-    join(__dirname, "../dist/mcp/index.js"),
     join(__dirname, "../dist/atabey-mcp/src/mcp/index.js"),
+    join(__dirname, "../dist/mcp/index.js"),
 ];
 
 let serverPath = "";

@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## [0.0.24] — 2026-07-02
+
+### Fixed
+- **NPM Installation Failure (CRITICAL)**: Moved `atabey-shared` and all runtime dependencies from `peerDependencies` to `dependencies` in both `packages/atabey` and `packages/atabey-mcp`. Previously, npm would not automatically install `atabey-shared`, causing `ERR_MODULE_NOT_FOUND` on `npx atabey-mcp`.
+- **MCP Server CLI Path Resolution**: Fixed `bin/cli.js` candidate path order — now correctly searches `dist/atabey-mcp/src/mcp/index.js` first, with `dist/mcp/index.js` as fallback.
+- **Dashboard UI Path Resolution**: Replaced static `__dirname`-based path with a dynamic `resolveDashboardPath()` function that searches multiple candidate locations (monorepo dev, npm global install, npm local install, project root).
+
+### Changed
+- **Version Bump**: All packages updated to v0.0.24 (`atabey`, `atabey-mcp`, `atabey-shared`, monorepo).
+- **Package Dependency Model**: `packages/atabey` and `packages/atabey-mcp` now have `@modelcontextprotocol/sdk`, `better-sqlite3`, `chalk`, `js-yaml`, `ws`, `zod` as direct `dependencies` instead of `peerDependencies`, ensuring npm/yarn auto-install them.
+
+### Improved
+- **Dashboard Discovery**: Added npm global and local install path candidates to dashboard resolution, making `atabey-mcp` work correctly when installed via `npm install -g atabey-mcp` or `npm install atabey-mcp`.
+
 ## [0.0.23] — 2026-07-02
 
 ### Fixed
