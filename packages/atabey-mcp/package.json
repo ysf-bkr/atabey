@@ -33,7 +33,9 @@
   "exports": {
     ".": "./dist/atabey-mcp/src/mcp/index.js",
     "./utils/*": "./dist/atabey-mcp/src/mcp/utils/*",
-    "./shared/*": "./dist/atabey-mcp/src/shared/*"
+    "./shared/*": "./dist/atabey-mcp/src/shared/*",
+    "./src/mcp/utils/*": "./dist/atabey-mcp/src/mcp/utils/*",
+    "./src/shared/*": "./dist/atabey-mcp/src/shared/*"
   },
   "files": [
     "bin",

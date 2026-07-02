@@ -83,7 +83,7 @@ export async function handleAgentsRoutes(
                     const { AtabeyStorage } = await import("../../shared/storage.js");
                     AtabeyStorage.updateAgentDetails(
                         name,
-                        description || "Otonom Uzman Ajan",
+                        description || "Autonomous Specialist Agent",
                         state || "READY",
                         task || "Idle",
                         typeof skills === "string" ? skills : JSON.stringify(skills || [])

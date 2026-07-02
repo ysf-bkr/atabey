@@ -17,8 +17,9 @@ import {
     isFrameworkDevelopmentRepo,
     readState,
 } from "../utils/memory.js";
-import { getPackageVersion, getValidatorPath } from "../utils/pkg.js";
+import { getPackageVersion } from "../utils/pkg.js";
 import { UI } from "../utils/ui.js";
+import { validateAlRegistry } from "../utils/validate-registry.js";
 
 import { verifyApiContractCommand } from "./contract.js";
 
@@ -261,13 +262,17 @@ export async function checkCommand() {
     // AL Registry Check
     UI.intent("Security Check", "Running AL Registry Compliance...");
     try {
-        const validatorScript = getValidatorPath();
-        execSync(`node "${validatorScript}"`, { stdio: "pipe" });
-        UI.success("AL Registry validation PASSED.");
+        const { success, output } = validateAlRegistry(projectRoot);
+        process.stdout.write(output);
+        if (!success) {
+            UI.error("AL Registry validation FAILED.");
+            issues++;
+        } else {
+            UI.success("AL Registry validation PASSED.");
+        }
     } catch (error: unknown) {
-        const err = error as Error & { stderr?: Buffer };
+        const err = error as Error;
         UI.error(`AL Registry validation FAILED: ${err.message}`);
-        if (err.stderr) process.stdout.write(err.stderr.toString() + "\n");
         issues++;
     }
 

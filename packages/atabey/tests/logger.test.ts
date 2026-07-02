@@ -1,12 +1,12 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, MockInstance } from "vitest";
 import fs from "fs";
 import path from "path";
 import { logger, LogLevel, EnterpriseLogger } from "../src/shared/logger.js";
 import { createTestDir, removeTestDir } from "./helpers/temp-dir.js";
 
 describe("EnterpriseLogger", () => {
-    let stdoutWriteSpy: ReturnType<typeof vi.spyOn>;
-    let stderrWriteSpy: ReturnType<typeof vi.spyOn>;
+    let stdoutWriteSpy: MockInstance;
+    let stderrWriteSpy: MockInstance;
     let tempDir: string;
     let tempLogFile: string;
 
@@ -69,7 +69,7 @@ describe("EnterpriseLogger", () => {
         logger.info("Hello JSON", { userId: 123 });
 
         expect(stdoutWriteSpy).toHaveBeenCalledTimes(1);
-        const logContent = stdoutWriteSpy.mock.calls[0][0].trim();
+        const logContent = (stdoutWriteSpy.mock.calls[0][0] as string).trim();
         const parsed = JSON.parse(logContent);
         
         expect(parsed.level).toBe("INFO");

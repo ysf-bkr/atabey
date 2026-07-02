@@ -133,6 +133,8 @@ export class AtabeyStorage {
                 name TEXT PRIMARY KEY,
                 state TEXT DEFAULT 'READY',
                 task TEXT DEFAULT 'Idle',
+                description TEXT DEFAULT 'Autonomous Specialist Agent',
+                skills TEXT DEFAULT '[]',
                 last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         `);

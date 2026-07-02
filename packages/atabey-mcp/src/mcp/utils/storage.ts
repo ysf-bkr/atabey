@@ -72,7 +72,7 @@ export class Storage {
                 name TEXT PRIMARY KEY,
                 state TEXT DEFAULT 'READY',
                 task TEXT DEFAULT 'Idle',
-                description TEXT DEFAULT 'Otonom Uzman Ajan',
+                description TEXT DEFAULT 'Autonomous Specialist Agent',
                 skills TEXT DEFAULT '[]',
                 last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
             )

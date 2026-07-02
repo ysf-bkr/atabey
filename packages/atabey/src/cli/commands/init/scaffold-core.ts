@@ -79,7 +79,7 @@ function buildGovernanceForAgents(activeAgents: string[]) {
     };
 }
 
-export function scaffoldConstitution(targetDir: string, frameworkDir: string, adapterId: AdapterId, dryRun: boolean, language: SupportedLanguage = "tr") {
+export function scaffoldConstitution(targetDir: string, frameworkDir: string, adapterId: AdapterId, dryRun: boolean, language: SupportedLanguage = "en") {
     if (dryRun) return;
     const t = TRANSLATIONS[language];
     let content = `# [ATABEY] ${t.constitution_title}\n\nDiscipline and Order.`;
@@ -111,7 +111,7 @@ export function scaffoldFrameworkConfigs(
     if (dryRun) return;
     const frameworkDir = path.join(targetDir, fDir);
     const palette = COLOR_PALETTES[selectedPalette as keyof typeof COLOR_PALETTES] || COLOR_PALETTES["Modern Blue"];
-    const language = options?.language || "tr";
+    const language = options?.language || "en";
     const t = TRANSLATIONS[language];
 
     const projectKind = detectProjectKind(targetDir);

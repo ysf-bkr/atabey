@@ -49,7 +49,7 @@
     "clean": "rm -rf node_modules packages/*/node_modules packages/*/dist",
     "atabey:status": "atabey status",
     "atabey:check": "atabey check",
-    "atabey:setup": "atabey init gemini --unified --profile freelancer --yes --lang tr",
+    "atabey:setup": "atabey init gemini --unified --profile freelancer --yes --lang en",
     "atabey:orchestrate": "atabey orchestrate",
     "atabey:test": "vitest run",
     "atabey:build": "npm run build -w packages/atabey-mcp",
@@ -75,8 +75,7 @@
   },
   "atabey": {
     "version": "0.0.22",
-    "frameworkRepo": true,
-    "initializedAt": "2026-07-01T21:10:41.392Z"
+    "initializedAt": "2026-07-02T15:20:22.742Z"
   },
   "dependencies": {
     "atabey-mcp": "^0.0.22",

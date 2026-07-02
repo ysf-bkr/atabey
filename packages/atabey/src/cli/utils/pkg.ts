@@ -64,10 +64,6 @@ export function getPackageRoot(): string {
     return findAgentAtabeyPackageRoot();
 }
 
-export function getValidatorPath(): string {
-    return path.join(getPackageRoot(), "bin", "validate-al-registry.js");
-}
-
 export function getDependencyVersions() {
     const root = getPackageRoot();
     const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));

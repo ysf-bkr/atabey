@@ -264,8 +264,8 @@ async function runInteractiveInit(profile?: InitProfile, presetLanguage?: Suppor
         process.stdout.write("\n[LANG] Select Framework Language / Dil Seçimi:\n");
         process.stdout.write("1. Türkçe\n");
         process.stdout.write("2. English\n");
-        const langInput = await question("\nSelect (1-2) or Enter for 'tr': ");
-        const language: SupportedLanguage = langInput.trim() === "2" ? "en" : "tr";
+        const langInput = await question("\nSelect (1-2) or Enter for 'en': ");
+        const language: SupportedLanguage = langInput.trim() === "1" ? "tr" : "en";
         const t = TRANSLATIONS[language];
 
         process.stdout.write(`\n[START] ${t.welcome}\n`);
@@ -342,7 +342,7 @@ export async function initCommand(adapterName: string, options: { unified?: bool
         selectedPalette = "Modern Blue";
         backendLanguage = "Node.js (TypeScript)";
         frontendFramework = "Vite (React)";
-        language = options.language || "tr";
+        language = options.language || "en";
         UI.success(`Non-interactive mode: ${profile} profile (${selectedAgents.length} agents, focus: ${focus}, language: ${language}).`);
     } else {
         const result = await runInteractiveInit(options.profile, options.language);
