@@ -201,6 +201,7 @@ export function mergePackageJson(targetPath: string, sourcePath: string): void {
   targetPkg.devDependencies = sanitizeDeps({
       ...targetPkg.devDependencies,
       "atabey": `^${sourcePkg.version}`,
+      "atabey-mcp": `^${sourcePkg.version}`,
       ...(sourceDevDeps["@modelcontextprotocol/sdk"] ? {"@modelcontextprotocol/sdk": sourceDevDeps["@modelcontextprotocol/sdk"]} : {}),
       ...(sourceDevDeps["zod"] ? {"zod": sourceDevDeps["zod"]} : {}),
       ...(sourceDevDeps["ts-morph"] ? {"ts-morph": sourceDevDeps["ts-morph"]} : {}),
