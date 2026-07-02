@@ -16,16 +16,22 @@ const INJECTION_PATTERNS = [
     /system\s+override/gi,
     /you\s+must\s+now/gi,
     /you\s+are\s+now/gi,
-    /bypass\s+governance/gi,
-    /bypass\s+safety/gi,
-    /bypass\s+atabey/gi,
+    /bypass\s+(?:governance|safety|atabey|rules)/gi,
     /dan\s+mode/gi,
     /developer\s+mode/gi,
     /override\s+system\s+instructions/gi,
     /ignore\s+safety\s+rules/gi,
     /\[system\s+prompt\]/gi,
     /<system_prompt>/gi,
-    /disable\s+restrictions/gi
+    /disable\s+restrictions/gi,
+    /forget\s+(?:previous|all)\s+instructions/gi,
+    /new\s+instructions\s*:/gi,
+    /from\s+now\s+on/gi,
+    /act\s+as\s+(?:an?\s+)?(?:unrestricted|evil|jailbroken)/gi,
+    /pretend\s+(?:you\s+are|to\s+be)/gi,
+    /do\s+not\s+(?:follow|obey)\s+(?:previous|any)\s+(?:rules|instructions)/gi,
+    /jailbreak/gi,
+    /roleplay\s+as/gi
 ];
 
 export class PromptInjectionProtection {

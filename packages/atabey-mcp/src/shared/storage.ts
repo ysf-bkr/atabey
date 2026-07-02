@@ -216,6 +216,17 @@ export class AtabeyStorage {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         `);
+
+        // Loop detection cooldown persistence (addresses in-memory state loss on restart)
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS loop_cooldowns (
+                agent TEXT PRIMARY KEY,
+                cooldown_until INTEGER NOT NULL,
+                detail TEXT,
+                cooldown_count INTEGER DEFAULT 1,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
     }
 
     // === KNOWLEDGE OPERATIONS ===
@@ -395,6 +406,55 @@ export class AtabeyStorage {
     public static getMetadata(key: string): string | null {
         const row = this.getDB().prepare("SELECT value FROM metadata WHERE key = ?").get(key) as { value: string } | undefined;
         return row ? row.value : null;
+    }
+
+    // === LOOP COOLDOWN PERSISTENCE (for restart safety) ===
+
+    public static saveLoopCooldown(agent: string, cooldownUntil: number, detail: string | null, cooldownCount: number = 1): void {
+        const cleanAgent = agent.replace("@", "");
+        this.getDB().prepare(`
+            INSERT INTO loop_cooldowns (agent, cooldown_until, detail, cooldown_count, updated_at)
+            VALUES (?, ?, ?, ?, datetime('now'))
+            ON CONFLICT(agent) DO UPDATE SET 
+                cooldown_until = excluded.cooldown_until, 
+                detail = excluded.detail, 
+                cooldown_count = excluded.cooldown_count,
+                updated_at = datetime('now')
+        `).run(cleanAgent, cooldownUntil, detail, cooldownCount);
+    }
+
+    public static getLoopCooldown(agent: string): { agent: string; cooldownUntil: number; detail: string | null; cooldownCount: number } | null {
+        const cleanAgent = agent.replace("@", "");
+        const row = this.getDB().prepare(
+            "SELECT * FROM loop_cooldowns WHERE agent = ?"
+        ).get(cleanAgent) as { agent: string; cooldown_until: number; detail: string | null; cooldown_count: number } | undefined;
+
+        if (!row) return null;
+
+        // Auto-clean expired
+        if (row.cooldown_until < Date.now()) {
+            this.clearLoopCooldown(agent);
+            return null;
+        }
+
+        return {
+            agent: row.agent,
+            cooldownUntil: row.cooldown_until,
+            detail: row.detail,
+            cooldownCount: row.cooldown_count
+        };
+    }
+
+    public static clearLoopCooldown(agent: string): boolean {
+        const cleanAgent = agent.replace("@", "");
+        const result = this.getDB().prepare("DELETE FROM loop_cooldowns WHERE agent = ?").run(cleanAgent);
+        return result.changes > 0;
+    }
+
+    public static clearAllLoopCooldowns(): void {
+        try {
+            this.getDB().prepare("DELETE FROM loop_cooldowns").run();
+        } catch {}
     }
 
     public static reset() {

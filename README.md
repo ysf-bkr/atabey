@@ -447,7 +447,7 @@ npx atabey init gemini --profile team --unified
 |---------|-------------|
 | **Agents** | 5-8 focus-specific agents (manager, architect, backend, quality, database, security) |
 | **Setup Time** | ~30 seconds |
-| **Dashboard** | 12 live modules, WebSocket real-time |
+| **Dashboard** | Extensive live modules (Agent Monitor, Hermes, Approvals, Compliance, FinOps, Loop Detector, Memory, etc.) with WebSocket real-time updates |
 | **Governance** | Quality gate + risk engine + contract validation |
 | **Best For** | Small-medium teams with governance needs |
 

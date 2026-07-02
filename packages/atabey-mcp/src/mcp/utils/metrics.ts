@@ -16,10 +16,25 @@ interface MetricEntry {
 
 export const Metrics = {
     /**
-     * Estimates tokens based on character count (rough heuristic: 1 token ~= 4 chars).
+     * Estimates tokens using an improved heuristic.
+     *
+     * NOTE: This is still an approximation only.
+     * Real token counts depend on the underlying model's tokenizer (e.g. cl100k_base).
+     * No actual tokenizer is used here to avoid heavy dependencies.
+     *
+     * Rough rules of thumb:
+     * - ~4 chars ≈ 1 token for English
+     * - Code tends to use slightly more tokens
+     * - We add a small word-boundary adjustment
      */
     estimateTokens: (text: string): number => {
-        return Math.ceil(text.length / 4);
+        if (!text) return 0;
+        const chars = text.length;
+        const words = text.trim().split(/\s+/).filter(Boolean).length;
+
+        // Base: 1 token per ~3.8 chars + 0.2 per word for overhead
+        const estimate = (chars / 3.8) + (words * 0.2);
+        return Math.ceil(estimate);
     },
 
     /**

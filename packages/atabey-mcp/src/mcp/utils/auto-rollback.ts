@@ -19,6 +19,9 @@
 import fs from "fs";
 import path from "path";
 
+// Rollback directory for durable snapshots (survives MCP restarts)
+const ROLLBACK_DIR = ".atabey/rollbacks";
+
 // ─── Snapshot Manager ─────────────────────────────────────────────
 
 interface FileSnapshot {
@@ -32,8 +35,67 @@ interface FileSnapshot {
 class SnapshotManager {
     private snapshots: Map<string, FileSnapshot> = new Map();
 
+    private getRollbackPath(resolvedPath: string, traceId: string): string {
+        const safeName = resolvedPath.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 120);
+        return path.join(process.cwd(), ROLLBACK_DIR, `${safeName}__${traceId}.bak`);
+    }
+
+    private ensureRollbackDir() {
+        const dir = path.join(process.cwd(), ROLLBACK_DIR);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+    }
+
+    private saveDurableSnapshot(resolvedPath: string, snapshot: FileSnapshot) {
+        try {
+            this.ensureRollbackDir();
+            const backupPath = this.getRollbackPath(resolvedPath, snapshot.traceId);
+            const data = JSON.stringify({
+                filePath: resolvedPath,
+                originalContent: snapshot.originalContent,
+                timestamp: snapshot.timestamp,
+                traceId: snapshot.traceId,
+            });
+            fs.writeFileSync(backupPath, data, "utf8");
+        } catch { /* best effort */ }
+    }
+
+    private loadDurableSnapshot(filePath: string): FileSnapshot | null {
+        try {
+            const resolved = path.resolve(filePath);
+            // We don't know traceId here, so scan recent backups for this file (simple approach)
+            const dir = path.join(process.cwd(), ROLLBACK_DIR);
+            if (!fs.existsSync(dir)) return null;
+
+            const files = fs.readdirSync(dir)
+                .filter(f => f.endsWith(".bak"))
+                .sort()
+                .reverse(); // newest first
+
+            for (const f of files) {
+                try {
+                    const full = path.join(dir, f);
+                    const content = fs.readFileSync(full, "utf8");
+                    const data = JSON.parse(content);
+                    if (data.filePath === resolved) {
+                        return {
+                            filePath: data.filePath,
+                            originalContent: data.originalContent,
+                            timestamp: data.timestamp,
+                            traceId: data.traceId,
+                            restored: false,
+                        };
+                    }
+                } catch {}
+            }
+        } catch {}
+        return null;
+    }
+
     /**
      * Capture a pre-write snapshot of a file.
+     * Also persists to disk for restart durability.
      */
     public capture(filePath: string, traceId: string): void {
         const resolvedPath = path.resolve(filePath);
@@ -45,20 +107,33 @@ class SnapshotManager {
             }
         } catch { /* file doesn't exist yet (new file) */ }
 
-        this.snapshots.set(resolvedPath, {
+        const snapshot: FileSnapshot = {
             filePath: resolvedPath,
             originalContent,
             timestamp: Date.now(),
             traceId,
             restored: false,
-        });
+        };
+
+        this.snapshots.set(resolvedPath, snapshot);
+        this.saveDurableSnapshot(resolvedPath, snapshot);
     }
 
     /**
      * Get a snapshot for a file.
+     * Falls back to durable backup if not in memory.
      */
     public get(filePath: string): FileSnapshot | undefined {
-        return this.snapshots.get(path.resolve(filePath));
+        const resolved = path.resolve(filePath);
+        const mem = this.snapshots.get(resolved);
+        if (mem) return mem;
+
+        const durable = this.loadDurableSnapshot(resolved);
+        if (durable) {
+            this.snapshots.set(resolved, durable);
+            return durable;
+        }
+        return undefined;
     }
 
     /**
@@ -67,7 +142,13 @@ class SnapshotManager {
      */
     public restore(filePath: string): boolean {
         const resolvedPath = path.resolve(filePath);
-        const snapshot = this.snapshots.get(resolvedPath);
+        let snapshot = this.snapshots.get(resolvedPath);
+
+        // Try durable fallback
+        if (!snapshot) {
+            snapshot = this.loadDurableSnapshot(resolvedPath) || undefined;
+            if (snapshot) this.snapshots.set(resolvedPath, snapshot);
+        }
 
         if (!snapshot || snapshot.restored) return false;
 
@@ -85,6 +166,13 @@ class SnapshotManager {
             }
 
             snapshot.restored = true;
+
+            // Remove durable backup
+            try {
+                const backupPath = this.getRollbackPath(resolvedPath, snapshot.traceId);
+                if (fs.existsSync(backupPath)) fs.unlinkSync(backupPath);
+            } catch {}
+
             return true;
         } catch (error) {
             process.stderr.write(`[ROLLBACK] Failed to restore ${resolvedPath}: ${error}\n`);
@@ -93,15 +181,37 @@ class SnapshotManager {
     }
 
     /**
-     * Clean up old snapshots.
+     * Clean up old snapshots (memory + durable files).
      */
     public cleanup(maxAgeMs: number = 300000): void {
         const cutoff = Date.now() - maxAgeMs;
         for (const [filePath, snapshot] of this.snapshots) {
             if (snapshot.timestamp < cutoff) {
+                // Remove durable backup if exists
+                try {
+                    const backupPath = this.getRollbackPath(filePath, snapshot.traceId);
+                    if (fs.existsSync(backupPath)) fs.unlinkSync(backupPath);
+                } catch {}
                 this.snapshots.delete(filePath);
             }
         }
+
+        // Also clean old durable files on disk
+        try {
+            const dir = path.join(process.cwd(), ROLLBACK_DIR);
+            if (fs.existsSync(dir)) {
+                const files = fs.readdirSync(dir);
+                for (const f of files) {
+                    const full = path.join(dir, f);
+                    try {
+                        const stat = fs.statSync(full);
+                        if (stat.mtimeMs < cutoff) {
+                            fs.unlinkSync(full);
+                        }
+                    } catch {}
+                }
+            }
+        } catch {}
     }
 
     /**

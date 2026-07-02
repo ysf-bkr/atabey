@@ -25,6 +25,7 @@
  */
 
 import path from "path";
+import { Storage } from "../../shared/storage.js";
 
 // ─── Configuration ────────────────────────────────────────────────
 
@@ -89,10 +90,11 @@ const agentHistories = new Map<string, AgentHistory>();
 
 /**
  * Get or create agent history.
+ * Loads persisted active cooldown from SQLite if present (restart safety).
  */
 function getOrCreateHistory(agent: string): AgentHistory {
     if (!agentHistories.has(agent)) {
-        agentHistories.set(agent, {
+        const history: AgentHistory = {
             calls: [],
             consecutiveToolCalls: new Map(),
             fileWriteCount: new Map(),
@@ -102,7 +104,29 @@ function getOrCreateHistory(agent: string): AgentHistory {
             cooldownUntil: 0,
             cooldownCount: 0,
             lastAlert: null,
-        });
+        };
+
+        // Restore active cooldown from persistent storage
+        try {
+            const persisted = Storage.getLoopCooldown(agent);
+            if (persisted && persisted.cooldownUntil > Date.now()) {
+                history.inCooldown = true;
+                history.cooldownUntil = persisted.cooldownUntil;
+                history.cooldownCount = persisted.cooldownCount;
+                history.lastAlert = {
+                    type: "rate_limit",
+                    severity: "critical",
+                    agent,
+                    detail: persisted.detail || "Restored cooldown after restart",
+                    timestamp: Date.now(),
+                    cooldownUntil: persisted.cooldownUntil,
+                };
+            }
+        } catch (e) {
+            // Non-fatal
+        }
+
+        agentHistories.set(agent, history);
     }
     return agentHistories.get(agent)!;
 }
@@ -351,11 +375,18 @@ export function recordAndCheck(
 /**
  * Apply cooldown to an agent.
  */
-function applyCooldown(history: AgentHistory, alert: LoopAlert, _agent: string): void {
+function applyCooldown(history: AgentHistory, alert: LoopAlert, agent: string): void {
     history.inCooldown = true;
     history.cooldownUntil = alert.cooldownUntil || Date.now() + CONFIG.COOLDOWN_MS;
     history.cooldownCount++;
     history.lastAlert = alert;
+
+    // Persist so cooldown survives MCP restart
+    try {
+        Storage.saveLoopCooldown(agent, history.cooldownUntil, alert.detail, history.cooldownCount);
+    } catch (e) {
+        // Non-fatal, still enforce in-memory
+    }
 
     process.stderr.write(`[LOOP DETECT] ${alert.type}: ${alert.detail}\n`);
 }
@@ -368,7 +399,16 @@ export function isInCooldown(agent: string): {
     remainingMs: number;
     reason: string | null;
 } {
-    const history = agentHistories.get(agent);
+    let history = agentHistories.get(agent);
+
+    // If no in-memory history, try to load persisted cooldown
+    if (!history) {
+        const persisted = Storage.getLoopCooldown(agent);
+        if (persisted) {
+            history = getOrCreateHistory(agent); // will load it
+        }
+    }
+
     if (!history || !history.inCooldown) {
         return { inCooldown: false, remainingMs: 0, reason: null };
     }
@@ -376,6 +416,7 @@ export function isInCooldown(agent: string): {
     const remaining = history.cooldownUntil - Date.now();
     if (remaining <= 0) {
         history.inCooldown = false;
+        try { Storage.clearLoopCooldown(agent); } catch {}
         return { inCooldown: false, remainingMs: 0, reason: null };
     }
 
@@ -395,9 +436,11 @@ export function clearCooldown(agent: string): boolean {
         history.inCooldown = false;
         history.cooldownUntil = 0;
         history.consecutiveToolCalls.clear();
-        return true;
     }
-    return false;
+    try {
+        Storage.clearLoopCooldown(agent);
+    } catch {}
+    return true;
 }
 
 /**
@@ -459,9 +502,15 @@ export function getAllLoopStats(): Record<string, {
 
 /**
  * Reset all agent histories.
+ * Also clears persisted cooldowns from DB (important for test isolation and clean restarts).
  */
 export function resetLoopDetection(): void {
     agentHistories.clear();
+    try {
+        Storage.clearAllLoopCooldowns();
+    } catch {
+        // ignore if storage not ready
+    }
 }
 
 export { CONFIG as LoopDetectorConfig };

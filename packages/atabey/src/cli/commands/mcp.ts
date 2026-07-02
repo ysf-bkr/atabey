@@ -42,7 +42,7 @@ export async function mcpCommand(args: string[]) {
 async function startMcpServer() {
     UI.intent("[MCP]", "Starting Agent Atabey MCP Server...");
 
-    // Find the framework-mcp entry point
+    // Find the atabey-mcp entry point (legacy "framework-mcp" paths kept for compatibility in tests)
     let mcpPath = path.resolve(__dirname, "../../../atabey-mcp/dist/atabey-mcp/src/mcp/index.js");
     let runner = "node";
 

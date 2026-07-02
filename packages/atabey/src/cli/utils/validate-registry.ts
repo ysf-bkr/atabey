@@ -32,7 +32,7 @@ function parseFrontmatter(content: string): Record<string, unknown> | null {
         try {
             fm = (yaml.load(match[1]) || {}) as Record<string, unknown>;
         } catch (e) {
-            throw new Error(`Error parsing YAML frontmatter: ${(e as Error).message}`);
+            throw new Error(`Error parsing YAML frontmatter: ${(e as Error).message}`, { cause: e });
         }
     }
 
@@ -95,11 +95,12 @@ export function validateAlRegistry(projectRoot: string = process.cwd()): { succe
         }
 
         const isMd = fileName.endsWith(".md");
-        let agent: Record<string, unknown> | null = null;
 
+        let agent: Record<string, unknown> | null;
         try {
-            agent = isMd ? parseFrontmatter(content) : JSON.parse(content);
-            if (!agent && isMd) throw new Error("Missing Frontmatter");
+            const parsed = isMd ? parseFrontmatter(content) : JSON.parse(content);
+            if (!parsed && isMd) throw new Error("Missing Frontmatter");
+            agent = parsed;
         } catch (e) {
             output += `| ${fileName.slice(0, 9).padEnd(9)} | ${isMd ? "MD  " : "JSON"} | [ERROR] INVALID | ${(e as Error).message.slice(0, 14)} |\n`;
             totalFailed++;
