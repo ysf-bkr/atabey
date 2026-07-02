@@ -65,7 +65,7 @@ export function FinOpsPanel() {
     };
 
     const resetBudget = async () => {
-        if (!confirm("Budget period'u sıfırlamak istediğinize emin misiniz?")) return;
+        if (!confirm("Are you sure you want to reset the budget period?")) return;
         setResetting(true);
         try {
             const res = await fetch("/api/finops/reset", { method: "POST" });
