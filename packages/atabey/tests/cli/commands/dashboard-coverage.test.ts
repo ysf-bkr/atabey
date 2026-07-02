@@ -55,7 +55,7 @@ describe("Storage - Critical Operations", () => {
             from: "@manager" as any,
             to: "@backend" as any,
             category: "DELEGATION",
-            content: "API endpoint oluştur",
+            content: "Create API endpoint",
             traceId: "T-001" as any,
             status: "PENDING",
             priority: "NORMAL",

@@ -164,7 +164,7 @@ export function PrivacyPanel() {
                     <div className="card-header"><h2><Trash2 size={18} style={{ color: "var(--color-error)" }} /> GDPR Art. 17 & KVKK Art. 7 Data Subject Erasure</h2></div>
                     <div style={{ padding: 12 }}>
                         <p style={{ fontSize: "0.85rem", color: "var(--color-text-soft)", marginBottom: 12 }}>
-                            Simulate the <strong>Right to Erasure (Unutulma Hakkı)</strong>. If a user requests erasure of their personal data, entering the validation code below will wipe their personal data entries from Atabey.
+                            Simulate the <strong>Right to Erasure (Right to be Forgotten)</strong>. If a user requests erasure of their personal data, entering the validation code below will wipe their personal data entries from Atabey.
                         </p>
                         <form onSubmit={handleErasure} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                             <input type="text" placeholder="Enter confirmation: KVKK-RIGHT-TO-ERASURE" value={confirmationCode}

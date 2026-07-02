@@ -1,8 +1,8 @@
-# [ATABEY] Durum Çizelgesi
+# [ATABEY] Status Board
 
 | Agent | State | Active Task | Last Updated | Notes | Extra | Backup |
 |---|---|---|---|---|---|---|
-| @manager | HAZIR | Idle | - | - | - | - |
-| @backend | HAZIR | Idle | - | - | - | - |
-| @frontend | HAZIR | Idle | - | - | - | - |
-| @quality | HAZIR | Idle | - | - | - | - |
+| @manager | READY | Idle | - | - | - | - |
+| @backend | READY | Idle | - | - | - | - |
+| @frontend | READY | Idle | - | - | - | - |
+| @quality | READY | Idle | - | - | - | - |

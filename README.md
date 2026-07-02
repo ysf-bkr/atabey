@@ -1,6 +1,6 @@
 # [GOV] Agent Atabey — AI Governance & Multi-Agent Platform / Orchestrator
 
-*Yapay Zeka Yönetişimi ve Çoklu Ajan Platformu / Orkestratörü*
+*AI Governance & Multi-Agent Platform / Orchestrator*
 
 [![Version](https://img.shields.io/badge/Version-v0.0.23-blue.svg)](https://github.com/ysf-bkr/atabey)
 [![npm](https://img.shields.io/npm/v/atabey)](https://www.npmjs.com/package/atabey)
@@ -156,13 +156,13 @@ sequenceDiagram
     participant S as Specialists
     participant G as Governance
 
-    U->>AI: @manager Auth modülünü planla ve dağıt
+    U->>AI: @manager Plan and deploy Auth module
     AI->>MCP: get_framework_status / read_project_memory
     MCP->>G: PII mask · risk scan
     MCP-->>AI: Phase, trace, agent states
-
+ 
     AI->>MCP: send_agent_message → @backend
-    U->>AI: @backend JWT servisi yaz
+    U->>AI: @backend Write JWT service
     AI->>MCP: write_file (governed)
     MCP->>G: Quality gate · auto-rollback snapshot
     MCP-->>AI: Approved output

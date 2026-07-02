@@ -224,7 +224,7 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
             return;
         }
 
-        // GDPR / KVKK Right to Erasure Request (Unutulma Hakkı)
+        // GDPR / KVKK Right to Erasure Request (Right to be Forgotten)
         if (pathname === "/api/audit/erase" && req.method === "POST") {
             try {
                 Audit.initialize();
