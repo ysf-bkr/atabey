@@ -27,13 +27,16 @@
 | **`.atabey/` brain hub** | Constitution, memory, knowledge, registry, observability |
 
 > [!NOTE]
-> **Project Status (Pre-1.0):** Atabey is actively evolving toward a stable 1.0 release. The platform architecture is production-oriented; APIs may still change before 1.0.
+> **Project Status (Pre-1.0 / Active Open-Source Experiment):**
+> Atabey is currently in **pre-alpha (v0.0.x)** and is actively being developed as an open-source experiment by a single developer. While the core features (TF-IDF routing, regex PII masking, deterministic rules) are functional, it is **not yet production-ready for enterprise environments**.
+>
+> ⚠️ **Before using or deploying, please review [BLINDSPOTS.md](file:///Users/ybekar/Desktop/Projeler/atabey/BLINDSPOTS.md) for a detailed list of known limitations, security sandboxing issues, and the development roadmap.**
 
 > **Philosophy:** "Order from Chaos"
 >
-> **What Atabey is:** A deterministic governance and multi-agent orchestration middleware for AI coding assistants.
+> **What Atabey is:** A deterministic, rule-based governance and multi-agent orchestration middleware for AI coding assistants.
 >
-> **What Atabey is not:** A standalone LLM runtime (unlike LangGraph/CrewAI). Your connected AI assistant still generates code; Atabey disciplines, routes, validates, and coordinates it.
+> **What Atabey is not:** A standalone LLM runtime (unlike LangGraph/CrewAI) or an AI/ML-driven threat analysis platform. Your connected AI assistant generates the code; Atabey disciplines, routes, validates, and coordinates it using deterministic rule-matching.
 
 ---
 
@@ -731,8 +734,8 @@ atabey security [path]       Run security audit
 
 ## Security
 
-### Enterprise-Grade Governance
-Deterministic rules: AST compliance parsing, strict TypeScript type validation (zero `any`), automated governance checks.
+### Deterministic & Rule-Based Governance
+Deterministic rules: AST compliance parsing, strict TypeScript type validation (zero `any`), and automated governance checks.
 
 ### Zero Type Hole Policy
 - `any` type usage is **strictly forbidden**
