@@ -1,9 +1,9 @@
 # Agent Atabey — Blind Spots, Limitations & Honest Status Report
 
-**This document is the authoritative record of known limitations.**  
+**This document is the authoritative record of known limitations.**
 It is written in a deliberately realistic and unvarnished tone. Atabey is pre-alpha software developed primarily by a single person. Many capabilities described in the README and marketing materials are partial, local-only, heuristic, or aspirational.
 
-**Current version at time of writing:** 0.0.23
+**Current version at time of writing:** 0.0.25
 
 ---
 
@@ -42,6 +42,16 @@ Use this document before any production or high-stakes adoption.
 - Pure keyword + glob + simple behavioral heuristics (delete/drop, .env paths, bulk patterns, line count estimates).
 - No semantic understanding of intent, no data-flow analysis, no context of surrounding code.
 - Easily bypassed by indirect language ("clean up the old user data thoroughly", "perform a complete reset of the accounts table", obfuscated paths, etc.).
+- **Concrete bypass example:** `rm -rf /` is caught, but `find / -type f -exec rm {} +` is not. `DROP TABLE users` is caught, but `TRUNCATE users; DROP TABLE IF EXISTS users CASCADE` may pass depending on context.
+- **Concrete bypass example:** Writing to `/etc/ssh/sshd_config` is not caught by path heuristics if the agent writes via `write_file` with a relative path like `../../etc/ssh/sshd_config`.
+
+**PII Masking** (`pii.ts`):
+- 20+ regex patterns (email, phone, TC ID, credit card, IBAN, IP, JWT, API key).
+- **Over-masking problem:** Legitimate data like example emails (`user@example.com` in docs), test phone numbers (`+90 555 000 00 00` in test fixtures), or IP addresses in configuration examples (`192.168.1.1` in network configs) are silently corrupted.
+- **Concrete example:** A developer writes a comment `// contact: admin@company.com for support` — the email is masked to `***@***` in logs, making debugging impossible.
+- **Concrete example:** A test file contains `const TEST_IP = "192.168.1.1"` — this gets masked to `const TEST_IP = "***.***.***.***"`, breaking the test.
+- **Under-masking problem:** Non-standard formats (e.g., `email at domain dot com`, base64-encoded secrets, hex-encoded API keys) pass through unmasked.
+- No context awareness: PII masking cannot distinguish between a real credit card number and a fake one used in documentation.
 
 **Prompt Injection Protection** (`PromptInjectionProtection` + discipline):
 - Regex list against known phrases ("ignore all instructions", "DAN mode", etc.).
@@ -149,7 +159,7 @@ SQLite tables exist for messages, costs, agents, locks, etc., but:
 
 ## 9. Testing, Verification, and Integration Gaps
 
-- 192+ unit and integration tests exist and currently pass.
+- 548+ unit and integration tests exist and currently pass (80 test files).
 - However, there is limited simulation of real AI client behavior (stdio JSON-RPC roundtrips with Claude/Gemini/Cursor).
 - Most governance tests are unit-level mocks.
 - No automated end-to-end tests that spin up a real MCP client + LLM simulation.

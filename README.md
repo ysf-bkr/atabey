@@ -2,7 +2,7 @@
 
 > **Language / Dil:** [English](#atabey--mcp-based-multi-agent-orchestration-tool) · [Türkçe](#türkçe)
 
-*Pre-alpha · v0.0.25 · Single-developer project*
+*Pre-alpha · v0.0.25 · Single-developer project · 548 tests passing (80 files)*
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![npm](https://img.shields.io/npm/v/atabey)](https://www.npmjs.com/package/atabey)
