@@ -1,12 +1,12 @@
+import { databaseHolder } from "atabey-shared";
 import Database from "better-sqlite3";
+import crypto from "crypto";
 import fs from "fs";
 import path from "path";
-import crypto from "crypto";
 import { getFrameworkDir } from "../cli/utils/memory.js";
 import { logger } from "./logger.js";
 import { maskText } from "./pii.js";
 import { AgentID, LogID, MessageID, TaskID, TraceID, asAgentID, asLogID, asMessageID, asTaskID } from "./types.js";
-import { databaseHolder } from "atabey-shared";
 
 export interface AgentRow {
     name: AgentID;
@@ -422,6 +422,18 @@ export class AtabeyStorage {
             priority: r.priority,
             requiresApproval: r.requires_approval === 1
         }));
+    }
+
+    /**
+     * Mark a message as processed (safe — uses optimistic locking to prevent orphaned messages).
+     * Only updates if the message is still in PENDING or APPROVED state.
+     * Returns true if the message was actually updated.
+     */
+    public static markMessageProcessedSafe(id: number): boolean {
+        const result = this.getDB().prepare(
+            "UPDATE messages SET status = 'PROCESSED' WHERE id = ? AND status IN ('PENDING', 'APPROVED')"
+        ).run(id);
+        return result.changes > 0;
     }
 
     public static updateMessageStatus(id: number, status: string) {

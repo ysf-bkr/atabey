@@ -3,8 +3,14 @@
  *
  * Heavy / isolable work runs off the main thread. Concurrency is capped
  * (default os.cpus().length) via an internal queue so RAM/CPU stay bounded.
+ *
+ * Thread-safety note: SQLite (better-sqlite3) bindings are NOT thread-safe.
+ * Worker threads MUST NOT access AtabeyStorage or any SQLite connection.
+ * Only CPU-bound isolable work (hash, tokenize, etc.) should be dispatched
+ * to the worker pool.
  */
 
+import fs from "fs";
 import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -39,7 +45,22 @@ interface PoolWorker {
 function defaultWorkerScript(): string {
     // Compiled ESM layout: dist/worker-thread.js next to this module
     const here = path.dirname(fileURLToPath(import.meta.url));
-    return path.join(here, "worker-thread.js");
+    const jsScript = path.join(here, "worker-thread.js");
+    const tsScript = path.join(here, "worker-thread.ts");
+
+    // Prefer compiled JS; fall back to TS for dev (tsx/ts-node)
+    if (fs.existsSync(jsScript)) return jsScript;
+    if (fs.existsSync(tsScript)) return tsScript;
+
+    // Fallback: try resolving via import.meta.resolve for monorepo layouts
+    try {
+        const resolved = import.meta.resolve("./worker-thread.js");
+        if (resolved) return new URL(resolved).pathname;
+    } catch {
+        // ignore
+    }
+
+    return jsScript;
 }
 
 export class WorkerPool {

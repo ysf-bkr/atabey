@@ -1,7 +1,6 @@
 import {
-    withRetry,
     getCircuitBreaker,
-    CircuitOpenError,
+    withRetry
 } from "atabey-shared/resilience.js";
 import { logger } from "../../shared/logger.js";
 import { maskObject, maskText } from "../../shared/pii.js";
@@ -53,6 +52,18 @@ export class AgentExecutor {
             name: `agent:${agent}`,
         });
 
+        // Check circuit breaker state upfront — fail fast if open
+        try {
+            breaker.exec(() => Promise.resolve()); // dry-run to check state
+        } catch {
+            return {
+                success: false,
+                agent,
+                output: "",
+                attempts: 0,
+            };
+        }
+
         try {
             const result = await withRetry(
                 async (attempt) => {
@@ -60,9 +71,7 @@ export class AgentExecutor {
                     const startTime = Date.now();
                     logger.info(`[EXECUTOR] Attempt ${attempt}/3: ${agent} executing...`);
 
-                    const output = await breaker.exec(() =>
-                        AgentExecutor.runAgentTask(agent, taskDescription, subTasks, traceId),
-                    );
+                    const output = await AgentExecutor.runAgentTask(agent, taskDescription, subTasks, traceId);
                     lastOutput = output;
 
                     const qualityResult = await QualityGate.check(agent, output, taskDescription);
@@ -72,9 +81,15 @@ export class AgentExecutor {
                             agent,
                             attempt,
                         });
+                        // Track failure in circuit breaker
+                        breaker.exec(() => Promise.reject(new Error(`QUALITY_GATE: ${qualityResult.reason}`)))
+                            .catch(() => {});
                         // Retry quality failures with backoff
                         throw new Error(`QUALITY_GATE: ${qualityResult.reason}`);
                     }
+
+                    // Track success in circuit breaker
+                    breaker.exec(() => Promise.resolve()).catch(() => {});
 
                     const durationMs = Date.now() - startTime;
                     logger.info(`[EXECUTOR] ${agent} task PASSED quality check (attempt ${attempt})`);
@@ -103,10 +118,8 @@ export class AgentExecutor {
                     maxDelayMs: 5_000,
                     factor: 2,
                     jitter: true,
-                    retryIf: (err) => {
-                        // Preserve previous "max 3 attempts" behavior for all failures
-                        // except an open circuit (backoff / fail-fast).
-                        if (err instanceof CircuitOpenError) return false;
+                    retryIf: () => {
+                        // All errors retry (circuit was checked upfront)
                         return true;
                     },
                     onRetry: (err, attempt, delayMs) => {
@@ -190,13 +203,11 @@ export class AgentExecutor {
 
         // ─── 1. Send Hermes Message ──────────────────────────────────────
         // [KVKK/GDPR] Mask PII in task description before sending to message queue
-        const maskedTask = maskText(taskDescription);
-        const maskedSubTasks = subTasks.map(st => maskText(st));
-        // [KVKK/GDPR] Strict mode: mask any object fields that may contain PII
+        // maskObject handles all string fields recursively — no need for pre-masking
         const safePayload = maskObject({
             type: "DELEGATION",
-            task: maskedTask,
-            subTasks: maskedSubTasks,
+            task: taskDescription,
+            subTasks,
             traceId,
             from,
         }, 0, true) as Record<string, unknown>;
@@ -222,7 +233,7 @@ export class AgentExecutor {
             action: "DELEGATION_SENT",
             trace_id: traceId,
             status: "IN_PROGRESS",
-            summary: maskedTask.substring(0, 200)
+            summary: typeof safePayload.task === "string" ? safePayload.task.substring(0, 200) : taskDescription.substring(0, 200)
         });
 
         logger.info(`[HERMES] Delegation sent to ${agent} (trace: ${traceId})`);

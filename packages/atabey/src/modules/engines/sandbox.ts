@@ -35,9 +35,17 @@ export class Sandbox {
         args: string[],
         options: SpawnOptions = {},
     ): ReturnType<typeof sandboxSpawn> {
-        Sandbox.resolve();
-        const child = sandboxSpawn(command, args, options);
         const id = resolveSandboxIdentity();
+        if (id.enabled) {
+            logger.info(
+                `[SANDBOX] Active uid=${id.uid}${id.gid !== undefined ? ` gid=${id.gid}` : ""}${
+                    id.user ? ` user=${id.user}` : ""
+                }`,
+            );
+        } else if (id.reason) {
+            logger.debug(`[SANDBOX] Inactive: ${id.reason}`);
+        }
+        const child = sandboxSpawn(command, args, options);
         if (id.enabled) {
             logger.debug(
                 `[SANDBOX] Spawning with uid=${id.uid}: ${command} ${args.join(" ")}`,

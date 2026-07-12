@@ -49,7 +49,11 @@ export class AgentLoop {
                     });
                 })
                 .finally(() => {
-                    this.cycleInFlight = false;
+                    // Use setTimeout to defer flag reset so same-interval ticks
+                    // don't accidentally trigger a redundant cycle
+                    setTimeout(() => {
+                        this.cycleInFlight = false;
+                    }, 0);
                 });
         }, intervalMs);
     }

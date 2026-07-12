@@ -485,8 +485,8 @@ export class RoutingEngine {
 
         logger.info(`[HERMES] Delegation sent to ${agent} (trace: ${traceId})`);
 
-        // Poll for response (max 30 seconds)
-        const maxAttempts = 60;
+        // Poll for response (max 10 seconds — consistent with AgentExecutor.pollForAgentResponse)
+        const maxAttempts = 20;
         const pollInterval = 500;
 
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -509,7 +509,7 @@ export class RoutingEngine {
             await new Promise(resolve => setTimeout(resolve, pollInterval));
         }
 
-        const timeoutMsg = `[TIMEOUT] ${agent} did not respond within 30s`;
+        const timeoutMsg = `[TIMEOUT] ${agent} did not respond within ${(maxAttempts * pollInterval) / 1000}s`;
         logger.warn(`[HERMES] ${timeoutMsg} (trace: ${traceId})`);
         return timeoutMsg;
     }
@@ -530,7 +530,16 @@ export class RoutingEngine {
         };
     }
 
+    private static candidatesCache: RoutingCandidate[] | null = null;
+    private static candidatesCacheTime = 0;
+    private static readonly CACHE_TTL_MS = 30_000; // 30 seconds
+
     private static getCandidates(): RoutingCandidate[] {
+        const now = Date.now();
+        if (this.candidatesCache && (now - this.candidatesCacheTime) < this.CACHE_TTL_MS) {
+            return this.candidatesCache;
+        }
+
         const frameworkDir = getFrameworkDir();
         const registryDir = path.join(frameworkDir, "registry");
         let candidates: RoutingCandidate[] = [];
@@ -569,6 +578,8 @@ export class RoutingEngine {
             }));
         }
 
+        this.candidatesCache = candidates;
+        this.candidatesCacheTime = now;
         return candidates;
     }
 
