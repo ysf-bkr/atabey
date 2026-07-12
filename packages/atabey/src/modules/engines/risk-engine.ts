@@ -34,10 +34,12 @@ export class RiskEngine {
 
     // ─── Behavioral Signal Patterns ──────────────────────────────────────────
     // Glob / wildcard patterns in paths that indicate bulk/mass-scope operations.
+    // NOTE: `/**/` (surrounded by slashes) = recursive glob, but `**text**` = markdown bold.
+    // We match `/**` or `**/` (path-context glob) and exclude standalone `**word**`.
     private static BULK_SCOPE_PATTERNS = [
-        /\*\*/,           // recursive glob
+        /\/\*\*\/?/,      // recursive glob in path context: /** or /**/
         /\*\.[a-z]{2,4}/, // wildcard extension (*.ts, *.js)
-        /\/\*$/,          // directory wildcard
+        /\/\*$/,          // directory wildcard: /dir/*
     ];
 
     /**

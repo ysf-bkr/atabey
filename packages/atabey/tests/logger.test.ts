@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach, MockInstance } from "vitest";
 import fs from "fs";
 import path from "path";
-import { logger, LogLevel, EnterpriseLogger } from "../src/shared/logger.js";
+import { afterEach, beforeEach, describe, expect, it, MockInstance, vi } from "vitest";
+import { EnterpriseLogger, logger, LogLevel } from "../src/shared/logger.js";
 import { createTestDir, removeTestDir } from "./helpers/temp-dir.js";
 
 describe("EnterpriseLogger", () => {
@@ -71,7 +71,7 @@ describe("EnterpriseLogger", () => {
         expect(stdoutWriteSpy).toHaveBeenCalledTimes(1);
         const logContent = (stdoutWriteSpy.mock.calls[0][0] as string).trim();
         const parsed = JSON.parse(logContent);
-        
+
         expect(parsed.level).toBe("INFO");
         expect(parsed.message).toBe("Hello JSON");
         expect(parsed.meta).toEqual({ userId: 123 });
@@ -90,10 +90,13 @@ describe("EnterpriseLogger", () => {
     });
 
     it("should handle error when log directory fails to be created", () => {
-        const invalidLogPath = "/root/invalid-path/test.log";
+        // Use /proc/1/ which is read-only procfs even for root (container-safe)
+        const invalidLogPath = "/proc/1/invalid/test.log";
         logger.configure({ logFile: invalidLogPath });
-        
+
         expect(stderrWriteSpy).toHaveBeenCalled();
-        expect(stderrWriteSpy.mock.calls[0][0]).toContain("[Logger] Failed to create log directory");
+        const call = stderrWriteSpy.mock.calls.find(c => String(c[0]).includes("[Logger] Failed"));
+        expect(call).toBeDefined();
+        expect(String(call![0])).toContain("[Logger] Failed to create log directory");
     });
 });

@@ -6,6 +6,11 @@ import {
     sandboxSpawn,
 } from "../src/sandbox.js";
 
+// Root users can always setuid, so the sandbox enables; skip if root
+const isRoot = typeof process.getuid === "function" && process.getuid() === 0;
+const itIfNotRoot = isRoot ? it.skip : it;
+const itIfRootOrSelf = typeof process.getuid === "function" ? it : it.skip;
+
 vi.mock("child_process", async (importOriginal) => {
     const actual = await importOriginal<typeof import("child_process")>();
     return {
@@ -43,7 +48,7 @@ describe("sandbox", () => {
         expect(id.reason).toMatch(/root/i);
     });
 
-    it("applies uid/gid when process is root-capable or same uid", () => {
+    itIfNotRoot("applies uid/gid when process is root-capable or same uid", () => {
         // Use current process uid so setuid is a no-op-safe path
         const uid = typeof process.getuid === "function" ? process.getuid() : 501;
         process.env.ATABEY_SANDBOX_UID = String(uid);

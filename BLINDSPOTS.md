@@ -44,15 +44,18 @@ Use this document before any production or high-stakes adoption.
 - Easily bypassed by indirect language ("clean up the old user data thoroughly", "perform a complete reset of the accounts table", obfuscated paths, etc.).
 - **Concrete bypass example:** `rm -rf /` is caught, but `find / -type f -exec rm {} +` is not. `DROP TABLE users` is caught, but `TRUNCATE users; DROP TABLE IF EXISTS users CASCADE` may pass depending on context.
 - **Concrete bypass example:** Writing to `/etc/ssh/sshd_config` is not caught by path heuristics if the agent writes via `write_file` with a relative path like `../../etc/ssh/sshd_config`.
+- **False positive example (fixed):** The `/**` regex previously matched markdown bold syntax like `**important**` as a bulk-scope glob pattern, adding +25 risk score to any task containing bold text. Fixed by requiring slash prefix (`/**` or `/**/`).
 
 **PII Masking** (`pii.ts`):
 - 20+ regex patterns (email, phone, TC ID, credit card, IBAN, IP, JWT, API key).
 - **Over-masking problem:** Legitimate data like example emails (`user@example.com` in docs), test phone numbers (`+90 555 000 00 00` in test fixtures), or IP addresses in configuration examples (`192.168.1.1` in network configs) are silently corrupted.
 - **Concrete example:** A developer writes a comment `// contact: admin@company.com for support` — the email is masked to `***@***` in logs, making debugging impossible.
 - **Concrete example:** A test file contains `const TEST_IP = "192.168.1.1"` — this gets masked to `const TEST_IP = "***.***.***.***"`, breaking the test.
+- **IBAN regex is too broad:** `/\b[A-Z]{2}[0-9]{2}[A-Z0-9]{4,30}\b/g` matches any string starting with 2 letters + 2 digits + alphanumeric — this includes variable names like `AZ12testValue`, type names, and hash fragments.
+- **Credit card regex is too broad:** `/\b(?:\d[ -]*?){13,16}\b/g` matches any 13-16 digit number sequence — version numbers, Unix timestamps, IDs, and serial numbers get falsely masked.
 - **Under-masking problem:** Non-standard formats (e.g., `email at domain dot com`, base64-encoded secrets, hex-encoded API keys) pass through unmasked.
 - No context awareness: PII masking cannot distinguish between a real credit card number and a fake one used in documentation.
-
+- **Data corruption risk:** Since PII masking is applied to tool results returned to the AI, over-masking can silently corrupt technical content (code snippets, config examples, test fixtures) before the AI sees it.
 **Prompt Injection Protection** (`PromptInjectionProtection` + discipline):
 - Regex list against known phrases ("ignore all instructions", "DAN mode", etc.).
 - Only inspects tool *responses* returned to the AI, not incoming task descriptions or file contents deeply.
