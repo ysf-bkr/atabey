@@ -227,6 +227,35 @@ export class AtabeyStorage {
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         `);
+
+        // Human-in-the-loop approvals persistence (addresses in-memory loss on restart)
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS approvals (
+                trace_id TEXT PRIMARY KEY,
+                tool_name TEXT NOT NULL,
+                agent TEXT NOT NULL,
+                risk_score INTEGER NOT NULL,
+                risk_level TEXT NOT NULL,
+                reason TEXT NOT NULL,
+                args TEXT NOT NULL,
+                created_at INTEGER NOT NULL,
+                expires_at INTEGER NOT NULL,
+                status TEXT DEFAULT 'PENDING',
+                passcode TEXT
+            )
+        `);
+
+        // Discipline stats & cooldowns persistence (addresses in-memory loss on restart)
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS discipline (
+                agent TEXT PRIMARY KEY,
+                total_calls INTEGER DEFAULT 0,
+                violations INTEGER DEFAULT 0,
+                last_violation TEXT,
+                cooldown_until INTEGER DEFAULT 0,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
     }
 
     // === KNOWLEDGE OPERATIONS ===
@@ -454,7 +483,221 @@ export class AtabeyStorage {
     public static clearAllLoopCooldowns(): void {
         try {
             this.getDB().prepare("DELETE FROM loop_cooldowns").run();
-        } catch {}
+        } catch (err) {
+            logger.debug(`Failed to clear loop cooldowns: ${(err as Error).message}`);
+        }
+    }
+
+    // === HUMAN IN THE LOOP APPROVALS PERSISTENCE ===
+
+    public static saveApproval(app: {
+        traceId: string;
+        toolName: string;
+        agent: string;
+        riskScore: number;
+        riskLevel: string;
+        reason: string;
+        args: Record<string, unknown>;
+        createdAt: number;
+        expiresAt: number;
+        status: string;
+        passcode?: string;
+    }): void {
+        const cleanAgent = app.agent.replace("@", "");
+        this.getDB().prepare(`
+            INSERT INTO approvals (trace_id, tool_name, agent, risk_score, risk_level, reason, args, created_at, expires_at, status, passcode)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(trace_id) DO UPDATE SET
+                status = excluded.status,
+                passcode = excluded.passcode
+        `).run(
+            app.traceId,
+            app.toolName,
+            cleanAgent,
+            app.riskScore,
+            app.riskLevel,
+            app.reason,
+            JSON.stringify(app.args),
+            app.createdAt,
+            app.expiresAt,
+            app.status,
+            app.passcode || null
+        );
+    }
+
+    public static getApproval(traceId: string): {
+        traceId: string;
+        toolName: string;
+        agent: string;
+        riskScore: number;
+        riskLevel: string;
+        reason: string;
+        args: Record<string, unknown>;
+        createdAt: number;
+        expiresAt: number;
+        status: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
+        passcode?: string;
+    } | null {
+        try {
+            const row = this.getDB().prepare("SELECT * FROM approvals WHERE trace_id = ?").get(traceId) as {
+                trace_id: string;
+                tool_name: string;
+                agent: string;
+                risk_score: number;
+                risk_level: string;
+                reason: string;
+                args: string;
+                created_at: number;
+                expires_at: number;
+                status: string;
+                passcode: string | null;
+            } | undefined;
+            if (!row) return null;
+            return {
+                traceId: row.trace_id,
+                toolName: row.tool_name,
+                agent: row.agent,
+                riskScore: row.risk_score,
+                riskLevel: row.risk_level,
+                reason: row.reason,
+                args: JSON.parse(row.args || "{}") as Record<string, unknown>,
+                createdAt: row.created_at,
+                expiresAt: row.expires_at,
+                status: row.status as "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED",
+                passcode: row.passcode || undefined
+            };
+        } catch (err) {
+            logger.debug(`Failed to get approval: ${(err as Error).message}`);
+            return null;
+        }
+    }
+
+    public static getPendingApprovals(): Array<{
+        traceId: string;
+        toolName: string;
+        agent: string;
+        riskScore: number;
+        riskLevel: string;
+        reason: string;
+        args: Record<string, unknown>;
+        createdAt: number;
+        expiresAt: number;
+        status: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
+        passcode?: string;
+    }> {
+        try {
+            const rows = this.getDB().prepare("SELECT * FROM approvals WHERE status = 'PENDING'").all() as Array<{
+                trace_id: string;
+                tool_name: string;
+                agent: string;
+                risk_score: number;
+                risk_level: string;
+                reason: string;
+                args: string;
+                created_at: number;
+                expires_at: number;
+                status: string;
+                passcode: string | null;
+            }>;
+            return rows.map(row => ({
+                traceId: row.trace_id,
+                toolName: row.tool_name,
+                agent: row.agent,
+                riskScore: row.risk_score,
+                riskLevel: row.risk_level,
+                reason: row.reason,
+                args: JSON.parse(row.args || "{}") as Record<string, unknown>,
+                createdAt: row.created_at,
+                expiresAt: row.expires_at,
+                status: row.status as "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED",
+                passcode: row.passcode || undefined
+            }));
+        } catch (err) {
+            logger.debug(`Failed to get pending approvals: ${(err as Error).message}`);
+            return [];
+        }
+    }
+
+    public static updateApprovalStatus(traceId: string, status: string): void {
+        this.getDB().prepare("UPDATE approvals SET status = ? WHERE trace_id = ?").run(status, traceId);
+    }
+
+    public static clearAllApprovals(): void {
+        try {
+            this.getDB().prepare("DELETE FROM approvals").run();
+        } catch (err) {
+            logger.debug(`Failed to clear approvals: ${(err as Error).message}`);
+        }
+    }
+
+    // === DISCIPLINE PERSISTENCE ===
+
+    public static saveDiscipline(agent: string, stats: { totalCalls: number; violations: number; lastViolation: string | null; cooldownUntil: number }): void {
+        const cleanAgent = agent.replace("@", "");
+        this.getDB().prepare(`
+            INSERT INTO discipline (agent, total_calls, violations, last_violation, cooldown_until, updated_at)
+            VALUES (?, ?, ?, ?, ?, datetime('now'))
+            ON CONFLICT(agent) DO UPDATE SET
+                total_calls = excluded.total_calls,
+                violations = excluded.violations,
+                last_violation = excluded.last_violation,
+                cooldown_until = excluded.cooldown_until,
+                updated_at = datetime('now')
+        `).run(cleanAgent, stats.totalCalls, stats.violations, stats.lastViolation, stats.cooldownUntil);
+    }
+
+    public static getDiscipline(agent: string): { agent: string; totalCalls: number; violations: number; lastViolation: string | null; cooldownUntil: number } | null {
+        const cleanAgent = agent.replace("@", "");
+        try {
+            const row = this.getDB().prepare("SELECT * FROM discipline WHERE agent = ?").get(cleanAgent) as {
+                agent: string;
+                total_calls: number;
+                violations: number;
+                last_violation: string | null;
+                cooldown_until: number;
+            } | undefined;
+            if (!row) return null;
+            return {
+                agent: row.agent,
+                totalCalls: row.total_calls,
+                violations: row.violations,
+                lastViolation: row.last_violation,
+                cooldownUntil: row.cooldown_until
+            };
+        } catch (err) {
+            logger.debug(`Failed to get discipline: ${(err as Error).message}`);
+            return null;
+        }
+    }
+
+    public static getAllDiscipline(): Array<{ agent: string; totalCalls: number; violations: number; lastViolation: string | null; cooldownUntil: number }> {
+        try {
+            const rows = this.getDB().prepare("SELECT * FROM discipline").all() as Array<{
+                agent: string;
+                total_calls: number;
+                violations: number;
+                last_violation: string | null;
+                cooldown_until: number;
+            }>;
+            return rows.map(row => ({
+                agent: row.agent,
+                totalCalls: row.total_calls,
+                violations: row.violations,
+                lastViolation: row.last_violation,
+                cooldownUntil: row.cooldown_until
+            }));
+        } catch (err) {
+            logger.debug(`Failed to get all discipline: ${(err as Error).message}`);
+            return [];
+        }
+    }
+
+    public static clearAllDiscipline(): void {
+        try {
+            this.getDB().prepare("DELETE FROM discipline").run();
+        } catch (err) {
+            logger.debug(`Failed to clear discipline: ${(err as Error).message}`);
+        }
     }
 
     public static reset() {

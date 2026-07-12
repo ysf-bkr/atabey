@@ -42,7 +42,7 @@ const COMMANDS: Record<string, { run: (args: string[]) => Promise<void>; descrip
         run: async (args) => {
             const profile = args.find((a): a is "freelancer" | "team" | "enterprise" => ["freelancer", "team", "enterprise"].includes(a));
             const adapter = args.find(a => !a.startsWith("-") && a !== "init" && !["freelancer", "team", "enterprise"].includes(a)) || "gemini";
-            
+
             const typeIndex = args.findIndex(a => a === "--type" || a === "--focus" || a === "-t");
             const focus = (typeIndex !== -1 && args[typeIndex + 1]) ? args[typeIndex + 1] : undefined;
 
@@ -152,6 +152,41 @@ const COMMANDS: Record<string, { run: (args: string[]) => Promise<void>; descrip
     // Utility
     quickstart: { run: async () => { await quickstartCommand(); }, description: "Generate example task file" },
     coverage: { run: async () => { await coverageCommand(); }, description: "Test coverage reports" },
+    compliance: {
+        run: async (args) => {
+            const { complianceCheckCommand } = await import("./commands/compliance.js");
+            await complianceCheckCommand(args[0] || "src");
+        },
+        description: "Run compliance check against ATABEY.md constitution",
+    },
+    contract: {
+        run: async (args) => {
+            const { verifyApiContractCommand } = await import("./commands/contract.js");
+            await verifyApiContractCommand();
+        },
+        description: "Verify contract integrity",
+    },
+    knowledge: {
+        run: async (args) => {
+            const { searchKnowledgeBaseCommand } = await import("./commands/knowledge.js");
+            await searchKnowledgeBaseCommand(args.join(" "));
+        },
+        description: "Manage knowledge base (search|store|delete)",
+    },
+    log: {
+        run: async (args) => {
+            const { logAgentActionCommand } = await import("./commands/log.js");
+            await logAgentActionCommand({ agent: args[0], action: "VIEW_LOG", status: "SUCCESS", summary: args.slice(1).join(" ") || "Agent log view" });
+        },
+        description: "View agent execution logs",
+    },
+    script: {
+        run: async (args) => {
+            const { runScriptCommand } = await import("./commands/script.js");
+            await runScriptCommand(args[0], args[1] || ".");
+        },
+        description: "Run a predefined script from .atabey/scripts/",
+    },
     security: {
         run: async (args) => {
             const { securityAuditCommand } = await import("./commands/security.js");
@@ -172,8 +207,6 @@ const COMMANDS: Record<string, { run: (args: string[]) => Promise<void>; descrip
 
 const ALIASES: Record<string, string> = {
     "loop": "orchestrate",
-    "coverage": "coverage",
-    "quickstart": "quickstart",
 };
 
 async function main() {

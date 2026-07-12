@@ -260,7 +260,8 @@ export class RoutingEngine {
 
     private static tokenize(text: string): string[] {
         return text
-            .replace(/[^a-z0-9çşıöğü ]/g, " ")
+            .toLowerCase()
+            .replace(/[^a-z0-9 ]/g, " ")
             .split(/\s+/)
             .filter(t => t.length > 1);
     }

@@ -93,6 +93,17 @@ tests/.temp*/
 packages/atabey/tests/.temp/
 packages/atabey-mcp/tests/.temp/
 
+# Compiled artifacts in source directories (should be in dist/)
+packages/atabey/src/**/*.js
+packages/atabey/src/**/*.d.ts
+packages/atabey/src/**/*.js.map
+packages/atabey-mcp/src/**/*.js
+packages/atabey-mcp/src/**/*.d.ts
+packages/atabey-mcp/src/**/*.js.map
+packages/shared/src/**/*.js
+packages/shared/src/**/*.d.ts
+packages/shared/src/**/*.js.map
+
 # IDE/Agent settings & rules
 .agents/
 .claude/
@@ -107,4 +118,3 @@ LOCAL_AI.md
 copilot-instructions.md
 GEMINI.md
 .mcp.json
-

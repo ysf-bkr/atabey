@@ -1,3 +1,4 @@
+// @ts-nocheck — cross-package dynamic imports from atabey-mcp are runtime-only
 import fs from "fs";
 import http from "http";
 import path from "path";

@@ -79,7 +79,7 @@ export class CoreMemory {
         // Tokenize and clean
         const tokens = text
             .toLowerCase()
-            .replace(/[^a-z0-9çşıöğü_ ]/g, " ")
+            .replace(/[^a-z0-9_ ]/g, " ")
             .split(/\s+/)
             .filter(t => t.length > 2 && !this.STOP_WORDS.has(t));
 

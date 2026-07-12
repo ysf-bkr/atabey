@@ -1,6 +1,6 @@
 {
   "name": "atabey-mcp",
-  "version": "0.0.24",
+  "version": "0.0.25",
   "description": "Atabey — AI Governance & Multi-Agent Platform / Orchestrator — MCP Server",
   "author": "Yusuf BEKAR",
   "license": "AGPL-3.0",
@@ -32,10 +32,8 @@
   "types": "./dist/atabey-mcp/src/mcp/index.d.ts",
   "exports": {
     ".": "./dist/atabey-mcp/src/mcp/index.js",
-    "./utils/*": "./dist/atabey-mcp/src/mcp/utils/*",
-    "./shared/*": "./dist/atabey-mcp/src/shared/*",
-    "./src/mcp/utils/*": "./dist/atabey-mcp/src/mcp/utils/*",
-    "./src/shared/*": "./dist/atabey-mcp/src/shared/*"
+    "./utils/*": "./dist/atabey-mcp/src/mcp/utils/*.js",
+    "./shared/*": "./dist/atabey-mcp/src/shared/*.js"
   },
   "files": [
     "bin",
@@ -55,14 +53,13 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "atabey-shared": "^0.0.24",
+    "atabey-shared": "^0.0.25",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "better-sqlite3": "^12.10.1",
     "chalk": "^5.6.2",
     "js-yaml": "^4.2.0",
     "ws": "^8.21.0",
-    "zod": "^3.24.2",
-    "typescript": "^5.9.3"
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
@@ -70,6 +67,7 @@
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^3.2.6",
     "tsx": "^4.22.3",
+    "typescript": "^5.9.3",
     "vitest": "^3.0.0"
   }
 }

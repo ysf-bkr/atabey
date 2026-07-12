@@ -172,6 +172,11 @@ export function createApprovalRequest(
     };
 
     activeApprovals.set(traceId, request);
+    try {
+        AtabeyStorage.saveApproval(request);
+    } catch (e) {
+        // Non-fatal
+    }
 
     // Print passcode to stderr so the human developer sees it but AI cannot access it
     process.stderr.write(`\n[ATABEY SECURITY GATES] APPROVAL PASSCODE FOR TRACE ${traceId}: ${passcode}\n\n`);
@@ -263,12 +268,21 @@ export function checkRiskGate(
  * Check if an approval request exists and is still valid.
  */
 export function getApprovalStatus(traceId: string): ApprovalRequest | null {
-    const request = activeApprovals.get(traceId);
+    let request = activeApprovals.get(traceId);
+    if (!request) {
+        try {
+            request = (AtabeyStorage.getApproval(traceId) as ApprovalRequest | null) || undefined;
+            if (request) activeApprovals.set(traceId, request);
+        } catch { /* ignore */ }
+    }
     if (!request) return null;
 
     // Check if expired
     if (Date.now() > request.expiresAt) {
         request.status = "EXPIRED";
+        try {
+            AtabeyStorage.updateApprovalStatus(traceId, "EXPIRED");
+        } catch { /* ignore */ }
         return request;
     }
 
@@ -291,7 +305,13 @@ export function approveOperation(
     _userRoleIgnored?: string,   // kept for API compat — value is intentionally ignored
     bypassChecks = false
 ): { success: boolean; message: string } {
-    const request = activeApprovals.get(traceId);
+    let request = activeApprovals.get(traceId);
+    if (!request) {
+        try {
+            request = (AtabeyStorage.getApproval(traceId) as ApprovalRequest | null) || undefined;
+            if (request) activeApprovals.set(traceId, request);
+        } catch { /* ignore */ }
+    }
     if (!request) {
         return { success: false, message: `No pending approval found for trace: ${traceId}` };
     }
@@ -330,6 +350,9 @@ export function approveOperation(
     }
 
     request.status = "APPROVED";
+    try {
+        AtabeyStorage.updateApprovalStatus(traceId, "APPROVED");
+    } catch { /* ignore */ }
 
     // Update Hermes message status
     const messages = AtabeyStorage.getPendingMessages();
@@ -357,7 +380,13 @@ export function rejectOperation(
     _userRoleIgnored?: string,   // kept for API compat — value intentionally ignored
     bypassChecks = false
 ): { success: boolean; message: string } {
-    const request = activeApprovals.get(traceId);
+    let request = activeApprovals.get(traceId);
+    if (!request) {
+        try {
+            request = (AtabeyStorage.getApproval(traceId) as ApprovalRequest | null) || undefined;
+            if (request) activeApprovals.set(traceId, request);
+        } catch { /* ignore */ }
+    }
     if (!request) {
         return { success: false, message: `No pending approval found for trace: ${traceId}` };
     }
@@ -382,6 +411,9 @@ export function rejectOperation(
     }
 
     request.status = "REJECTED";
+    try {
+        AtabeyStorage.updateApprovalStatus(traceId, "REJECTED");
+    } catch { /* ignore */ }
 
     // Update Hermes message status
     const messages = AtabeyStorage.getPendingMessages();
@@ -404,10 +436,23 @@ export function getPendingApprovals(): ApprovalRequest[] {
     const now = Date.now();
     const pending: ApprovalRequest[] = [];
 
+    // Sync from database
+    try {
+        const dbPending = AtabeyStorage.getPendingApprovals();
+        for (const req of dbPending) {
+            if (!activeApprovals.has(req.traceId)) {
+                activeApprovals.set(req.traceId, req as ApprovalRequest);
+            }
+        }
+    } catch { /* ignore */ }
+
     // Clean expired
     for (const [, request] of activeApprovals) {
         if (request.status === "PENDING" && now > request.expiresAt) {
             request.status = "EXPIRED";
+            try {
+                AtabeyStorage.updateApprovalStatus(request.traceId, "EXPIRED");
+            } catch { /* ignore */ }
         }
         if (request.status === "PENDING") {
             pending.push(request);

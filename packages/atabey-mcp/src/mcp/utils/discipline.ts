@@ -17,6 +17,7 @@
 
 import fs from "fs";
 import path from "path";
+import { AtabeyStorage } from "../../shared/storage.js";
 
 interface ToolCallRecord {
     tool: string;
@@ -69,10 +70,25 @@ function parseAgentWhitelist(input: string): Map<string, Set<string>> {
 
 const cooldowns = new Map<string, number>();
 
+function setCooldown(agent: string, durationMs: number): void {
+    const until = Date.now() + durationMs;
+    cooldowns.set(agent, until);
+
+    const discipline = getOrCreateAgent(agent);
+    try {
+        AtabeyStorage.saveDiscipline(agent, {
+            totalCalls: discipline.totalCalls,
+            violations: discipline.violations,
+            lastViolation: discipline.lastViolation,
+            cooldownUntil: until
+        });
+    } catch { /* ignore */ }
+}
+
 function getOrCreateAgent(agent: string): AgentDiscipline {
     if (!agentDiscipline.has(agent)) {
         const whitelist = CONFIG.AGENT_TOOL_WHITELIST.get(agent) || null;
-        agentDiscipline.set(agent, {
+        const record: AgentDiscipline = {
             totalCalls: 0,
             calls: [],
             lastReset: Date.now(),
@@ -80,7 +96,23 @@ function getOrCreateAgent(agent: string): AgentDiscipline {
             whitelistedTools: whitelist,
             violations: 0,
             lastViolation: null,
-        });
+        };
+
+        // Try to restore from database
+        try {
+            const dbState = AtabeyStorage.getDiscipline(agent);
+            if (dbState) {
+                record.totalCalls = dbState.totalCalls;
+                record.violations = dbState.violations;
+                record.lastViolation = dbState.lastViolation;
+                
+                if (dbState.cooldownUntil > Date.now()) {
+                    cooldowns.set(agent, dbState.cooldownUntil);
+                }
+            }
+        } catch { /* ignore */ }
+
+        agentDiscipline.set(agent, record);
     }
     return agentDiscipline.get(agent)!;
 }
@@ -105,6 +137,16 @@ function recordViolation(agent: string, reason: string): void {
     if (discipline) {
         discipline.violations++;
         discipline.lastViolation = reason;
+
+        try {
+            const cooldownUntil = cooldowns.get(agent) || 0;
+            AtabeyStorage.saveDiscipline(agent, {
+                totalCalls: discipline.totalCalls,
+                violations: discipline.violations,
+                lastViolation: discipline.lastViolation,
+                cooldownUntil
+            });
+        } catch { /* ignore */ }
     }
 }
 
@@ -141,7 +183,7 @@ export async function enforceDiscipline(
 
     // 4. Check total call limit
     if (discipline.totalCalls >= CONFIG.MAX_TOTAL_CALLS) {
-        cooldowns.set(agent, Date.now() + CONFIG.COOLDOWN_MS);
+        setCooldown(agent, CONFIG.COOLDOWN_MS);
         recordViolation(agent, `Exceeded max total calls (${CONFIG.MAX_TOTAL_CALLS})`);
         return `[DISCIPLINE] Agent ${agent} exceeded max total calls (${CONFIG.MAX_TOTAL_CALLS}). Cooldown ${CONFIG.COOLDOWN_MS/1000}s.`;
     }
@@ -149,7 +191,7 @@ export async function enforceDiscipline(
     // 5. Check rate limit (calls per minute)
     pruneOldCalls(discipline);
     if (discipline.calls.length >= CONFIG.MAX_CALLS_PER_MINUTE) {
-        cooldowns.set(agent, Date.now() + CONFIG.COOLDOWN_MS);
+        setCooldown(agent, CONFIG.COOLDOWN_MS);
         recordViolation(agent, `Rate limit exceeded (${CONFIG.MAX_CALLS_PER_MINUTE}/min)`);
         return `[DISCIPLINE] Agent ${agent} exceeded rate limit (${CONFIG.MAX_CALLS_PER_MINUTE}/min). Cooldown ${CONFIG.COOLDOWN_MS/1000}s.`;
     }
@@ -159,7 +201,7 @@ export async function enforceDiscipline(
         const lastCalls = discipline.calls.slice(-CONFIG.MAX_CONSECUTIVE_SAME_TOOL);
         const allSame = lastCalls.every(c => c.tool === toolName);
         if (allSame) {
-            cooldowns.set(agent, Date.now() + CONFIG.COOLDOWN_MS);
+            setCooldown(agent, CONFIG.COOLDOWN_MS);
             recordViolation(agent, `Consecutive same tool limit: ${toolName} x${CONFIG.MAX_CONSECUTIVE_SAME_TOOL}`);
             return `[DISCIPLINE] Agent ${agent} called "${toolName}" ${CONFIG.MAX_CONSECUTIVE_SAME_TOOL} times in a row. Possible loop. Cooldown.`;
         }
@@ -193,6 +235,16 @@ export async function enforceDiscipline(
         timestamp: Date.now(),
         argsSize: argsStr.length,
     });
+
+    try {
+        const cooldownUntil = cooldowns.get(agent) || 0;
+        AtabeyStorage.saveDiscipline(agent, {
+            totalCalls: discipline.totalCalls,
+            violations: discipline.violations,
+            lastViolation: discipline.lastViolation,
+            cooldownUntil
+        });
+    } catch { /* ignore */ }
 
     return null;
 }
@@ -275,10 +327,7 @@ export function getDisciplineStats(agent: string): {
     violations: number;
     lastViolation: string | null;
 } {
-    const discipline = agentDiscipline.get(agent);
-    if (!discipline) {
-        return { totalCalls: 0, recentCalls: 0, inCooldown: false, cooldownRemaining: 0, violations: 0, lastViolation: null };
-    }
+    const discipline = getOrCreateAgent(agent);
 
     pruneOldCalls(discipline);
     const cooldownUntil = cooldowns.get(agent);
@@ -303,6 +352,16 @@ export function getAllDisciplineStats(): Record<string, {
     violations: number;
     lastViolation: string | null;
 }> {
+    // Load all from database to sync in-memory cache
+    try {
+        const allDb = AtabeyStorage.getAllDiscipline();
+        for (const item of allDb) {
+            if (!agentDiscipline.has(item.agent)) {
+                getOrCreateAgent(item.agent);
+            }
+        }
+    } catch { /* ignore */ }
+
     const stats: Record<string, ReturnType<typeof getDisciplineStats>> = {};
     for (const [agent] of agentDiscipline) {
         stats[agent] = getDisciplineStats(agent);
@@ -316,6 +375,9 @@ export function getAllDisciplineStats(): Record<string, {
 export function resetDiscipline(): void {
     agentDiscipline.clear();
     cooldowns.clear();
+    try {
+        AtabeyStorage.clearAllDiscipline();
+    } catch { /* ignore */ }
 }
 
 export { CONFIG as DisciplineConfig };

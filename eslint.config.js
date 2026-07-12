@@ -1,6 +1,6 @@
 import eslint from '@eslint/js';
-import tseslint from 'typescript-eslint';
 import globals from 'globals';
+import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   eslint.configs.recommended,
@@ -10,6 +10,12 @@ export default tseslint.config(
       '**/dist/**',
       '**/node_modules/**',
       '**/coverage/**',
+      'packages/atabey/src/**/*.js',
+      'packages/atabey/src/**/*.d.ts',
+      'packages/atabey/src/**/*.js.map',
+      'packages/atabey-mcp/src/**/*.js',
+      'packages/atabey-mcp/src/**/*.d.ts',
+      'packages/atabey-mcp/src/**/*.js.map',
       'eslint.config.js'
     ]
   },

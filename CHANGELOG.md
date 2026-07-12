@@ -4,6 +4,26 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## [0.0.25] — 2026-07-12
+
+### Added
+- **New CLI Commands**: Added `compliance`, `contract`, `knowledge`, `log`, and `script` CLI commands to `COMMANDS` registry in `cli/index.ts`.
+- **ESLint Config Ignores**: Added `packages/atabey/src/**/*.js`, `*.d.ts`, `*.js.map` and `packages/atabey-mcp/src/**/*.js`, `*.d.ts`, `*.js.map` patterns to prevent linting compiled artifacts.
+
+### Fixed
+- **Compiled Artifacts in Source**: Removed ~100+ compiled `.js`/`.d.ts`/`.js.map` files from `packages/atabey/src/` and `packages/atabey-mcp/src/` that were committed alongside TypeScript sources. These are now in `.gitignore` and `eslint ignores`.
+- **`build:dashboard` Script**: Fixed workspace path syntax — changed `"npm run build -w packages/atabey-mcp dashboard"` to `"npm run build -w packages/atabey-mcp/dashboard"`.
+- **`atabey-mcp` Package Exports**: Removed source path aliases (`./src/mcp/utils/*`, `./src/shared/*`) from `exports` — only dist paths remain.
+- **`typescript` in Production Dependencies**: Moved `typescript` from `dependencies` to `devDependencies` in both `packages/atabey` and `packages/atabey-mcp`.
+- **`tsconfig.json` — `atabey`**: Added `rootDir`, fixed cross-package `paths`, excluded `dashboard.ts` type checking (uses runtime dynamic imports from `atabey-mcp`).
+- **`tsconfig.json` — `atabey-mcp`**: Changed `moduleResolution` from `"node"` to `"bundler"`, added `rootDir`, removed cross-package `atabey/*` path mappings.
+- **`cli/index.ts` Redundant Aliases**: Removed self-referencing `"coverage": "coverage"` and `"quickstart": "quickstart"` aliases.
+- **Dashboard Version Alignment**: Updated `@atabey/dashboard-ui` from `0.0.23` to `0.0.24` (now 0.0.25).
+
+### Changed
+- **Localization Cleanup**: Removed Turkish character patterns from `RoutingEngine.tokenize()` and `CoreMemory.generateEmbedding()` regex for ASCII-only tokenization. Updated `scaffold-docs.ts` regex to match English template headings.
+- **Version Bump**: All packages updated to v0.0.25.
+
 ## [0.0.24] — 2026-07-02
 
 ### Fixed

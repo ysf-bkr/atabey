@@ -25,13 +25,13 @@ export function scaffoldProjectDocs(projectRoot: string, options: { backendLangu
             const frontend = options.frontendFramework || "Vite (React)";
 
             techStackContent = techStackContent.replace(
-                /\| \*\*Geliştirme Ortamı\*\* \| .* \|/,
-                `| **Geliştirme Ortamı** | ${lang} |`
+                /\*\*Backend Language:\*\* .*/,
+                `**Backend Language:** ${lang}`
             );
 
             techStackContent = techStackContent.replace(
-                /\| \*\*Frontend Altyapısı\*\* \| .* \|/,
-                `| **Frontend Altyapısı** | ${frontend} |`
+                /\*\*Frontend Framework:\*\* .*/,
+                `**Frontend Framework:** ${frontend}`
             );
         }
     } catch (e) {

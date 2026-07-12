@@ -11,14 +11,11 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "dist",
-    "baseUrl": ".",
     "paths": {
       "atabey-shared": ["../shared/src/index.ts"],
-      "atabey-shared/*": ["../shared/src/*"],
-      "atabey-mcp/src/mcp/utils/*": ["../atabey-mcp/src/mcp/utils/*"],
-      "atabey-mcp/src/shared/*": ["../atabey-mcp/src/shared/*"]
+      "atabey-shared/*": ["../shared/src/*"]
     }
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "dist", "src/cli/commands/dashboard.ts"]
 }
