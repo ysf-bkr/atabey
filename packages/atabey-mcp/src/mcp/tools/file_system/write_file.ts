@@ -1,11 +1,12 @@
 import fs from "fs";
 import path from "path";
-import { appendFile, writeTextFile } from "atabey-mcp/utils/fs.js";
+import { appendFile } from "atabey-mcp/utils/fs.js";
 import { Metrics } from "atabey-mcp/utils/metrics.js";
 import { resolveFrameworkDir, safePath } from "atabey-mcp/utils/security.js";
 import { ToolResult, WriteFileArgs } from "../types.js";
 
 import { verifyCorporateCompliance, verifyRiskAndAwaitApproval } from "atabey-mcp/utils/compliance.js";
+import { writeProjectFile } from "atabey-mcp/utils/file-lock-guard.js";
 import { verifyWritePermission } from "atabey-mcp/utils/permissions.js";
 
 export async function handleWriteFile(projectRoot: string, args: WriteFileArgs): Promise<ToolResult> {
@@ -31,7 +32,8 @@ export async function handleWriteFile(projectRoot: string, args: WriteFileArgs):
             };
         }
 
-        const content = args.content;
+        // Preserve historical write_file semantics: ensure trailing newline
+        const content = args.content.endsWith("\n") ? args.content : `${args.content}\n`;
 
         // ENFORCE PERMISSION MATRIX
         verifyWritePermission(projectRoot, args.path);
@@ -42,7 +44,9 @@ export async function handleWriteFile(projectRoot: string, args: WriteFileArgs):
         // ENFORCE RISK & HUMAN APPROVAL GATEWAY
         await verifyRiskAndAwaitApproval(projectRoot, content, args.path);
 
-        writeTextFile(filePath, content);
+        // Phase 1.2: sandboxed write (container/uid/host) + exclusive lock try/finally
+        // filePath already validated by safePath for project-root confinement
+        await writeProjectFile(projectRoot, args.path, content);
 
         // AUTO-LOGGING & METRICS
         const tokens = Metrics.estimateTokens(content);

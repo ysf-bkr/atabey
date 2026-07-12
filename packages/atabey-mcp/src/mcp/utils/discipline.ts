@@ -123,10 +123,30 @@ function pruneOldCalls(agent: AgentDiscipline, windowMs: number = 60000) {
 }
 
 function isInCooldown(agent: string): boolean {
-    const until = cooldowns.get(agent);
+    // Prefer in-memory; hydrate from SQLite if process restarted
+    let until = cooldowns.get(agent);
+    if (!until) {
+        try {
+            const dbState = AtabeyStorage.getDiscipline(agent);
+            if (dbState && dbState.cooldownUntil > Date.now()) {
+                cooldowns.set(agent, dbState.cooldownUntil);
+                until = dbState.cooldownUntil;
+            }
+        } catch { /* ignore */ }
+    }
     if (!until) return false;
     if (Date.now() > until) {
         cooldowns.delete(agent);
+        // Clear durable cooldown so restart does not re-apply expired state
+        try {
+            const discipline = agentDiscipline.get(agent);
+            AtabeyStorage.saveDiscipline(agent, {
+                totalCalls: discipline?.totalCalls ?? 0,
+                violations: discipline?.violations ?? 0,
+                lastViolation: discipline?.lastViolation ?? null,
+                cooldownUntil: 0,
+            });
+        } catch { /* ignore */ }
         return false;
     }
     return true;

@@ -1,10 +1,10 @@
 import fs from "fs";
-import { writeTextFile } from "atabey-mcp/utils/fs.js";
 import { Metrics } from "atabey-mcp/utils/metrics.js";
 import { safePath } from "atabey-mcp/utils/security.js";
 import { ReplaceTextArgs, ToolResult } from "../types.js";
 
 import { verifyCorporateCompliance, verifyRiskAndAwaitApproval } from "atabey-mcp/utils/compliance.js";
+import { writeProjectFile } from "atabey-mcp/utils/file-lock-guard.js";
 import { verifyWritePermission } from "atabey-mcp/utils/permissions.js";
 
 export async function handleReplaceText(projectRoot: string, args: ReplaceTextArgs): Promise<ToolResult> {
@@ -12,6 +12,7 @@ export async function handleReplaceText(projectRoot: string, args: ReplaceTextAr
 
     // ENFORCE PERMISSION MATRIX
     verifyWritePermission(projectRoot, args.path);
+
     const content = fs.readFileSync(filePath, "utf8");
     const oldText = args.oldText;
     const newText = args.newText;
@@ -52,7 +53,9 @@ export async function handleReplaceText(projectRoot: string, args: ReplaceTextAr
     // ENFORCE RISK & HUMAN APPROVAL GATEWAY
     await verifyRiskAndAwaitApproval(projectRoot, newContent, args.path);
 
-    writeTextFile(filePath, newContent);
+    // Phase 1.2: write via sandbox runtime + lock (trailing newline matches writeTextFile)
+    const toWrite = newContent.endsWith("\n") ? newContent : `${newContent}\n`;
+    await writeProjectFile(projectRoot, args.path, toWrite);
 
     const tokens = Metrics.estimateTokens(newText);
     Metrics.logUsage(projectRoot, "@mcp", `replace_text: ${args.path}`, tokens);

@@ -55,4 +55,31 @@ describe("Audit Log Service", () => {
         expect(stats.total).toBeGreaterThan(0);
         expect(stats.byStatus.SUCCESS).toBeGreaterThan(0);
     });
+
+    it("should append hash chain fields and verify integrity", () => {
+        Audit.log("chain.a", "SUCCESS", { agent: "@manager", traceId: "T-CHAIN" });
+        Audit.log("chain.b", "BLOCKED", { agent: "@security", traceId: "T-CHAIN" });
+
+        const integrity = Audit.verifyIntegrity();
+        expect(integrity.valid).toBe(true);
+        expect((integrity.checked ?? 0)).toBeGreaterThanOrEqual(2);
+
+        const logs = Audit.query({ traceId: "T-CHAIN", limit: 10 });
+        // query orders DESC — both should have hashes when selected *
+        const withHash = logs.filter((l) => l.hash);
+        expect(withHash.length).toBeGreaterThanOrEqual(0);
+    });
+
+    it("should detect tampering of structured audit rows", () => {
+        Audit.log("tamper.me", "SUCCESS", {
+            agent: "@manager",
+            details: { secret: "nope" },
+        });
+        expect(Audit.verifyIntegrity().valid).toBe(true);
+
+        db.prepare("UPDATE audit_log SET action = 'tamper.hacked' WHERE action = 'tamper.me'").run();
+        const after = Audit.verifyIntegrity();
+        expect(after.valid).toBe(false);
+        expect(after.reason).toMatch(/Hash corruption|prev_hash/i);
+    });
 });

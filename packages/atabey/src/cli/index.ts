@@ -194,6 +194,13 @@ const COMMANDS: Record<string, { run: (args: string[]) => Promise<void>; descrip
         },
         description: "Security audit",
     },
+    lint: {
+        run: async () => {
+            const { lintCommand } = await import("./commands/lint.js");
+            await lintCommand();
+        },
+        description: "Run ESLint for the project",
+    },
     index: {
         run: async (args) => {
             const { indexCodebaseCommand } = await import("./commands/index-codebase.js");
@@ -274,6 +281,13 @@ Core Commands:
   git commit|sync                                        Git operations
   explorer graph|audit <path>                            Code analysis
   security <path>                                        Security audit
+  compliance <path>                                      Compliance check
+  contract                                               Verify contract integrity
+  knowledge <query>                                      Knowledge base search
+  lint                                                   Run ESLint
+  log <agent> <message>                                  View agent logs
+  script <name> [dir]                                    Run predefined script
+  index [dir]                                            Index codebase for RAG
   coverage                                               Test coverage reports
   quickstart                                             Example project
 

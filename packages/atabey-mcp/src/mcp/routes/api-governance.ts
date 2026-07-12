@@ -24,6 +24,40 @@ export async function handleGovernanceRoutes(
         return true;
     }
 
+    // Phase 2.1 — auth status (safe subset; no tokens)
+    if (pathname === "/api/auth/status" && method === "GET") {
+        try {
+            const { getAuthStatus } = await import("../utils/auth.js");
+            serveJson(res, 200, { success: true, data: getAuthStatus() });
+        } catch (e) {
+            serveJson(res, 500, { success: false, error: (e as Error).message });
+        }
+        return true;
+    }
+
+    // Phase 1.4 — tamper-evident audit hash chain integrity
+    if (pathname === "/api/audit/integrity" && method === "GET") {
+        try {
+            Audit.initialize();
+            const { Storage } = await import("../../shared/storage.js");
+            const structured = Audit.verifyIntegrity();
+            const agentLogs = Storage.verifyLogIntegrity();
+            const valid = structured.valid && agentLogs.valid;
+            serveJson(res, valid ? 200 : 409, {
+                success: valid,
+                data: {
+                    valid,
+                    structuredAudit: structured,
+                    agentExecutionLogs: agentLogs,
+                    checkedAt: new Date().toISOString(),
+                },
+            });
+        } catch (e) {
+            serveJson(res, 500, { success: false, error: (e as Error).message });
+        }
+        return true;
+    }
+
     // Consent log (KVKK Art. 5 / GDPR Art. 7)
     if (pathname === "/api/compliance/consent" && method === "GET") {
         try {

@@ -50,6 +50,39 @@ export async function handleCallToolWithGovernance(
         // [PII/GDPR/KVKK] Mask args before handler
         const maskedArgs = maskToolArgs(args || {});
 
+        // [POLICY GATE] Hard deny for mutating tools (path safety, recon, protected paths)
+        // Phase 0 enterprise foundation — every mutating tool must pass this gate.
+        try {
+            const { denyIfMutatingBlocked } = await import("../utils/policy-gate.js");
+            const policyDenial = denyIfMutatingBlocked({
+                projectRoot: PROJECT_ROOT,
+                tool: toolName,
+                args: maskedArgs,
+                clientAgent,
+            });
+            if (policyDenial) {
+                logger.warn(`[POLICY_GATE] Blocked: ${policyDenial}`);
+                try {
+                    Storage.saveLog({
+                        agent: clientAgent,
+                        action: "POLICY_GATE_DENY",
+                        status: "BLOCKED",
+                        summary: policyDenial,
+                        findings: toolName,
+                    });
+                } catch { /* non-fatal */ }
+                broadcastWS("policy_gate_denied", {
+                    agent: clientAgent,
+                    tool: toolName,
+                    error: policyDenial,
+                    timestamp: new Date().toISOString(),
+                });
+                return { isError: true, content: [{ type: "text" as const, text: policyDenial }] };
+            }
+        } catch (e) {
+            logger.error(`[POLICY_GATE] Module error: ${(e as Error).message}`);
+        }
+
         // [TOKEN ECONOMY] Log token usage
         const argsJson = JSON.stringify(maskedArgs);
         const estimatedTokens = Math.ceil(argsJson.length / 4);

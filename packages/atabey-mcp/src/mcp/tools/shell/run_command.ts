@@ -2,7 +2,11 @@ import { Metrics } from "atabey-mcp/utils/metrics.js";
 import { RunCommandArgs, ToolResult } from "../types.js";
 import { resolveActiveAgent, getAgentTier } from "atabey-mcp/utils/permissions.js";
 import { resolveFrameworkDir } from "atabey-mcp/utils/security.js";
-import { sandboxSpawn, resolveSandboxIdentity } from "atabey-shared/sandbox.js";
+import {
+    runInSandbox,
+    SandboxRequiredError,
+    resolveSandboxRuntimeConfig,
+} from "atabey-shared/sandbox-runtime.js";
 import path from "path";
 
 // Each entry defines the executable and its allowed args prefix
@@ -134,16 +138,16 @@ function isAllowed(parsed: { cmd: string; args: string[] }): boolean {
     });
 }
 
-export function handleRunCommand(projectRoot: string, args: RunCommandArgs): Promise<ToolResult> {
+export async function handleRunCommand(projectRoot: string, args: RunCommandArgs): Promise<ToolResult> {
     const command = args.command;
 
     // Parse command into executable + args
     const parsed = parseCommand(command);
     if (!parsed) {
-        return Promise.resolve({
+        return {
             content: [{ type: "text", text: "ERROR: Empty command." }],
             isError: true,
-        });
+        };
     }
 
     // Resolve active agent and tier to check command permission
@@ -156,13 +160,13 @@ export function handleRunCommand(projectRoot: string, args: RunCommandArgs): Pro
     if (activeAgent) {
         const tier = getAgentTier(activeAgent);
         if (tier === "recon" && isWriteCommand(parsed)) {
-            return Promise.resolve({
+            return {
                 isError: true,
                 content: [{
                     type: "text",
-                    text: `[RBAC] Permission Denied: Agent ${activeAgent} (tier: recon) is not allowed to run write/build command "${command}". Recon agents are restricted to read-only commands.`
-                }]
-            });
+                    text: `[RBAC] Permission Denied: Agent ${activeAgent} (tier: recon) is not allowed to run write/build command "${command}". Recon agents are restricted to read-only commands.`,
+                }],
+            };
         }
     }
 
@@ -170,10 +174,10 @@ export function handleRunCommand(projectRoot: string, args: RunCommandArgs): Pro
         const allowedList = COMMAND_ALLOW_LIST.map(e => e.args ? `${e.cmd} ${e.args.join(" ")}` : e.cmd);
         const errorMsg = `Command not allowed: "${command}". Only the following are allowed: ${allowedList.join(", ")}`;
         Metrics.logError(projectRoot, "@mcp", `run_shell_command: ${command} (denied)`, errorMsg);
-        return Promise.resolve({
+        return {
             content: [{ type: "text", text: `ERROR: ${errorMsg}` }],
             isError: true,
-        });
+        };
     }
 
     // Reject any args containing shell metacharacters
@@ -181,66 +185,61 @@ export function handleRunCommand(projectRoot: string, args: RunCommandArgs): Pro
     if (hasShellMetacharacters) {
         const errorMsg = "Command rejected: Shell metacharacters are forbidden to prevent command injection.";
         Metrics.logError(projectRoot, "@mcp", `run_shell_command: ${command} (denied: metacharacters)`, errorMsg);
-        return Promise.resolve({
+        return {
             content: [{ type: "text", text: `ERROR: ${errorMsg}` }],
             isError: true,
-        });
+        };
     }
 
-    return new Promise((resolve) => {
-        // OS-level isolation: when ATABEY_SANDBOX_UID/USER is set, child runs as that user.
-        const sandbox = resolveSandboxIdentity();
-        const child = sandboxSpawn(parsed.cmd, parsed.args, {
-            cwd: projectRoot,
-            timeout: TIMEOUT,
-            shell: false,
-            stdio: ["ignore", "pipe", "pipe"],
+    // Phase 1.1: execute via sandbox runtime (none | uid | container)
+    try {
+        const result = await runInSandbox({
+            command: parsed.cmd,
+            args: parsed.args,
+            projectRoot,
+            timeoutMs: TIMEOUT,
         });
 
-        let stdout = "";
-        let stderr = "";
+        const output = result.stdout + result.stderr;
+        const tokens = Metrics.estimateTokens(output);
+        Metrics.logUsage(projectRoot, "@mcp", `run_shell_command: ${command}`, tokens);
 
-        child.stdout?.on("data", (data: Buffer) => { stdout += data.toString(); });
-        child.stderr?.on("data", (data: Buffer) => { stderr += data.toString(); });
-
-        child.on("error", (err) => {
-            const sandboxHint = sandbox.enabled
-                ? ` (sandbox uid=${sandbox.uid}${sandbox.gid !== undefined ? ` gid=${sandbox.gid}` : ""})`
-                : sandbox.reason
-                    ? ` (sandbox off: ${sandbox.reason})`
-                    : "";
-            const errorMsg = `Failed to start command: ${err.message}${sandboxHint}`;
+        if (result.code !== 0) {
+            const errorMsg = `Command failed with exit code ${result.code}.`;
             Metrics.logError(projectRoot, "@mcp", `run_shell_command: ${command}`, errorMsg);
-            resolve({
-                content: [{ type: "text", text: `ERROR: ${errorMsg}` }],
+            return {
+                content: [{
+                    type: "text",
+                    text: `ERROR: ${errorMsg}. Output: ${output}\n[sandbox: ${result.isolationLabel}]`,
+                }],
                 isError: true,
-            });
-        });
+            };
+        }
 
-        child.on("close", (code) => {
-            const output = stdout + stderr;
-            const tokens = Metrics.estimateTokens(output);
-            Metrics.logUsage(projectRoot, "@mcp", `run_shell_command: ${command}`, tokens);
+        const MAX_OUTPUT_LENGTH = 5000;
+        const truncatedOutput = output.length > MAX_OUTPUT_LENGTH
+            ? output.substring(0, MAX_OUTPUT_LENGTH) + "... [TRUNCATED] ..."
+            : output;
 
-            if (code !== 0) {
-                const errorMsg = `Command failed with exit code ${code}.`;
-                Metrics.logError(projectRoot, "@mcp", `run_shell_command: ${command}`, errorMsg);
-                resolve({
-                    content: [{ type: "text", text: `ERROR: ${errorMsg}. Output: ${output}` }],
-                    isError: true,
-                });
-                return;
-            }
-
-            // Truncate long outputs
-            const MAX_OUTPUT_LENGTH = 5000;
-            const truncatedOutput = output.length > MAX_OUTPUT_LENGTH
-                ? output.substring(0, MAX_OUTPUT_LENGTH) + "... [TRUNCATED] ..."
-                : output;
-
-            resolve({
-                content: [{ type: "text", text: truncatedOutput }],
-            });
-        });
-    });
+        // Surface isolation mode for auditability (short footer when non-empty output)
+        const footer = result.runtime !== "none" ? `\n[sandbox: ${result.isolationLabel}]` : "";
+        return {
+            content: [{ type: "text", text: truncatedOutput + footer }],
+        };
+    } catch (err) {
+        if (err instanceof SandboxRequiredError) {
+            Metrics.logError(projectRoot, "@mcp", `run_shell_command: ${command}`, err.message);
+            return {
+                isError: true,
+                content: [{ type: "text", text: `ERROR: ${err.message}` }],
+            };
+        }
+        const cfg = resolveSandboxRuntimeConfig(projectRoot, TIMEOUT);
+        const errorMsg = `Failed to start command: ${(err as Error).message} (sandbox mode=${cfg.effectiveMode})`;
+        Metrics.logError(projectRoot, "@mcp", `run_shell_command: ${command}`, errorMsg);
+        return {
+            content: [{ type: "text", text: `ERROR: ${errorMsg}` }],
+            isError: true,
+        };
+    }
 }

@@ -97,16 +97,28 @@ export class AtomicFileLock {
             hostname: os.hostname(),
         };
 
+        let fd: number | undefined;
         try {
             // Atomic exclusive create — fails if file already exists
-            const fd = fs.openSync(lockPath, "wx");
+            fd = fs.openSync(lockPath, "wx");
             try {
                 fs.writeFileSync(fd, JSON.stringify(meta, null, 2), "utf8");
-            } finally {
-                fs.closeSync(fd);
+            } catch (writeErr) {
+                // CRITICAL: meta write failed after wx create (e.g. ENOSPC) — remove orphan lock
+                try {
+                    if (fd !== undefined) fs.closeSync(fd);
+                } catch { /* ignore */ }
+                fd = undefined;
+                this.forceRemove(lockPath, null);
+                throw writeErr;
             }
+            fs.closeSync(fd);
+            fd = undefined;
             return { acquired: true, meta };
         } catch (err) {
+            if (fd !== undefined) {
+                try { fs.closeSync(fd); } catch { /* ignore */ }
+            }
             const code = (err as NodeJS.ErrnoException).code;
             if (code === "EEXIST") {
                 // Race: another process created the lock between reclaim and open
@@ -181,7 +193,8 @@ export class AtomicFileLock {
     }
 
     /**
-     * Run `fn` while holding the lock; always releases (even on throw).
+     * Run `fn` while holding the lock.
+     * ALWAYS releases in `finally` even if `fn` throws (disk full, parse errors, etc.).
      */
     public async withLock<T>(
         resource: string,
@@ -193,7 +206,46 @@ export class AtomicFileLock {
         try {
             return await fn();
         } finally {
-            this.release(resource, ownerId);
+            try {
+                this.release(resource, ownerId);
+            } catch {
+                this.forceRemove(this.getLockPath(resource), null);
+            }
+            const stillHeld = this.isLocked(resource);
+            if (stillHeld && stillHeld.ownerId === ownerId) {
+                this.forceRemove(this.getLockPath(resource), stillHeld);
+            }
+        }
+    }
+
+    /**
+     * Synchronous withLock — same try/finally release guarantee.
+     */
+    public withLockSync<T>(
+        resource: string,
+        ownerId: string,
+        fn: () => T,
+        options?: { reason?: string },
+    ): T {
+        const result = this.tryAcquire(resource, ownerId, options?.reason);
+        if (!result.acquired) {
+            const holder = result.heldBy?.ownerId ?? "unknown";
+            throw new Error(
+                `[AtomicFileLock] Could not acquire lock for "${resource}" (held by ${holder})`,
+            );
+        }
+        try {
+            return fn();
+        } finally {
+            try {
+                this.release(resource, ownerId);
+            } catch {
+                this.forceRemove(this.getLockPath(resource), null);
+            }
+            const stillHeld = this.isLocked(resource);
+            if (stillHeld && stillHeld.ownerId === ownerId) {
+                this.forceRemove(this.getLockPath(resource), stillHeld);
+            }
         }
     }
 

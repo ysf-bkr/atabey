@@ -92,16 +92,23 @@ export async function handleRequest(
         return;
     }
 
-    // [SECURITY] Authentication check for API routes (not MCP/UI)
-    const isApiRoute = pathname.startsWith("/api/");
-    const isPublicApi = pathname === "/api/health" || pathname === "/api/agents" || pathname === "/api/status";
-    if (isApiRoute && !isPublicApi) {
-        const { authenticate } = await import("../utils/auth.js");
-        const auth = authenticate(req);
-        if (!auth.authenticated) {
-            logger.warn(`[AUTH] Unauthorized request: ${pathname}`);
-            serveJson(res, 401, { error: "Unauthorized. Provide Authorization: Bearer <token> header." });
-            return;
+    // [SECURITY] Phase 2.1 — unified auth gate (API + MCP SSE when required/enabled)
+    {
+        const { requireAuthForPath, isAuthRequired, isAuthEnabled } = await import("../utils/auth.js");
+        const needsGate =
+            pathname.startsWith("/api/") ||
+            pathname.startsWith("/mcp/sse") ||
+            pathname.startsWith("/mcp/messages");
+        if (needsGate) {
+            const decision = requireAuthForPath(pathname, req);
+            if (!decision.allowed) {
+                logger.warn(`[AUTH] Unauthorized request: ${pathname} (required=${isAuthRequired()} enabled=${isAuthEnabled()})`);
+                serveJson(res, decision.status, {
+                    error: decision.error,
+                    hint: "Set MCP_AUTH_TOKEN and send Authorization: Bearer <token>",
+                });
+                return;
+            }
         }
     }
 
@@ -109,9 +116,15 @@ export async function handleRequest(
     if (pathname === "/mcp/sse") {
         const transport = new SSEServerTransport("/mcp/messages", res);
         const sessionId = transport.sessionId;
-        const { authenticate, getCurrentUser } = await import("../utils/auth.js");
+        const { authenticate, getCurrentUser, isAuthRequired, isAuthEnabled } = await import("../utils/auth.js");
         const auth = authenticate(req);
-        const userName = auth.authenticated ? auth.user : getCurrentUser();
+        // When auth enforced, requireAuthForPath already validated; use auth.user
+        const userName =
+            auth.authenticated && auth.user !== "anonymous"
+                ? auth.user
+                : (isAuthRequired() || isAuthEnabled())
+                    ? auth.user || "anonymous"
+                    : getCurrentUser();
         const clientName = "mcp-client";
         const session: McpSession = {
             transport,
@@ -146,7 +159,7 @@ export async function handleRequest(
     }
 
     // ───────────── DASHBOARD API ROUTES (/api) ───────────
-    if (isApiRoute) {
+    if (pathname.startsWith("/api/")) {
         const method = req.method || "GET";
         if (await handleCommonRoutes(pathname, params, method, req, res, context)) return;
         if (await handleAgentsRoutes(pathname, params, method, req, res, context)) return;

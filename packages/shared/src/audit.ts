@@ -14,6 +14,13 @@
  *   Audit.query({ action: "user.create", status: "FAILED" });
  */
 
+import {
+    AUDIT_CHAIN_GENESIS,
+    buildStructuredAuditChainPayload,
+    sha256Hex,
+    verifyHashChain,
+    type ChainVerifyResult,
+} from "./audit-chain.js";
 import { maskObject, maskText } from "./pii.js";
 import { databaseHolder } from "./database.js";
 import { logger } from "./logger.js";
@@ -35,6 +42,9 @@ export interface AuditEntry {
     dataCategory?: DataCategory;
     /** [KVKK] Data retention period (days). null = unlimited (not recommended) */
     retentionDays?: number;
+    /** Tamper-evident chain (Phase 1.4) */
+    prev_hash?: string;
+    hash?: string;
 }
 
 export class Audit {
@@ -58,9 +68,19 @@ export class Audit {
                 errorMessage TEXT,
                 durationMs INTEGER,
                 dataCategory TEXT DEFAULT 'OPERATIONAL',
-                retentionDays INTEGER DEFAULT ${this.DEFAULT_RETENTION_DAYS}
+                retentionDays INTEGER DEFAULT ${this.DEFAULT_RETENTION_DAYS},
+                prev_hash TEXT,
+                hash TEXT
             )
         `);
+        // Migrate older DBs
+        try {
+            const cols = (db.prepare(`PRAGMA table_info(${this.TABLE})`).all() as Array<{ name: string }>).map((c) => c.name);
+            if (!cols.includes("prev_hash")) db.exec(`ALTER TABLE ${this.TABLE} ADD COLUMN prev_hash TEXT`);
+            if (!cols.includes("hash")) db.exec(`ALTER TABLE ${this.TABLE} ADD COLUMN hash TEXT`);
+        } catch {
+            /* ignore */
+        }
         // Indexes for performance
         db.exec(`
             CREATE INDEX IF NOT EXISTS idx_audit_action ON ${this.TABLE}(action);
@@ -103,35 +123,106 @@ export class Audit {
             ? maskText(options.errorMessage)
             : undefined;
 
-        const entry: Omit<AuditEntry, "id"> = {
-            timestamp: new Date().toISOString(),
-            action,
-            status,
-            agent: options.agent || "@manager",
-            traceId: options.traceId,
-            details: maskedDetails,
-            errorMessage: maskedError,
-            durationMs: options.durationMs,
-            dataCategory: options.dataCategory || "OPERATIONAL",
-            retentionDays,
-        };
+        const timestamp = new Date().toISOString();
+        const agent = options.agent || "@manager";
+        const detailsJson = maskedDetails ? JSON.stringify(maskedDetails) : "";
+        const errorMessage = maskedError || "";
+        const traceId = options.traceId || "";
+        const dataCategory = options.dataCategory || "OPERATIONAL";
 
-        db.prepare(`
-            INSERT INTO ${this.TABLE}
-                (timestamp, action, status, agent, traceId, details, errorMessage, durationMs, dataCategory, retentionDays)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(
-            entry.timestamp,
-            entry.action,
-            entry.status,
-            entry.agent,
-            entry.traceId || null,
-            entry.details ? JSON.stringify(entry.details) : null,
-            entry.errorMessage || null,
-            entry.durationMs || null,
-            entry.dataCategory,
-            entry.retentionDays,
-        );
+        // Append-only hash chain inside a transaction (Phase 1.4)
+        const insert = db.transaction(() => {
+            let prevHash = AUDIT_CHAIN_GENESIS;
+            try {
+                const last = db.prepare(
+                    `SELECT hash FROM ${this.TABLE} WHERE hash IS NOT NULL ORDER BY id DESC LIMIT 1`,
+                ).get() as { hash: string } | undefined;
+                if (last?.hash) prevHash = last.hash;
+            } catch {
+                /* genesis */
+            }
+
+            const payload = buildStructuredAuditChainPayload({
+                prevHash,
+                agent,
+                action,
+                status,
+                traceId,
+                timestamp,
+                detailsJson,
+                errorMessage,
+            });
+            const hash = sha256Hex(payload);
+
+            db.prepare(`
+                INSERT INTO ${this.TABLE}
+                    (timestamp, action, status, agent, traceId, details, errorMessage, durationMs, dataCategory, retentionDays, prev_hash, hash)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(
+                timestamp,
+                action,
+                status,
+                agent,
+                options.traceId || null,
+                detailsJson || null,
+                errorMessage || null,
+                options.durationMs || null,
+                dataCategory,
+                retentionDays,
+                prevHash,
+                hash,
+            );
+        });
+        insert();
+    }
+
+    /**
+     * Verify tamper-evident chain for structured audit_log table.
+     */
+    public static verifyIntegrity(): ChainVerifyResult {
+        const db = databaseHolder.getDB();
+        try {
+            const rows = db.prepare(
+                `SELECT id, prev_hash, hash, agent, action, status, traceId, timestamp, details, errorMessage
+                 FROM ${this.TABLE} ORDER BY id ASC`,
+            ).all() as Array<{
+                id: number;
+                prev_hash: string | null;
+                hash: string | null;
+                agent: string;
+                action: string;
+                status: string;
+                traceId: string | null;
+                timestamp: string;
+                details: string | null;
+                errorMessage: string | null;
+            }>;
+
+            // Skip unhashed legacy rows at the head; start chain at first hashed row
+            const hashed = rows.filter((r) => r.hash);
+            if (hashed.length === 0) {
+                return { valid: true, checked: 0, reason: "No hashed audit rows yet" };
+            }
+
+            return verifyHashChain(hashed, (row, prevHash) =>
+                buildStructuredAuditChainPayload({
+                    prevHash,
+                    agent: row.agent,
+                    action: row.action,
+                    status: row.status,
+                    traceId: row.traceId || "",
+                    timestamp: row.timestamp,
+                    detailsJson: row.details || "",
+                    errorMessage: row.errorMessage || "",
+                }),
+            );
+        } catch (err) {
+            return {
+                valid: false,
+                checked: 0,
+                reason: `Verification error: ${(err as Error).message}`,
+            };
+        }
     }
 
     /**

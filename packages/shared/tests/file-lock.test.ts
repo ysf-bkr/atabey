@@ -56,13 +56,33 @@ describe("AtomicFileLock", () => {
         lock.release("stale.txt", "new");
     });
 
-    it("withLock always releases", async () => {
+    it("withLock always releases on throw (try/finally — no stuck deadlock)", async () => {
         await expect(
             lock.withLock("x.txt", "w", async () => {
                 throw new Error("inside");
             }),
         ).rejects.toThrow("inside");
         expect(lock.isLocked("x.txt")).toBeNull();
+        expect(lock.tryAcquire("x.txt", "next").acquired).toBe(true);
+        lock.release("x.txt", "next");
+    });
+
+    it("withLockSync always releases on throw", () => {
+        expect(() =>
+            lock.withLockSync("sync-fail.txt", "w", () => {
+                throw new Error("sync boom");
+            }),
+        ).toThrow("sync boom");
+        expect(lock.isLocked("sync-fail.txt")).toBeNull();
+    });
+
+    it("orphans empty lock file after failed meta write path is reclaimable", () => {
+        const lockPath = lock.getLockPath("orphan.txt");
+        fs.mkdirSync(path.dirname(lockPath), { recursive: true });
+        fs.writeFileSync(lockPath, "", "utf8");
+        const again = lock.tryAcquire("orphan.txt", "recover");
+        expect(again.acquired).toBe(true);
+        lock.release("orphan.txt", "recover");
     });
 
     it("acquireAsync times out when held", async () => {

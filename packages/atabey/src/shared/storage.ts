@@ -1,6 +1,11 @@
-import { databaseHolder } from "atabey-shared";
+import {
+    AUDIT_CHAIN_GENESIS,
+    buildAgentLogChainPayload,
+    databaseHolder,
+    sha256Hex,
+    verifyHashChain,
+} from "atabey-shared";
 import Database from "better-sqlite3";
-import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import { getFrameworkDir } from "../cli/utils/memory.js";
@@ -236,40 +241,58 @@ export class AtabeyStorage {
         const agent = log.agent.replace("@", "");
         const maskedSummary = maskText(log.summary);
         const maskedFindings = log.findings ? maskText(log.findings) : null;
+        const traceId = log.trace_id || "";
 
-        let prevHash = "GENESIS";
-        try {
-            const lastRow = db.prepare("SELECT hash FROM logs ORDER BY id DESC LIMIT 1").get() as { hash: string } | undefined;
-            if (lastRow && lastRow.hash) {
-                prevHash = lastRow.hash;
+        let lastId = 0;
+        const insert = db.transaction(() => {
+            let prevHash = AUDIT_CHAIN_GENESIS;
+            try {
+                const lastRow = db.prepare(
+                    "SELECT hash FROM logs WHERE hash IS NOT NULL ORDER BY id DESC LIMIT 1",
+                ).get() as { hash: string } | undefined;
+                if (lastRow?.hash) prevHash = lastRow.hash;
+            } catch (err) {
+                logger.debug(`Failed to get last log hash, using default: ${(err as Error).message}`);
             }
-        } catch (err) {
-            logger.debug(`Failed to get last log hash, using default: ${(err as Error).message}`);
-        }
 
-        // Compute hash
-        const dataToHash = `${prevHash}|${agent}|${log.action}|${log.trace_id || ""}|${log.status}|${maskedSummary}|${timestamp}`;
-        const hash = crypto.createHash("sha256").update(dataToHash).digest("hex");
+            const dataToHash = buildAgentLogChainPayload({
+                prevHash,
+                agent,
+                action: log.action,
+                traceId,
+                status: log.status,
+                summary: maskedSummary,
+                timestamp,
+            });
+            const hash = sha256Hex(dataToHash);
 
-        const result = db.prepare(`
-            INSERT INTO logs (timestamp, agent, action, trace_id, status, summary, findings, prev_hash, hash)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(
-            timestamp,
-            agent,
-            log.action,
-            log.trace_id || null,
-            log.status,
-            maskedSummary,
-            maskedFindings,
-            prevHash,
-            hash
-        );
-
-        return result.lastInsertRowid as number;
+            const result = db.prepare(`
+                INSERT INTO logs (timestamp, agent, action, trace_id, status, summary, findings, prev_hash, hash)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(
+                timestamp,
+                agent,
+                log.action,
+                log.trace_id || null,
+                log.status,
+                maskedSummary,
+                maskedFindings,
+                prevHash,
+                hash,
+            );
+            lastId = result.lastInsertRowid as number;
+        });
+        insert();
+        return lastId;
     }
 
-    public static verifyLogIntegrity(): { valid: boolean; failedLogId?: number; reason?: string } {
+    public static verifyLogIntegrity(): {
+        valid: boolean;
+        checked?: number;
+        failedLogId?: number;
+        reason?: string;
+        tip?: string;
+    } {
         const db = this.getDB();
         try {
             const rows = db.prepare("SELECT * FROM logs ORDER BY id ASC").all() as Array<{
@@ -285,32 +308,22 @@ export class AtabeyStorage {
                 hash: string | null;
             }>;
 
-            let expectedPrevHash = "GENESIS";
-            for (const row of rows) {
-                if (row.prev_hash !== expectedPrevHash) {
-                    return {
-                        valid: false,
-                        failedLogId: row.id,
-                        reason: `Hash mismatch at row ${row.id}: expected prev_hash to be '${expectedPrevHash}', but got '${row.prev_hash}'`
-                    };
-                }
-
-                // Recalculate hash
-                const dataToHash = `${row.prev_hash}|${row.agent}|${row.action}|${row.trace_id || ""}|${row.status}|${row.summary}|${row.timestamp}`;
-                const calculatedHash = crypto.createHash("sha256").update(dataToHash).digest("hex");
-
-                if (row.hash !== calculatedHash) {
-                    return {
-                        valid: false,
-                        failedLogId: row.id,
-                        reason: `Hash corruption at row ${row.id}: calculated hash '${calculatedHash}' does not match database hash '${row.hash}'`
-                    };
-                }
-
-                expectedPrevHash = row.hash || "";
+            const hashed = rows.filter((r) => r.hash);
+            if (hashed.length === 0) {
+                return { valid: true, checked: 0, reason: "No hashed log rows yet" };
             }
 
-            return { valid: true };
+            return verifyHashChain(hashed, (row, prevHash) =>
+                buildAgentLogChainPayload({
+                    prevHash,
+                    agent: row.agent,
+                    action: row.action,
+                    traceId: row.trace_id || "",
+                    status: row.status,
+                    summary: row.summary,
+                    timestamp: row.timestamp,
+                }),
+            );
         } catch (err) {
             return { valid: false, reason: `Verification error: ${(err as Error).message}` };
         }

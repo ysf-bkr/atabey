@@ -3,6 +3,7 @@ import { safePath } from "atabey-mcp/utils/security.js";
 import { PatchFileArgs, ToolResult } from "../types.js";
 import { Metrics } from "atabey-mcp/utils/metrics.js";
 import { verifyCorporateCompliance, verifyRiskAndAwaitApproval } from "atabey-mcp/utils/compliance.js";
+import { writeProjectFile } from "atabey-mcp/utils/file-lock-guard.js";
 import { verifyWritePermission } from "atabey-mcp/utils/permissions.js";
 
 export async function handlePatchFile(projectRoot: string, args: PatchFileArgs): Promise<ToolResult> {
@@ -10,6 +11,7 @@ export async function handlePatchFile(projectRoot: string, args: PatchFileArgs):
     
     // ENFORCE PERMISSION MATRIX
     verifyWritePermission(projectRoot, args.path);
+
     const lines = fs.readFileSync(filePath, "utf8").split("\n");
     const start = args.startLine - 1;
     const end = args.endLine;
@@ -35,7 +37,7 @@ export async function handlePatchFile(projectRoot: string, args: PatchFileArgs):
     // ENFORCE RISK & HUMAN APPROVAL GATEWAY
     await verifyRiskAndAwaitApproval(projectRoot, patchedContent, args.path);
 
-    fs.writeFileSync(filePath, patchedContent);
+    await writeProjectFile(projectRoot, args.path, patchedContent);
 
     const tokens = Metrics.estimateTokens(args.newContent as string);
     Metrics.logUsage(projectRoot, "@mcp", `patch_file: ${args.path}`, tokens);

@@ -223,7 +223,7 @@ export function recordAndCheck(
 
     const history = getOrCreateHistory(agent);
 
-    // Check cooldown
+    // Check cooldown (in-memory + SQLite-backed; survives MCP restart)
     if (history.inCooldown) {
         if (Date.now() < history.cooldownUntil) {
             return {
@@ -234,9 +234,11 @@ export function recordAndCheck(
                 timestamp: Date.now(),
                 cooldownUntil: history.cooldownUntil,
             };
-        } else {
-            history.inCooldown = false;
         }
+        // Cooldown expired — clear memory + durable store so it cannot resurrect
+        history.inCooldown = false;
+        history.cooldownUntil = 0;
+        try { Storage.clearLoopCooldown(agent); } catch { /* non-fatal */ }
     }
 
     const filePath = extractFilePath(toolName, args);

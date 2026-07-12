@@ -1,6 +1,6 @@
 import fs from "fs";
 import { verifyCorporateCompliance, verifyRiskAndAwaitApproval } from "atabey-mcp/utils/compliance.js";
-import { writeTextFile } from "atabey-mcp/utils/fs.js";
+import { writeProjectFile } from "atabey-mcp/utils/file-lock-guard.js";
 import { Metrics } from "atabey-mcp/utils/metrics.js";
 import { verifyWritePermission } from "atabey-mcp/utils/permissions.js";
 import { safePath } from "atabey-mcp/utils/security.js";
@@ -69,7 +69,8 @@ export async function handleBatchSurgicalEdit(projectRoot: string, args: BatchSu
         // ENFORCE RISK & HUMAN APPROVAL GATEWAY
         await verifyRiskAndAwaitApproval(projectRoot, newContent, edit.path);
 
-        writeTextFile(filePath, newContent);
+        const toWrite = newContent.endsWith("\n") ? newContent : `${newContent}\n`;
+        await writeProjectFile(projectRoot, edit.path, toWrite);
 
         const tokens = Metrics.estimateTokens(newText);
         totalTokens += tokens;

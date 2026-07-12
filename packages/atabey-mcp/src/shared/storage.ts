@@ -6,7 +6,13 @@ import { getFrameworkDir } from "../mcp/utils/memory.js";
 import { logger } from "./logger.js";
 import { maskText } from "./pii.js";
 import { AgentID, LogID, MessageID, TaskID, TraceID, asAgentID, asLogID, asMessageID, asTaskID } from "./types.js";
-import { databaseHolder } from "atabey-shared";
+import {
+    AUDIT_CHAIN_GENESIS,
+    buildAgentLogChainPayload,
+    databaseHolder,
+    sha256Hex,
+    verifyHashChain,
+} from "atabey-shared";
 
 export interface AgentRow {
     name: AgentID;
@@ -346,30 +352,85 @@ export class AtabeyStorage {
         const agent = log.agent.replace("@", "");
         const maskedSummary = maskText(log.summary);
         const maskedFindings = log.findings ? maskText(log.findings) : null;
-        let prevHash = "GENESIS";
-        try {
-            const lastRow = db.prepare("SELECT hash FROM logs ORDER BY id DESC LIMIT 1").get() as { hash: string } | undefined;
-            if (lastRow?.hash) prevHash = lastRow.hash;
-        } catch { /* use default */ }
-        const dataToHash = `${prevHash}|${agent}|${log.action}|${log.trace_id || ""}|${log.status}|${maskedSummary}|${timestamp}`;
-        const hash = crypto.createHash("sha256").update(dataToHash).digest("hex");
-        const result = db.prepare(`INSERT INTO logs (timestamp, agent, action, trace_id, status, summary, findings, prev_hash, hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(timestamp, agent, log.action, log.trace_id || null, log.status, maskedSummary, maskedFindings, prevHash, hash);
-        return result.lastInsertRowid as number;
+        const traceId = log.trace_id || "";
+
+        // Transactional append-only chain (Phase 1.4)
+        let lastId = 0;
+        const insert = db.transaction(() => {
+            let prevHash = AUDIT_CHAIN_GENESIS;
+            try {
+                const lastRow = db.prepare(
+                    "SELECT hash FROM logs WHERE hash IS NOT NULL ORDER BY id DESC LIMIT 1",
+                ).get() as { hash: string } | undefined;
+                if (lastRow?.hash) prevHash = lastRow.hash;
+            } catch { /* genesis */ }
+
+            const dataToHash = buildAgentLogChainPayload({
+                prevHash,
+                agent,
+                action: log.action,
+                traceId,
+                status: log.status,
+                summary: maskedSummary,
+                timestamp,
+            });
+            const hash = sha256Hex(dataToHash);
+            const result = db.prepare(
+                `INSERT INTO logs (timestamp, agent, action, trace_id, status, summary, findings, prev_hash, hash)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            ).run(
+                timestamp,
+                agent,
+                log.action,
+                log.trace_id || null,
+                log.status,
+                maskedSummary,
+                maskedFindings,
+                prevHash,
+                hash,
+            );
+            lastId = result.lastInsertRowid as number;
+        });
+        insert();
+        return lastId;
     }
 
-    public static verifyLogIntegrity(): { valid: boolean; failedLogId?: number; reason?: string } {
+    public static verifyLogIntegrity(): {
+        valid: boolean;
+        checked?: number;
+        failedLogId?: number;
+        reason?: string;
+        tip?: string;
+    } {
         const db = this.getDB();
         try {
-            const rows = db.prepare("SELECT * FROM logs ORDER BY id ASC").all() as Array<{ id: number; timestamp: string; agent: string; action: string; trace_id: string | null; status: string; summary: string; findings: string | null; prev_hash: string | null; hash: string | null }>;
-            let expectedPrevHash = "GENESIS";
-            for (const row of rows) {
-                if (row.prev_hash !== expectedPrevHash) return { valid: false, failedLogId: row.id, reason: `Hash mismatch at row ${row.id}` };
-                const dataToHash = `${row.prev_hash}|${row.agent}|${row.action}|${row.trace_id || ""}|${row.status}|${row.summary}|${row.timestamp}`;
-                const calculatedHash = crypto.createHash("sha256").update(dataToHash).digest("hex");
-                if (row.hash !== calculatedHash) return { valid: false, failedLogId: row.id, reason: `Hash corruption at row ${row.id}` };
-                expectedPrevHash = row.hash || "";
+            const rows = db.prepare("SELECT * FROM logs ORDER BY id ASC").all() as Array<{
+                id: number;
+                timestamp: string;
+                agent: string;
+                action: string;
+                trace_id: string | null;
+                status: string;
+                summary: string;
+                findings: string | null;
+                prev_hash: string | null;
+                hash: string | null;
+            }>;
+            const hashed = rows.filter((r) => r.hash);
+            if (hashed.length === 0) {
+                return { valid: true, checked: 0, reason: "No hashed log rows yet" };
             }
-            return { valid: true };
+            return verifyHashChain(hashed, (row, prevHash) =>
+                buildAgentLogChainPayload({
+                    prevHash,
+                    agent: row.agent,
+                    action: row.action,
+                    traceId: row.trace_id || "",
+                    status: row.status,
+                    summary: row.summary,
+                    timestamp: row.timestamp,
+                }),
+            );
         } catch (err) {
             return { valid: false, reason: `Verification error: ${(err as Error).message}` };
         }
@@ -485,6 +546,50 @@ export class AtabeyStorage {
             this.getDB().prepare("DELETE FROM loop_cooldowns").run();
         } catch (err) {
             logger.debug(`Failed to clear loop cooldowns: ${(err as Error).message}`);
+        }
+    }
+
+    /**
+     * Active (non-expired) loop cooldowns — for dashboard / security-state façade.
+     */
+    public static listActiveLoopCooldowns(): Array<{
+        agent: string;
+        cooldownUntil: number;
+        detail: string | null;
+        cooldownCount: number;
+    }> {
+        try {
+            const now = Date.now();
+            // Drop expired first
+            this.getDB().prepare("DELETE FROM loop_cooldowns WHERE cooldown_until < ?").run(now);
+            const rows = this.getDB().prepare(
+                "SELECT agent, cooldown_until, detail, cooldown_count FROM loop_cooldowns ORDER BY cooldown_until DESC",
+            ).all() as Array<{
+                agent: string;
+                cooldown_until: number;
+                detail: string | null;
+                cooldown_count: number;
+            }>;
+            return rows.map((r) => ({
+                agent: r.agent,
+                cooldownUntil: r.cooldown_until,
+                detail: r.detail,
+                cooldownCount: r.cooldown_count,
+            }));
+        } catch (err) {
+            logger.debug(`Failed to list loop cooldowns: ${(err as Error).message}`);
+            return [];
+        }
+    }
+
+    public static purgeExpiredLoopCooldowns(): number {
+        try {
+            const result = this.getDB().prepare(
+                "DELETE FROM loop_cooldowns WHERE cooldown_until < ?",
+            ).run(Date.now());
+            return result.changes;
+        } catch {
+            return 0;
         }
     }
 

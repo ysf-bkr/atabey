@@ -35,6 +35,7 @@
   "exports": {
     ".": "./dist/index.js",
     "./audit.js": "./dist/audit.js",
+    "./audit-chain.js": "./dist/audit-chain.js",
     "./constants.js": "./dist/constants.js",
     "./database.js": "./dist/database.js",
     "./errors.js": "./dist/errors.js",
@@ -50,7 +51,10 @@
     "./worker-thread.js": "./dist/worker-thread.js",
     "./file-lock.js": "./dist/file-lock.js",
     "./sandbox.js": "./dist/sandbox.js",
-    "./resilience.js": "./dist/resilience.js"
+    "./sandbox-runtime.js": "./dist/sandbox-runtime.js",
+    "./sandbox-fs.js": "./dist/sandbox-fs.js",
+    "./resilience.js": "./dist/resilience.js",
+    "./policy-gate.js": "./dist/policy-gate.js"
   },
   "scripts": {
     "build": "tsc",
