@@ -1,3 +1,4 @@
+import { getAgentJobQueue } from "atabey-shared/job-queue.js";
 import { logger } from "../../shared/logger.js";
 import { AtabeyStorage } from "../../shared/storage.js";
 import { AgentExecutor } from "./agent-executor.js";
@@ -8,14 +9,16 @@ import { AgentExecutor } from "./agent-executor.js";
  * Runs as a background loop polling and consuming DELEGATION messages from the
  * Hermes queue and forwarding them to agents for acknowledgment.
  *
- * Acts as a message-polling and workflow enforcer, ensuring task messages are
- * routed to their designated target agents, which then get processed by the AI client interface.
+ * Dispatch is concurrency-limited via InMemoryJobQueue (default: os.cpus().length)
+ * so parallel agent work cannot unbounded-swell main-thread memory. No Redis/BullMQ.
  *
  * v0.0.14: First real implementation. Agents are now reliably acknowledged and routed.
+ * v0.0.26: Job-queue backpressure + concurrent-limited dispatch.
  */
 export class AgentLoop {
     private static loopHandle: ReturnType<typeof setInterval> | null = null;
     private static running = false;
+    private static cycleInFlight = false;
 
     /**
      * Start the agent dispatch loop.
@@ -28,18 +31,26 @@ export class AgentLoop {
             return;
         }
         this.running = true;
+        const queueStats = getAgentJobQueue().getStats();
         logger.info(
             `[AGENT_LOOP] Starting. Active agents: ${
                 activeAgents.length === 0 ? "all" : activeAgents.join(", ")
-            } | Interval: ${intervalMs}ms`,
+            } | Interval: ${intervalMs}ms | Job concurrency: ${queueStats.maxConcurrency}`,
         );
 
         this.loopHandle = setInterval(() => {
-            this.processDelegations(activeAgents).catch((err: unknown) => {
-                logger.error("[AGENT_LOOP] Error in dispatch cycle", {
-                    error: (err as Error).message,
+            // Skip overlapping cycles if previous dispatch is still draining
+            if (this.cycleInFlight) return;
+            this.cycleInFlight = true;
+            this.processDelegations(activeAgents)
+                .catch((err: unknown) => {
+                    logger.error("[AGENT_LOOP] Error in dispatch cycle", {
+                        error: (err as Error).message,
+                    });
+                })
+                .finally(() => {
+                    this.cycleInFlight = false;
                 });
-            });
         }, intervalMs);
     }
 
@@ -52,6 +63,7 @@ export class AgentLoop {
             this.loopHandle = null;
         }
         this.running = false;
+        this.cycleInFlight = false;
         logger.info("[AGENT_LOOP] Stopped.");
     }
 
@@ -65,6 +77,7 @@ export class AgentLoop {
     /**
      * Single dispatch cycle — reads pending DELEGATION messages and executes them.
      * Marks each message as PROCESSED immediately to prevent duplicate dispatch.
+     * Execution is enqueued on the shared agent job queue (concurrency capped).
      */
     private static async processDelegations(activeAgents: string[]): Promise<void> {
         const pendingMessages = AtabeyStorage.getPendingMessages();
@@ -75,6 +88,9 @@ export class AgentLoop {
         if (delegations.length === 0) return;
 
         logger.debug(`[AGENT_LOOP] Processing ${delegations.length} pending DELEGATION(s)`);
+
+        const queue = getAgentJobQueue();
+        const jobs: Promise<void>[] = [];
 
         for (const msg of delegations) {
             const rawTarget = String(msg.to);
@@ -104,18 +120,27 @@ export class AgentLoop {
                 task: taskDescription.substring(0, 80),
             });
 
-            try {
-                await AgentExecutor.executeForAgent(
-                    agentName,
-                    taskDescription,
-                    String(msg.traceId),
-                );
-            } catch (err: unknown) {
-                logger.error(`[AGENT_LOOP] Failed to execute task for ${agentName}`, {
-                    error: (err as Error).message,
-                    traceId: String(msg.traceId),
-                });
-            }
+            jobs.push(
+                queue.enqueue(async () => {
+                    try {
+                        await AgentExecutor.executeForAgent(
+                            agentName,
+                            taskDescription,
+                            String(msg.traceId),
+                        );
+                    } catch (err: unknown) {
+                        logger.error(`[AGENT_LOOP] Failed to execute task for ${agentName}`, {
+                            error: (err as Error).message,
+                            traceId: String(msg.traceId),
+                        });
+                    }
+                }),
+            );
+        }
+
+        // Wait for this cycle's jobs (queue still limits concurrency globally)
+        if (jobs.length > 0) {
+            await Promise.all(jobs);
         }
     }
 }

@@ -1,3 +1,8 @@
+import {
+    withRetry,
+    getCircuitBreaker,
+    CircuitOpenError,
+} from "atabey-shared/resilience.js";
 import { logger } from "../../shared/logger.js";
 import { maskObject, maskText } from "../../shared/pii.js";
 import { AtabeyStorage } from "../../shared/storage.js";
@@ -38,66 +43,97 @@ export class AgentExecutor {
 
         logger.info(`[EXECUTOR] Routing: ${taskDescription.substring(0, 80)}... → ${agent} (confidence: ${routingResult.confidence})`);
 
-        // 2. Execute with retry logic (max 3 attempts)
+        // 2. Execute with exponential backoff + circuit breaker (Polly-style, no external deps)
         let lastOutput = "";
         let lastError = "";
+        let attemptsUsed = 0;
+        const breaker = getCircuitBreaker(`agent:${agent}`, {
+            failureThreshold: 5,
+            openMs: 30_000,
+            name: `agent:${agent}`,
+        });
 
-        for (let attempt = 1; attempt <= 3; attempt++) {
-            const startTime = Date.now();
-            try {
-                logger.info(`[EXECUTOR] Attempt ${attempt}/3: ${agent} executing...`);
+        try {
+            const result = await withRetry(
+                async (attempt) => {
+                    attemptsUsed = attempt;
+                    const startTime = Date.now();
+                    logger.info(`[EXECUTOR] Attempt ${attempt}/3: ${agent} executing...`);
 
-                // Execute the agent task via Hermes messaging
-                const output = await AgentExecutor.runAgentTask(agent, taskDescription, subTasks, traceId);
-                lastOutput = output;
+                    const output = await breaker.exec(() =>
+                        AgentExecutor.runAgentTask(agent, taskDescription, subTasks, traceId),
+                    );
+                    lastOutput = output;
 
-                // 3. Quality check
-                const qualityResult = await QualityGate.check(agent, output, taskDescription);
+                    const qualityResult = await QualityGate.check(agent, output, taskDescription);
+                    if (!qualityResult.passed) {
+                        lastError = qualityResult.reason;
+                        logger.warn(`[EXECUTOR] Quality check FAILED: ${qualityResult.reason}`, {
+                            agent,
+                            attempt,
+                        });
+                        // Retry quality failures with backoff
+                        throw new Error(`QUALITY_GATE: ${qualityResult.reason}`);
+                    }
 
-                if (qualityResult.passed) {
                     const durationMs = Date.now() - startTime;
                     logger.info(`[EXECUTOR] ${agent} task PASSED quality check (attempt ${attempt})`);
 
-                    // 4. Save to memory
                     await AgentExecutor.saveToMemory(agent, taskDescription, output, traceId);
-
-                    // Update agent status
                     AtabeyStorage.updateAgentStatus(agent.replace("@", ""), "COMPLETED", taskDescription);
 
-                    // Evaluate task to update specialty memory
                     try {
                         EvaluationEngine.evaluateTask(traceId, agent, durationMs, taskDescription);
                     } catch (evalErr) {
-                        logger.error(`[EXECUTOR] Failed to evaluate task for ${agent}: ${(evalErr as Error).message}`);
+                        logger.error(
+                            `[EXECUTOR] Failed to evaluate task for ${agent}: ${(evalErr as Error).message}`,
+                        );
                     }
 
                     return {
-                        success: true,
+                        success: true as const,
                         agent,
                         output,
                         attempts: attempt,
                     };
-                }
-
-                lastError = qualityResult.reason;
-                logger.warn(`[EXECUTOR] Quality check FAILED: ${qualityResult.reason}`, { agent, attempt });
-            } catch (err) {
-                lastError = (err as Error).message;
-                logger.error(`[EXECUTOR] Agent execution error: ${lastError}`, { agent, attempt });
-            }
+                },
+                {
+                    maxAttempts: 3,
+                    baseDelayMs: 200,
+                    maxDelayMs: 5_000,
+                    factor: 2,
+                    jitter: true,
+                    retryIf: (err) => {
+                        // Preserve previous "max 3 attempts" behavior for all failures
+                        // except an open circuit (backoff / fail-fast).
+                        if (err instanceof CircuitOpenError) return false;
+                        return true;
+                    },
+                    onRetry: (err, attempt, delayMs) => {
+                        logger.warn(
+                            `[EXECUTOR] Retry ${attempt} for ${agent} in ${delayMs}ms: ${
+                                err instanceof Error ? err.message : String(err)
+                            }`,
+                        );
+                    },
+                },
+            );
+            return result;
+        } catch (err) {
+            lastError = err instanceof Error ? err.message : String(err);
+            logger.error(`[EXECUTOR] ${agent} FAILED after ${attemptsUsed || 3} attempts. Last error: ${lastError}`);
+            AtabeyStorage.updateAgentStatus(
+                agent.replace("@", ""),
+                "BLOCKED",
+                `Failed: ${taskDescription.substring(0, 60)}`,
+            );
+            return {
+                success: false,
+                agent,
+                output: lastOutput,
+                attempts: attemptsUsed || 3,
+            };
         }
-
-        // All attempts failed
-        logger.error(`[EXECUTOR] ${agent} FAILED after 3 attempts. Last error: ${lastError}`);
-
-        AtabeyStorage.updateAgentStatus(agent.replace("@", ""), "BLOCKED", `Failed: ${taskDescription.substring(0, 60)}`);
-
-        return {
-            success: false,
-            agent,
-            output: lastOutput,
-            attempts: 3,
-        };
     }
 
     /**

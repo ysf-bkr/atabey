@@ -8,7 +8,7 @@ export const security: AgentDefinition = {
     role: "Security Enforcement",
     description:
   "Auth, Encryption, and Safety enforcement specialist. " +
-  "Guardian of the Nizam — blocks any action that endangers the project.",
+  "Guardian of Atabey Order — blocks any action that endangers the project.",
     capability: 10,
     tier: "supreme",
     tags: ["core", "security"],

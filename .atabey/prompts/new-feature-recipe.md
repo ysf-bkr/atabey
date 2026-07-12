@@ -1,6 +1,6 @@
 # ✨ New Feature Development Recipe
 
-The "Nizam-ı Atabey" steps to follow when adding a new module or feature.
+The "Atabey Order" steps to follow when adding a new module or feature.
 
 ## 1. Contract Design (Phase 1)
 - First, update the `contract.version.json` file and the relevant TypeScript types.

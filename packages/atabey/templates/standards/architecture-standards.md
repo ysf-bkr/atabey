@@ -1,6 +1,6 @@
 # 📐 Corporate Architecture Standards (AL Framework)
 
-This project is developed in accordance with the "Nizam-ı Mimari" (Architectural Order) rules defined by Agent Atabey.
+This project is developed in accordance with the "Architectural Order" (Architectural Order) rules defined by Agent Atabey.
 
 ## 1. Directory Structure (Monorepo Standard)
 - `apps/backend/`: Business logic, API, and database layers.

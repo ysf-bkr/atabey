@@ -117,7 +117,7 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
         const isPublicPath = pathname === "/api/health";
         if (needsAuth && !isPublicPath) {
             try {
-                const { authenticate } = await import("atabey-mcp/src/mcp/utils/auth.js");
+                const { authenticate } = await import("atabey-mcp/utils/auth.js");
                 const auth = authenticate(req);
                 if (!auth.authenticated) {
                     serveJson(res, 401, { error: "Unauthorized. Provide Authorization: Bearer <token> header. Set MCP_AUTH_TOKEN env var to configure." });
@@ -501,7 +501,7 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
         // Discipline Stats
         if (pathname === "/api/discipline") {
             try {
-                const { getAllDisciplineStats } = await import("atabey-mcp/src/mcp/utils/discipline.js");
+                const { getAllDisciplineStats } = await import("atabey-mcp/utils/discipline.js");
                 const stats = getAllDisciplineStats();
                 serveJson(res, 200, { success: true, data: stats });
             } catch (e) {
@@ -513,7 +513,7 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
         // Telemetry Status
         if (pathname === "/api/telemetry") {
             try {
-                const { telemetryStreamer, TelemetryConfig } = await import("atabey-mcp/src/mcp/utils/telemetry-streamer.js");
+                const { telemetryStreamer, TelemetryConfig } = await import("atabey-mcp/utils/telemetry-streamer.js");
                 const status = telemetryStreamer.getStatus();
                 serveJson(res, 200, { success: true, data: { ...status, config: { ...TelemetryConfig, AUTH_TOKEN: TelemetryConfig.AUTH_TOKEN ? "***" : "" } } });
             } catch (e) {
@@ -525,10 +525,10 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
         // Loop Detection Stats
         if (pathname === "/api/loop-detector") {
             try {
-                const { getAllLoopStats } = await import("atabey-mcp/src/mcp/utils/loop-detector.js");
+                const { getAllLoopStats } = await import("atabey-mcp/utils/loop-detector.js");
                 const agent = params.agent;
                 const stats = agent
-                    ? (await import("atabey-mcp/src/mcp/utils/loop-detector.js")).getLoopStats(agent)
+                    ? (await import("atabey-mcp/utils/loop-detector.js")).getLoopStats(agent)
                     : getAllLoopStats();
                 serveJson(res, 200, { success: true, data: stats });
             } catch (e) {
@@ -541,7 +541,7 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
         if (pathname.startsWith("/api/loop-detector/clear/") && req.method === "POST") {
             const agent = decodeURIComponent(pathname.replace("/api/loop-detector/clear/", ""));
             try {
-                const { clearCooldown } = await import("atabey-mcp/src/mcp/utils/loop-detector.js");
+                const { clearCooldown } = await import("atabey-mcp/utils/loop-detector.js");
                 const cleared = clearCooldown(agent);
                 serveJson(res, 200, { success: true, data: { agent, cleared } });
             } catch (e) {
@@ -553,7 +553,7 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
         // Budget / FinOps Status
         if (pathname === "/api/finops") {
             try {
-                const { budgetManager } = await import("atabey-mcp/src/mcp/utils/finops.js");
+                const { budgetManager } = await import("atabey-mcp/utils/finops.js");
                 const state = budgetManager.getState();
                 serveJson(res, 200, { success: true, data: state });
             } catch (e) {
@@ -566,7 +566,7 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
         if (pathname === "/api/finops/check") {
             try {
                 const agent = params.agent || "default";
-                const { budgetManager } = await import("atabey-mcp/src/mcp/utils/finops.js");
+                const { budgetManager } = await import("atabey-mcp/utils/finops.js");
                 const result = budgetManager.checkBudget(agent);
                 serveJson(res, 200, { success: true, data: result });
             } catch (e) {
@@ -578,7 +578,7 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
         // Budget Reset
         if (pathname === "/api/finops/reset" && req.method === "POST") {
             try {
-                const { budgetManager } = await import("atabey-mcp/src/mcp/utils/finops.js");
+                const { budgetManager } = await import("atabey-mcp/utils/finops.js");
                 budgetManager.resetPeriod();
                 serveJson(res, 200, { success: true, message: "Budget period reset." });
             } catch (e) {
@@ -590,7 +590,7 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
         // License Scanner
         if (pathname === "/api/license") {
             try {
-                const { scanForLicenses, getLicenseSeveritySummary, LicenseScannerConfig } = await import("atabey-mcp/src/mcp/utils/license-scanner.js");
+                const { scanForLicenses, getLicenseSeveritySummary, LicenseScannerConfig } = await import("atabey-mcp/utils/license-scanner.js");
                 const filePath = params.path || "";
                 const content = params.content || "";
                 const matches = filePath && content ? scanForLicenses(filePath, content) : [];
@@ -611,7 +611,7 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
         // Auto-Rollback Stats
         if (pathname === "/api/rollback") {
             try {
-                const { AutoRollbackEngine } = await import("atabey-mcp/src/mcp/utils/auto-rollback.js");
+                const { AutoRollbackEngine } = await import("atabey-mcp/utils/auto-rollback.js");
                 const stats = AutoRollbackEngine.getSnapshotStats();
                 serveJson(res, 200, { success: true, data: stats });
             } catch (e) {
@@ -623,12 +623,12 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
         // All Governance Stats (combined endpoint)
         if (pathname === "/api/governance") {
             try {
-                const { getAllDisciplineStats } = await import("atabey-mcp/src/mcp/utils/discipline.js");
-                const { getAllTokenBudgetStats } = await import("atabey-mcp/src/mcp/utils/context-optimizer.js");
-                const { getAllLoopStats } = await import("atabey-mcp/src/mcp/utils/loop-detector.js");
-                const { getAllRules } = await import("atabey-mcp/src/mcp/utils/rules-engine.js");
-                const { AutoRollbackEngine } = await import("atabey-mcp/src/mcp/utils/auto-rollback.js");
-                const { budgetManager } = await import("atabey-mcp/src/mcp/utils/finops.js");
+                const { getAllDisciplineStats } = await import("atabey-mcp/utils/discipline.js");
+                const { getAllTokenBudgetStats } = await import("atabey-mcp/utils/context-optimizer.js");
+                const { getAllLoopStats } = await import("atabey-mcp/utils/loop-detector.js");
+                const { getAllRules } = await import("atabey-mcp/utils/rules-engine.js");
+                const { AutoRollbackEngine } = await import("atabey-mcp/utils/auto-rollback.js");
+                const { budgetManager } = await import("atabey-mcp/utils/finops.js");
 
                 serveJson(res, 200, {
                     success: true, data: {
@@ -638,7 +638,7 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
                         rules: getAllRules().map(r => ({ id: r.id, name: r.name, priority: r.priority, bypassable: r.bypassable })),
                         rollback: AutoRollbackEngine.getSnapshotStats(),
                         budget: budgetManager.getState(),
-                        telemetry: (await import("atabey-mcp/src/mcp/utils/telemetry-streamer.js")).telemetryStreamer.getStatus(),
+                        telemetry: (await import("atabey-mcp/utils/telemetry-streamer.js")).telemetryStreamer.getStatus(),
                     }
                 });
             } catch (e) {

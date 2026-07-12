@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ESNext",
     "module": "ESNext",
-    "moduleResolution": "bundler",
+    "moduleResolution": "node",
     "lib": ["ESNext"],
     "strict": true,
     "declaration": true,
@@ -11,10 +11,15 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": "..",
+    "baseUrl": ".",
     "paths": {
       "atabey-shared": ["../shared/src/index.ts"],
-      "atabey-shared/*": ["../shared/src/*"]
+      "atabey-shared/*": ["../shared/src/*"],
+      "atabey-mcp/utils/*": ["src/mcp/utils/*"],
+      "atabey-mcp/shared/*": ["src/shared/*"],
+      "atabey/*": ["../atabey/src/*"],
+      "atabey/src/*": ["../atabey/src/*"]
     }
   },
   "include": ["src/**/*.ts"],

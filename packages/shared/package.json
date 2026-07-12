@@ -44,7 +44,13 @@
     "./pii.js": "./dist/pii.js",
     "./retention.js": "./dist/retention.js",
     "./string.js": "./dist/string.js",
-    "./types.js": "./dist/types.js"
+    "./types.js": "./dist/types.js",
+    "./job-queue.js": "./dist/job-queue.js",
+    "./worker-pool.js": "./dist/worker-pool.js",
+    "./worker-thread.js": "./dist/worker-thread.js",
+    "./file-lock.js": "./dist/file-lock.js",
+    "./sandbox.js": "./dist/sandbox.js",
+    "./resilience.js": "./dist/resilience.js"
   },
   "scripts": {
     "build": "tsc",

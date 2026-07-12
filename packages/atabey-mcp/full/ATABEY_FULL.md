@@ -166,6 +166,8 @@ Every agent must use the **Mandatory Output Flow** defined in their specific `.m
 
 ## LANGUAGE POLICY
 
+- **All product content is English** (code, comments, agents, standards, prompts, CLI, commits, docs).
+- **Exception:** the repository root `README.md` is bilingual (English + Turkish). Package READMEs stay English.
 - Code comments: English (Explain why it was done, not what it does).
 - Variable / function / class / file names: English.
 - User-facing UI text: English (Default).

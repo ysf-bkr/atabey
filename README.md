@@ -1,5 +1,7 @@
 # [GOV] Agent Atabey — AI Governance & Multi-Agent Platform / Orchestrator
 
+> **Language / Dil:** [English](#gov-agent-atabey--ai-governance--multi-agent-platform--orchestrator) · [Türkçe](#türkçe--agent-atabey)
+
 *AI Governance & Multi-Agent Platform / Orchestrator*
 
 [![Version](https://img.shields.io/badge/Version-v0.0.23-blue.svg)](https://github.com/ysf-bkr/atabey)
@@ -889,3 +891,311 @@ Enterprise inquiries: **ybekar@msn.com**
 ---
 
 *Developer: **Yusuf BEKAR** — "Order from Chaos"*
+
+---
+
+# Türkçe — Agent Atabey
+
+> **Dil notu:** Proje **kodu, şablonları, standartları, CLI metinleri ve ajan tanımları İngilizcedir**. Yalnızca bu kök `README.md` hem İngilizce hem Türkçe sunulur. Paket README dosyaları (`packages/*/README.md`) İngilizcedir.
+
+## Agent Atabey nedir?
+
+**Agent Atabey**, MCP (Model Context Protocol) üzerine kurulu bir **AI Yönetişim ve Çok-Ajan Platformu / Orkestratörüdür**. Claude Code, Gemini CLI, Cursor, Codex, Grok, Antigravity veya yerel LLM gibi mevcut AI kodlama arayüzlerinizin üzerine oturur; onları yönetişimli, çok-ajanlı bir yazılım mühendisliği sistemine dönüştürür.
+
+| Katman | Rol |
+|--------|-----|
+| **AI IDE/CLI’niz** | Kod yazar, tool çalıştırır, shell komutları yürütür |
+| **Atabey MCP Server** | ~39 tool · çok katmanlı yönetişim · orkestrasyon · bellek |
+| **@manager + 13 uzman** | Delegasyon, kalite kapısı, risk kontrolü, denetim izi |
+| **`.atabey/` beyin merkezi** | Anayasa, bellek, knowledge, registry, gözlemlenebilirlik |
+
+> [!NOTE]
+> **Proje durumu (Pre-1.0 / açık kaynak deneyi):** Atabey şu an **pre-alpha (v0.0.x)** aşamasındadır ve tek geliştirici tarafından aktif geliştirilmektedir. Çekirdek özellikler (TF-IDF routing, regex PII maskeleme, deterministik kurallar) çalışır; **kurumsal üretim ortamları için henüz hazır değildir**.
+>
+> Kullanmadan önce bilinen sınırlar için [BLINDSPOTS.md](./BLINDSPOTS.md) dosyasını okuyun.
+
+> **Felsefe:** “Kaostan Nizam” / *Order from Chaos*
+>
+> **Atabey nedir:** AI kodlama asistanları için deterministik, kural tabanlı yönetişim ve çok-ajan orkestrasyon middleware’i.
+>
+> **Atabey ne değildir:** Bağımsız bir LLM runtime (LangGraph/CrewAI gibi) veya ML tabanlı tehdit analiz platformu değildir. Kodu bağlı AI asistanı üretir; Atabey yönlendirir, disipline eder, doğrular ve koordine eder.
+
+---
+
+## Nasıl çalışır?
+
+Atabey, AI arayüzünüze **MCP tool sunucusu** olarak bağlanır. Bağlandıktan sonra sohbette `@agent` komutlarını kullanırsınız:
+
+```
+Siz (@backend): "JWT kimlik doğrulamalı kullanıcı login servisi yaz"
+     │
+     ▼
+  Atabey MCP Server (atabey-mcp/)
+     │  @agent komutunu yakalar
+     │  RoutingEngine ile yönlendirir (TF-IDF + semantik)
+     │  @backend uzmanına yollar
+     │  Yönetişim pipeline doğrular
+     │  Quality Gate çıktıyı kontrol eder
+     │  Vector Memory’e kaydeder
+     │
+     ▼
+  Yönetilmiş, denetlenmiş, izli kod döner
+```
+
+Günlük kullanımda ayrı bir terminal gerekmez. AI sohbetinde `@agent` sözdizimi yeterlidir.
+
+**Önemli:** Atabey kod yazmaz. Kodu Claude Code / Gemini / Cursor gibi bağlı asistan yazar. Atabey:
+
+1. **Routing** — doğru uzman profile (`@backend`, `@security`, …)
+2. **Risk Engine** — tehlikeli işlemleri skorlar, gerekirse insan onayı ister
+3. **Quality Gate** — standartlara, sözdizimine, test metriklerine göre denetler
+4. **Memory** — mimari kararlar ve uzmanlık geçmişini tutar
+
+---
+
+## Platform mimarisi
+
+```
+Kullanıcı / Geliştirici
+  → Claude Code / Gemini CLI / Cursor IDE
+  → MCP (stdio)
+  → Atabey MCP Server
+       Yönetişim · Hermes kuyruk · Orchestrator · Vector Memory
+       Risk · FinOps · Auto-Rollback · Human-in-the-Loop
+  → .atabey/  (beyin)  ·  .agents/  (birleşik ajan hub)
+```
+
+**Monorepo paketleri:**
+
+| Paket | Amaç |
+|-------|------|
+| `packages/atabey` | CLI, adapter’lar, ajan export, init |
+| `packages/atabey-mcp` | MCP sunucu, yönetişim middleware, dashboard API |
+| `packages/shared` | Ortak constants, PII, audit, storage (SSOT) |
+
+---
+
+## Hızlı başlangıç
+
+```bash
+# Tek platform
+npx atabey init gemini --profile freelancer --yes
+
+# 7 platform (ekip için önerilir)
+npx atabey init gemini --unified --profile team --yes
+
+# Sağlık kontrolü
+npx atabey check
+npx atabey status
+```
+
+**MCP bağlama (özet — Claude / Cursor):**
+
+```json
+{
+  "mcpServers": {
+    "atabey": {
+      "command": "npx",
+      "args": ["-y", "atabey-mcp"],
+      "env": {
+        "MCP_TRANSPORT": "stdio",
+        "ATABEY_PROJECT_ROOT": "/path/to/your/project",
+        "ATABEY_AUTO_START_ORCHESTRATOR": "true"
+      }
+    }
+  }
+}
+```
+
+Sohbette:
+
+```
+@backend Create a REST API for user management with CRUD operations
+@security Audit the authentication middleware
+@quality Run compliance check on the new feature
+```
+
+> **İçerik dili:** Oluşturulan anayasa, standartlar, ajan talimatları ve CLI metinleri **İngilizcedir**. `--lang` bayrağı içerik dilini değiştirmez (geriye dönük uyumluluk için kabul edilebilir).
+
+---
+
+## 5 temel yetenek
+
+| # | Yetenek | Açıklama |
+|---|---------|----------|
+| 🛠️ | **~39 MCP Tool** | Dosya sistemi, arama, mesajlaşma, yönetişim, bellek, kalite, ağ, orkestrasyon |
+| 🧠 | **3 katmanlı bellek** | Vector (TF-IDF/OpenAI), Project Memory, Specialty Memory |
+| 🤖 | **13 uzman ajan** | Supreme / Core / Recon hiyerarşisi |
+| 🎯 | **7 core skill** | 7 AI platformuna uyarlanan skill setleri |
+| 📚 | **30+ knowledge standard** | Yönetişim, güvenlik, mimari, test, deployment |
+
+---
+
+## Desteklenen platformlar
+
+| Platform | MCP | Not |
+|----------|-----|-----|
+| Claude Code | `.mcp.json` | En güçlü orkestrasyon |
+| Gemini CLI | `.gemini/mcp.json` | Güçlü komutan / stratejist |
+| Cursor | `.cursor/mcp.json` | Implementer / editör |
+| Codex / Copilot | `.vscode/mcp.json` | Sınırlı skill seti |
+| Antigravity | `.agents/mcp_config.json` | Custom agent JSON |
+| Grok | `.grok/mcp_config.json` | Sınırlı skill seti |
+| Local LLM | `.atabey/mcp_config.json` | Offline / private |
+
+```bash
+npx atabey init claude --unified   # tüm platformlara export
+```
+
+---
+
+## Kurulum gereksinimleri
+
+| Gereksinim | Sürüm |
+|------------|--------|
+| Node.js | >= 18 |
+| npm | >= 9 |
+| AI arayüzü | Claude, Gemini, Cursor, Codex, Grok, Antigravity veya local LLM |
+
+```bash
+npm install -g atabey
+npx atabey init gemini --profile freelancer --yes
+npx atabey status
+npx atabey dashboard   # opsiyonel web UI (port 5858)
+```
+
+`better-sqlite3` native bağımlılıktır; CI’da derleme sorunlarında `npm install --ignore-scripts` ve önceden derlenmiş binary’ler gerekebilir.
+
+---
+
+## Profiller
+
+| Profil | Kim için | Ne gelir |
+|--------|----------|----------|
+| `--profile freelancer` | 1–3 kişi | Az ajan, düşük sürtünme |
+| `--profile team` | 5–15 kişi | 5–8 odak ajanı, unified önerilir |
+| `--profile enterprise` | 15+ | Tam 13 ajan, sıkı yönetişim |
+
+Odak: `--focus fullstack|backend|frontend|mobile`
+
+---
+
+## 13 uzman ajan (özet)
+
+| Ajan | Katman | Rol |
+|------|--------|-----|
+| `@manager` | Supreme | Orkestrasyon, onay zinciri |
+| `@security` | Supreme | Güvenlik denetimi |
+| `@architect` | Core | Tasarım, kontratlar |
+| `@backend` / `@frontend` | Core | API / UI |
+| `@quality` | Core | Uyumluluk, lint, coverage |
+| `@database` / `@devops` | Core | Veri / CI-CD |
+| `@analyst` / `@mobile` / `@native` | Core | Strateji / mobil / native |
+| `@explorer` / `@git` | Recon | Keşif / versiyon kontrol |
+
+---
+
+## MCP tool grupları
+
+- **Dosya sistemi:** read/write, replace, patch, batch edit  
+- **Shell:** allow-list’li `run_shell_command` (+ opsiyonel uid/gid sandbox)  
+- **Arama:** list_dir, grep, project map/gaps  
+- **Mesajlaşma:** send_message, ask_human, approve, log  
+- **Bellek / knowledge:** store/search/delete, insights  
+- **Framework:** status, orchestrate, plan, tests, audit_deps  
+- **Kalite / compliance / control plane / observability / network**
+
+---
+
+## 3 katmanlı bellek
+
+1. **Vector Memory** — TF-IDF veya OpenAI embedding + cosine  
+2. **Project Memory** — `PROJECT_MEMORY.md`  
+3. **Specialty Memory** — ajan bazlı öğrenilmiş dersler  
+
+---
+
+## Yönetişim pipeline (özet)
+
+Her tool çağrısında (pre/post): PII mask → schema validation → rules → discipline → silent routing → CRUD governance → loop detection → FinOps → license → auto-rollback snapshot → risk/HITL → **execute** → response checks → injection sanitize → audit / WebSocket.
+
+Yerel, harici bağımlılıksız ek katmanlar:
+
+- **In-memory Job Queue** — eşzamanlı ajan işi sınırı  
+- **Worker threads pool** — CPU işleri  
+- **Atomic file lock (`wx`)** — dosya yarışları  
+- **uid/gid sandbox** — shell izolasyonu (yapılandırıldığında)  
+- **Circuit breaker + exponential backoff** — geçici hata dayanıklılığı  
+
+---
+
+## Dashboard
+
+```bash
+npx atabey dashboard
+# veya
+MCP_TRANSPORT=unified MCP_PORT=5858 npx atabey-mcp
+```
+
+Paneller: Agents, Hermes, HITL Approvals, Plans, Logs, Quality, FinOps, Loop Detector, License, Telemetry, Memory, Compliance, …
+
+---
+
+## CLI (seçme)
+
+| Komut | Açıklama |
+|-------|---------|
+| `atabey init …` | Proje iskeleti + adapter export |
+| `atabey check` / `status` | Sağlık / ajan durumu |
+| `atabey mcp start\|install` | MCP yönetimi |
+| `atabey orchestrate` | Etkileşimli orkestrasyon döngüsü |
+| `atabey plan` / `approve` / `trace` | Plan, onay, iz |
+| `atabey memory` / `knowledge` | Bellek / bilgi bankası |
+| `atabey dashboard` | Web UI |
+
+---
+
+## Güvenlik ve uyumluluk (dürüst özet)
+
+- Allow-list shell, risk skoru, HITL, PII maskeleme, loop detection  
+- **Sandbox varsayılan kapalıdır** — `ATABEY_SANDBOX_UID` / `USER` ile açılır  
+- KVKK / GDPR / EU AI Act: teknik hizalama kontrolleri vardır; yasal “tam uyumluluk” iddiası yoktur  
+- Detay: [SECURITY.md](./SECURITY.md), [PRIVACY.md](./PRIVACY.md), [BLINDSPOTS.md](./BLINDSPOTS.md)
+
+---
+
+## FinOps
+
+Token tahmini kabaca `metin uzunluğu / 4`’tür; gerçek tokenizer faturalaması değildir. Bütçe uyarıları `config.json` / env ile yapılandırılır.
+
+---
+
+## Test ve katkı
+
+```bash
+npm test
+npm run test:watch
+npm run test:coverage
+```
+
+Katkı süreci: [CONTRIBUTING.md](./CONTRIBUTING.md)
+
+```bash
+git clone https://github.com/ysf-bkr/atabey.git
+cd atabey && npm install && npm run build
+```
+
+---
+
+## Lisans ve iş modeli
+
+**Kod:** AGPL-3.0 — Yusuf BEKAR  
+
+Ağ üzerinden (SaaS) sunulursa kaynak kod paylaşımı gerekir (AGPL §13).
+
+**Hizmet:** kurumsal destek/SLA, danışmanlık/eğitim, yönetilen enterprise sunucu.  
+İletişim: **ybekar@msn.com**
+
+---
+
+*Geliştirici: **Yusuf BEKAR** — “Order from Chaos”*

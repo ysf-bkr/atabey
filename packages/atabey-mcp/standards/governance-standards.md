@@ -1,4 +1,4 @@
-# [ATABEY] Agent Atabey — Governance & Nizam Standards
+# [ATABEY] Agent Atabey — Governance & Order Standards
 
 This document defines the supreme governance mandates of the Agent Atabey framework.
 All agents **must** internalize these rules before executing any task.
@@ -58,7 +58,7 @@ Governance controls are mapped to agent autonomy to ensure safety and EU AI Act 
 
 - Every task chain begins with a unique Trace ID (e.g. `TRC-042`).
 - All agent messages, logs, and commits **must** carry the active Trace ID.
-- Losing a Trace ID is a **Nizam violation** — the task chain must be frozen until recovered.
+- Losing a Trace ID is a **Order violation** — the task chain must be frozen until recovered.
 
 ---
 
@@ -136,7 +136,7 @@ Never delegate upward — escalate via ALERT instead.
 
 ## 10. Zero Deviation Policy
 
-The following are **unconditional Nizam violations** that freeze all work immediately:
+The following are **unconditional Order violations** that freeze all work immediately:
 
 - Use of `any` TypeScript type
 - Use of `console.log` in production code (use `logger` instead)

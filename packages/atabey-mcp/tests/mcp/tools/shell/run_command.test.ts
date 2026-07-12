@@ -1,9 +1,15 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { handleRunCommand } from "../../../../src/mcp/tools/shell/run_command.js";
-import { spawn } from "child_process";
 import { EventEmitter } from "events";
 
-vi.mock("child_process");
+const { mockSandboxSpawn } = vi.hoisted(() => ({
+    mockSandboxSpawn: vi.fn(),
+}));
+
+vi.mock("atabey-shared/sandbox.js", () => ({
+    sandboxSpawn: mockSandboxSpawn,
+    resolveSandboxIdentity: () => ({ enabled: false, reason: "test" }),
+}));
 
 describe("handleRunCommand", () => {
     const projectRoot = "/fake/project";
@@ -40,11 +46,11 @@ describe("handleRunCommand", () => {
     it("should execute an allowed command", async () => {
         const args = { command: "git status" };
         
-        vi.mocked(spawn).mockReturnValue(createMockChildProcess("On branch main", "") as any);
+        mockSandboxSpawn.mockReturnValue(createMockChildProcess("On branch main", "") as any);
 
         const result = await handleRunCommand(projectRoot, args);
         
-        expect(spawn).toHaveBeenCalledWith("git", ["status"], {
+        expect(mockSandboxSpawn).toHaveBeenCalledWith("git", ["status"], {
             cwd: projectRoot,
             timeout: 30000,
             shell: false,
@@ -58,7 +64,7 @@ describe("handleRunCommand", () => {
         const args = { command: "rm -rf /" };
         const result = await handleRunCommand(projectRoot, args);
         
-        expect(spawn).not.toHaveBeenCalled();
+        expect(mockSandboxSpawn).not.toHaveBeenCalled();
         expect(result.isError).toBe(true);
         expect(result.content[0].text).toContain("Command not allowed");
     });
@@ -67,7 +73,7 @@ describe("handleRunCommand", () => {
         const args = { command: "git status && echo injected" };
         const result = await handleRunCommand(projectRoot, args);
         
-        expect(spawn).not.toHaveBeenCalled();
+        expect(mockSandboxSpawn).not.toHaveBeenCalled();
         expect(result.isError).toBe(true);
         expect(result.content[0].text).toContain("Command rejected: Shell metacharacters are forbidden");
     });
@@ -75,11 +81,11 @@ describe("handleRunCommand", () => {
     it("should handle command failure", async () => {
         const args = { command: "npm run build" };
 
-        vi.mocked(spawn).mockReturnValue(createMockChildProcess("", "Error details", 1) as any);
+        mockSandboxSpawn.mockReturnValue(createMockChildProcess("", "Error details", 1) as any);
 
         const result = await handleRunCommand(projectRoot, args);
 
-        expect(spawn).toHaveBeenCalledWith("npm", ["run", "build"], {
+        expect(mockSandboxSpawn).toHaveBeenCalledWith("npm", ["run", "build"], {
             cwd: projectRoot,
             timeout: 30000,
             shell: false,

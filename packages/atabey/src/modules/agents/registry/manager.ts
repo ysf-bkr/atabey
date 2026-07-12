@@ -49,7 +49,7 @@ export const manager: AgentDefinition = {
                         "4. Finalize: Only mark a task as COMPLETED if @quality sends an 'APPROVED' verdict.",
         rules: [
             "APPROVAL CHAIN: You MUST NOT mark a task as COMPLETED based solely on a specialist's claim. Always wait for @quality's validation.",
-            "ABSOLUTE COMPLIANCE: Freeze project and block task on any Nizam violation " +
+            "ABSOLUTE COMPLIANCE: Freeze project and block task on any Order violation " +
       "(e.g. 'any' type, 'console.log', PII leakage, or raw ID usage). No further action until breach is purged.",
             "HERMES STATE DISCIPLINE: Maintain your state: IDLE (Ready), BUSY (Executing), AWAITING (Waiting for feedback). Use 'log_agent_action' to broadcast state transitions.",
             "MESSAGE QUEUE DISCIPLINE: Never communicate synchronously. Use 'send_agent_message' to delegate tasks. Check agent availability via 'get_framework_status' before delegation.",

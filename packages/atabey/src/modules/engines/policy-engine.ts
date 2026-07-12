@@ -128,7 +128,9 @@ export class PolicyEngine {
     public static scanLanguagePolicy(filePath: string, content: string): LanguageViolation[] {
         const violations: LanguageViolation[] = [];
         const lines = content.split("\n");
-        const turkishPatterns = [
+        // Detector data only: common non-English (TR) stop-words used to flag comments
+        // that violate the English-only content policy. Not user-facing copy.
+        const nonEnglishCommentPatterns = [
             /\b(bu|şu|o|ve|veya|ile|için|göre|kadar|sonra|önce|ama|fakat|çünkü|eğer|her|bir|daha|en|çok|az|yeni|eski|büyük|küçük|iyi|kötü|doğru|yanlış)\b/i,
             /\b(yap|et|git|gel|bak|ver|al|tut|koş|dur|otur|kalk|aç|kapa|çalış|oku|yaz|sil|ekle|güncelle|sil|temizle)\b/i,
         ];
@@ -139,11 +141,11 @@ export class PolicyEngine {
             // Skip empty lines, pure code, and URLs
             if (!line || line.startsWith("// @") || line.startsWith("import") || line.startsWith("export") || line.includes("http")) continue;
 
-            // Check comments for Turkish
+            // Flag comments that look non-English (policy: product content is English)
             const commentMatch = line.match(/\/\/\s*(.+)/);
             if (commentMatch) {
                 const comment = commentMatch[1];
-                if (turkishPatterns.some(p => p.test(comment))) {
+                if (nonEnglishCommentPatterns.some(p => p.test(comment))) {
                     violations.push({ file: filePath, line: i + 1, type: "turkish_comment", content: comment.substring(0, 80) });
                 }
             }

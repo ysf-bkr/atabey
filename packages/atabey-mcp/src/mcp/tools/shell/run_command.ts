@@ -1,8 +1,8 @@
-import { spawn } from "child_process";
 import { Metrics } from "atabey-mcp/utils/metrics.js";
 import { RunCommandArgs, ToolResult } from "../types.js";
 import { resolveActiveAgent, getAgentTier } from "atabey-mcp/utils/permissions.js";
 import { resolveFrameworkDir } from "atabey-mcp/utils/security.js";
+import { sandboxSpawn, resolveSandboxIdentity } from "atabey-shared/sandbox.js";
 import path from "path";
 
 // Each entry defines the executable and its allowed args prefix
@@ -188,7 +188,9 @@ export function handleRunCommand(projectRoot: string, args: RunCommandArgs): Pro
     }
 
     return new Promise((resolve) => {
-        const child = spawn(parsed.cmd, parsed.args, {
+        // OS-level isolation: when ATABEY_SANDBOX_UID/USER is set, child runs as that user.
+        const sandbox = resolveSandboxIdentity();
+        const child = sandboxSpawn(parsed.cmd, parsed.args, {
             cwd: projectRoot,
             timeout: TIMEOUT,
             shell: false,
@@ -198,11 +200,16 @@ export function handleRunCommand(projectRoot: string, args: RunCommandArgs): Pro
         let stdout = "";
         let stderr = "";
 
-        child.stdout.on("data", (data: Buffer) => { stdout += data.toString(); });
-        child.stderr.on("data", (data: Buffer) => { stderr += data.toString(); });
+        child.stdout?.on("data", (data: Buffer) => { stdout += data.toString(); });
+        child.stderr?.on("data", (data: Buffer) => { stderr += data.toString(); });
 
         child.on("error", (err) => {
-            const errorMsg = `Failed to start command: ${err.message}`;
+            const sandboxHint = sandbox.enabled
+                ? ` (sandbox uid=${sandbox.uid}${sandbox.gid !== undefined ? ` gid=${sandbox.gid}` : ""})`
+                : sandbox.reason
+                    ? ` (sandbox off: ${sandbox.reason})`
+                    : "";
+            const errorMsg = `Failed to start command: ${err.message}${sandboxHint}`;
             Metrics.logError(projectRoot, "@mcp", `run_shell_command: ${command}`, errorMsg);
             resolve({
                 content: [{ type: "text", text: `ERROR: ${errorMsg}` }],

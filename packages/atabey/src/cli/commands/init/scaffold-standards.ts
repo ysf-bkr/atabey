@@ -36,7 +36,7 @@ This document outlines the strict ESLint coding standards for Agent Atabey proje
 
     const standards = [
         // ── Supreme Governance (required by @manager, @security, @architect) ──────
-        { file: "governance-standards.md", template: "templates/standards/governance-standards.md", default: "# [ATABEY] Agent Atabey — Governance & Nizam Standards" },
+        { file: "governance-standards.md", template: "templates/standards/governance-standards.md", default: "# [ATABEY] Agent Atabey — Governance & Order Standards" },
         // ── Core Engineering Standards ────────────────────────────────────────────
         { file: "crud-governance.md", template: "templates/standards/crud-governance.md", default: "# [GOV] Corporate CRUD and Governance Standards" },
         { file: "architecture-standards.md", template: "templates/standards/architecture-standards.md", default: "# 📐 Corporate Architecture Standards" },

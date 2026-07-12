@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist"
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/shared",
+    "src/mcp/utils/orchestrator-bootstrap.ts",
+    "src/mcp/utils/silent-router.ts",
+    "src/mcp/utils/web-config.ts",
+    "src/mcp/middleware/governance.ts",
+    "src/mcp/tools/memory",
+    "src/mcp/routes/api-common.ts",
+    "src/mcp/routes/api-config.ts",
+    "src/mcp/routes/api-governance.ts"
+  ]
+}

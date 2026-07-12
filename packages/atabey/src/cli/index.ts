@@ -58,7 +58,7 @@ const COMMANDS: Record<string, { run: (args: string[]) => Promise<void>; descrip
                 language,
             });
         },
-        description: "Initialize Atabey (--profile freelancer|team|enterprise [--focus fullstack|backend|frontend|mobile] [--lang tr|en])",
+        description: "Initialize Atabey (--profile freelancer|team|enterprise [--focus fullstack|backend|frontend|mobile] [--lang en])",
     },
     mcp: {
         run: async (args) => { await mcpCommand(args); },

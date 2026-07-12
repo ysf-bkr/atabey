@@ -111,7 +111,8 @@ export function scaffoldFrameworkConfigs(
     if (dryRun) return;
     const frameworkDir = path.join(targetDir, fDir);
     const palette = COLOR_PALETTES[selectedPalette as keyof typeof COLOR_PALETTES] || COLOR_PALETTES["Modern Blue"];
-    const language = options?.language || "en";
+    // Project policy: generated content language is always English (README is bilingual only).
+    const language: SupportedLanguage = "en";
     const t = TRANSLATIONS[language];
 
     const projectKind = detectProjectKind(targetDir);

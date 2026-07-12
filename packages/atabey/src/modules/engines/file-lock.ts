@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { AtomicFileLock, type FileLockMeta } from "atabey-shared/file-lock.js";
 import { logger } from "../../shared/logger.js";
 import { AtabeyStorage } from "../../shared/storage.js";
 
@@ -7,70 +8,88 @@ import { AtabeyStorage } from "../../shared/storage.js";
  * [ENGINE] File Lock — Conflict Resolution for Multi-Agent File Access
  *
  * Prevents two agents from writing to the same file simultaneously.
- * Uses .atabey/locks/ directory with per-file lock files.
+ * Uses atomic exclusive create (`fs.openSync(path, "wx")`) under `.atabey/locks/`.
  *
  * Flow:
- * 1. Agent A acquires lock on src/file.ts → writes .atabey/locks/src/file.ts.lock
- * 2. Agent B tries to write src/file.ts → lock exists → WAITING state
- * 3. Agent A releases lock → Agent B can proceed
+ * 1. Agent A acquires lock on src/file.ts → exclusive .lock file created
+ * 2. Agent B tries same path → EEXIST → WAITING / false
+ * 3. Agent A releases → unlink → Agent B can proceed
  *
- * Stale lock detection: locks older than 5 minutes are auto-released.
+ * Stale lock detection: locks older than TTL (default 5 min) are reclaimed.
  */
 export class FileLock {
-    private static LOCKS_DIR = ".atabey/locks";
-    private static STALE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+    private static STALE_TIMEOUT_MS = 5 * 60 * 1000;
+
+    /** Prefer ATABEY_PROJECT_ROOT (MCP) over process.cwd(). */
+    private static projectRoot(): string {
+        return process.env.ATABEY_PROJECT_ROOT || process.cwd();
+    }
+
+    private static locksDir(): string {
+        return path.join(FileLock.projectRoot(), ".atabey", "locks");
+    }
+
+    private static locker(): AtomicFileLock {
+        const projectRoot = FileLock.projectRoot();
+        return new AtomicFileLock({
+            projectRoot,
+            locksDir: FileLock.locksDir(),
+            ttlMs: FileLock.STALE_TIMEOUT_MS,
+        });
+    }
 
     /**
      * Attempts to acquire a lock for a file on behalf of an agent.
      * Returns true if lock acquired, false if another agent holds it.
      */
     public static acquire(agentName: string, filePath: string): boolean {
-        const lockFile = FileLock.getLockPath(filePath);
-        const lockDir = path.dirname(lockFile);
+        const lock = FileLock.locker();
+        const result = lock.tryAcquire(filePath, agentName, "multi-agent file write");
 
-        // Ensure locks directory exists
-        if (!fs.existsSync(lockDir)) {
-            fs.mkdirSync(lockDir, { recursive: true });
+        if (result.acquired) {
+            logger.debug(`[FILE_LOCK] ${agentName} acquired lock on ${filePath}`);
+            return true;
         }
 
-        // Check if lock already exists
-        if (fs.existsSync(lockFile)) {
-            try {
-                const lockData = JSON.parse(fs.readFileSync(lockFile, "utf8"));
-
-                // Check if lock is stale (older than 5 min)
-                const lockAge = Date.now() - new Date(lockData.acquiredAt).getTime();
-                if (lockAge > FileLock.STALE_TIMEOUT_MS) {
-                    logger.warn(`[FILE_LOCK] Stale lock detected for ${filePath} (age: ${Math.round(lockAge / 1000)}s). Overriding.`);
-                    fs.unlinkSync(lockFile);
-                } else {
-                    // Lock is held by another agent — conflict
-                    logger.warn(`[FILE_LOCK] CONFLICT: ${agentName} cannot write ${filePath} — locked by ${lockData.agent}`);
-                    AtabeyStorage.saveLog({
-                        agent: agentName,
-                        action: "FILE_LOCK_CONFLICT",
-                        trace_id: AtabeyStorage.getMetadata("traceId") || "N/A",
-                        status: "BLOCKED",
-                        summary: `File ${filePath} is locked by ${lockData.agent}. Waiting for release.`
-                    });
-                    return false;
-                }
-            } catch {
-                // Corrupted lock file — remove and retry
-                fs.unlinkSync(lockFile);
-            }
-        }
-
-        // Acquire lock
-        fs.writeFileSync(lockFile, JSON.stringify({
+        const heldBy = result.heldBy?.ownerId ?? "unknown";
+        logger.warn(`[FILE_LOCK] CONFLICT: ${agentName} cannot write ${filePath} — locked by ${heldBy}`);
+        AtabeyStorage.saveLog({
             agent: agentName,
-            file: filePath,
-            acquiredAt: new Date().toISOString(),
-            traceId: AtabeyStorage.getMetadata("traceId") || "N/A"
-        }, null, 2));
+            action: "FILE_LOCK_CONFLICT",
+            trace_id: AtabeyStorage.getMetadata("traceId") || "N/A",
+            status: "BLOCKED",
+            summary: `File ${filePath} is locked by ${heldBy}. Waiting for release.`,
+        });
+        return false;
+    }
 
-        logger.debug(`[FILE_LOCK] ${agentName} acquired lock on ${filePath}`);
-        return true;
+    /**
+     * Async acquire with retry until timeout (default 10s).
+     */
+    public static async acquireAsync(
+        agentName: string,
+        filePath: string,
+        timeoutMs = 10_000,
+    ): Promise<boolean> {
+        const lock = FileLock.locker();
+        try {
+            await lock.acquireAsync(filePath, agentName, {
+                reason: "multi-agent file write",
+                timeoutMs,
+            });
+            logger.debug(`[FILE_LOCK] ${agentName} acquired lock (async) on ${filePath}`);
+            return true;
+        } catch (err) {
+            logger.warn(`[FILE_LOCK] ${agentName} timed out waiting for ${filePath}: ${(err as Error).message}`);
+            AtabeyStorage.saveLog({
+                agent: agentName,
+                action: "FILE_LOCK_TIMEOUT",
+                trace_id: AtabeyStorage.getMetadata("traceId") || "N/A",
+                status: "BLOCKED",
+                summary: (err as Error).message,
+            });
+            return false;
+        }
     }
 
     /**
@@ -78,27 +97,19 @@ export class FileLock {
      * Only the lock-owning agent can release (others get warning).
      */
     public static release(agentName: string, filePath: string): boolean {
-        const lockFile = FileLock.getLockPath(filePath);
-
-        if (!fs.existsSync(lockFile)) {
-            return true; // No lock to release
-        }
-
-        try {
-            const lockData = JSON.parse(fs.readFileSync(lockFile, "utf8"));
-            if (lockData.agent !== agentName) {
-                logger.warn(`[FILE_LOCK] ${agentName} tried to release lock held by ${lockData.agent} on ${filePath}`);
-                return false;
+        const lock = FileLock.locker();
+        const released = lock.release(filePath, agentName);
+        if (!released) {
+            const held = lock.isLocked(filePath);
+            if (held) {
+                logger.warn(
+                    `[FILE_LOCK] ${agentName} tried to release lock held by ${held.ownerId} on ${filePath}`,
+                );
             }
-
-            fs.unlinkSync(lockFile);
-            logger.debug(`[FILE_LOCK] ${agentName} released lock on ${filePath}`);
-            return true;
-        } catch {
-            // Corrupted lock file — just remove it
-            try { fs.unlinkSync(lockFile); } catch { /* ignore */ }
-            return true;
+            return false;
         }
+        logger.debug(`[FILE_LOCK] ${agentName} released lock on ${filePath}`);
+        return true;
     }
 
     /**
@@ -106,31 +117,30 @@ export class FileLock {
      * Returns the locking agent name or null.
      */
     public static isLocked(filePath: string): string | null {
-        const lockFile = FileLock.getLockPath(filePath);
-        if (!fs.existsSync(lockFile)) return null;
-
-        try {
-            const lockData = JSON.parse(fs.readFileSync(lockFile, "utf8"));
-
-            // Check for stale lock
-            const lockAge = Date.now() - new Date(lockData.acquiredAt).getTime();
-            if (lockAge > FileLock.STALE_TIMEOUT_MS) {
-                fs.unlinkSync(lockFile);
-                return null;
-            }
-
-            return lockData.agent;
-        } catch {
-            try { fs.unlinkSync(lockFile); } catch { /* ignore */ }
-            return null;
-        }
+        const meta = FileLock.locker().isLocked(filePath);
+        return meta?.ownerId ?? null;
     }
 
     /**
-     * Lists all currently active locks.
+     * Run fn while holding an exclusive lock on filePath.
+     */
+    public static async withLock<T>(
+        agentName: string,
+        filePath: string,
+        fn: () => Promise<T> | T,
+        timeoutMs = 10_000,
+    ): Promise<T> {
+        return FileLock.locker().withLock(filePath, agentName, fn, {
+            reason: "multi-agent file write",
+            timeoutMs,
+        });
+    }
+
+    /**
+     * Lists all currently active locks under `.atabey/locks`.
      */
     public static listLocks(): Array<{ agent: string; file: string; acquiredAt: string }> {
-        const locksDir = path.join(process.cwd(), FileLock.LOCKS_DIR);
+        const locksDir = FileLock.locksDir();
         if (!fs.existsSync(locksDir)) return [];
 
         const locks: Array<{ agent: string; file: string; acquiredAt: string }> = [];
@@ -143,13 +153,17 @@ export class FileLock {
                     walkDir(fullPath);
                 } else if (entry.name.endsWith(".lock")) {
                     try {
-                        const data = JSON.parse(fs.readFileSync(fullPath, "utf8"));
-                        const lockAge = Date.now() - new Date(data.acquiredAt).getTime();
-                        if (lockAge <= FileLock.STALE_TIMEOUT_MS) {
-                            locks.push(data);
-                        } else {
-                            fs.unlinkSync(fullPath); // Clean stale
+                        const data = JSON.parse(fs.readFileSync(fullPath, "utf8")) as FileLockMeta;
+                        const exp = Date.parse(data.expiresAt);
+                        if (!Number.isNaN(exp) && Date.now() > exp) {
+                            try { fs.unlinkSync(fullPath); } catch { /* ignore */ }
+                            continue;
                         }
+                        locks.push({
+                            agent: data.ownerId,
+                            file: data.resource,
+                            acquiredAt: data.acquiredAt,
+                        });
                     } catch {
                         try { fs.unlinkSync(fullPath); } catch { /* ignore */ }
                     }
@@ -159,11 +173,5 @@ export class FileLock {
 
         walkDir(locksDir);
         return locks;
-    }
-
-    private static getLockPath(filePath: string): string {
-        // Convert absolute/relative path to lock file path
-        const relativePath = path.relative(process.cwd(), filePath).replace(/^\.\.\//, "");
-        return path.join(process.cwd(), FileLock.LOCKS_DIR, `${relativePath}.lock`);
     }
 }

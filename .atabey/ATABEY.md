@@ -3,6 +3,11 @@
 > This file contains the core rules that AI agents must follow.
 > **Full version:** `templates/full/ATABEY_FULL.md`
 
+## [RULE 0] Language Policy
+- **All product content is English:** code, comments, agent instructions, standards, prompts, CLI output, commits, and docs (except the root `README.md`, which is bilingual EN + TR).
+- Variable / function / class / file names: English.
+- Do not generate Turkish (or other non-English) comments or UI copy unless the user explicitly requests localization for an end-user application.
+
 ## [RULE 1] Always Work Inside the Project Directory
 - **NEVER write to `/tmp`, `/var/tmp`, `temp` or similar locations.** All files, logs, and state must remain inside the project directory.
 - All work is done under `apps/`, `src/`, `docs/`, `tests/`.

@@ -28,7 +28,7 @@
   },
   "backendLanguage": "Node.js (TypeScript)",
   "frontendFramework": "Vite (React)",
-  "language": "tr",
+  "language": "en",
   "theme": {
     "palette": "Modern Blue",
     "colors": {
@@ -47,7 +47,12 @@
     "monthlyBudgetUsd": 0,
     "agentMaxBudgetUsd": 0,
     "team": "atabey-framework",
-    "alertThresholds": [50, 80, 90, 100],
+    "alertThresholds": [
+      50,
+      80,
+      90,
+      100
+    ],
     "costPer1kTokensUsd": 0.003
   },
   "compliance": {

@@ -172,23 +172,21 @@ async function runInteractiveInit(profile?: InitProfile, presetLanguage?: Suppor
         const question = (query: string): Promise<string> => new Promise((resolve) => rl.question(query, resolve));
 
         try {
-            let language: SupportedLanguage;
-            if (presetLanguage) {
-                language = presetLanguage;
-                process.stdout.write(`\n[LANG] ${language === "en" ? "English" : "Türkçe"} (from --lang flag)\n`);
+            // Content language is English-only (project policy). --lang is accepted but ignored for content.
+            const language: SupportedLanguage = "en";
+            if (presetLanguage && presetLanguage !== "en") {
+                process.stdout.write(
+                    `\n[LANG] Content language is English only (requested --lang ${presetLanguage} is ignored for generated content).\n`,
+                );
             } else {
-                process.stdout.write("\n[LANG] Select Framework Language / Dil Seçimi:\n");
-                process.stdout.write("1. Türkçe\n");
-                process.stdout.write("2. English\n");
-                const langInput = await question("\nSelect (1-2) or Enter for 'en': ");
-                language = langInput.trim() === "1" ? "tr" : "en";
+                process.stdout.write("\n[LANG] Content language: English\n");
             }
             const t = TRANSLATIONS[language];
 
             process.stdout.write(`\n[START] ${t.welcome}\n`);
 
             // --- Project Focus Question ---
-            process.stdout.write("\n[PROJECT FOCUS] Select Project Focus / Proje Odak Noktası:\n");
+            process.stdout.write("\n[PROJECT FOCUS] Select Project Focus:\n");
             process.stdout.write("1. Fullstack (Web UI + Backend API)\n");
             process.stdout.write("2. Backend-Only (API / Services)\n");
             process.stdout.write("3. Frontend-Only (Web UI / SPA)\n");
@@ -261,11 +259,8 @@ async function runInteractiveInit(profile?: InitProfile, presetLanguage?: Suppor
             return await runInteractiveInit("enterprise");
         }
 
-        process.stdout.write("\n[LANG] Select Framework Language / Dil Seçimi:\n");
-        process.stdout.write("1. Türkçe\n");
-        process.stdout.write("2. English\n");
-        const langInput = await question("\nSelect (1-2) or Enter for 'en': ");
-        const language: SupportedLanguage = langInput.trim() === "1" ? "tr" : "en";
+        process.stdout.write("\n[LANG] Content language: English (project policy — English only outside README)\n");
+        const language: SupportedLanguage = "en";
         const t = TRANSLATIONS[language];
 
         process.stdout.write(`\n[START] ${t.welcome}\n`);
