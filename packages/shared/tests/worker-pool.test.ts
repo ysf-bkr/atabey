@@ -35,6 +35,7 @@ describe("WorkerPool", () => {
         const script = resolveScript();
         if (!script) {
             // Build shared first in CI; skip if dist missing
+            // eslint-disable-next-line no-console
             console.warn("[skip] worker-thread.js not built — run npm run build -w packages/shared");
             return;
         }

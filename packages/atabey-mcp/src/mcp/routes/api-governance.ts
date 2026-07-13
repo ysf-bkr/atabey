@@ -1,7 +1,7 @@
 import http from "http";
 import path from "path";
-import { RouteContext, serveJson } from "./types.js";
 import { Audit } from "../../shared/audit.js";
+import { RouteContext, serveJson } from "./types.js";
 
 export async function handleGovernanceRoutes(
     pathname: string,
@@ -160,56 +160,6 @@ export async function handleGovernanceRoutes(
         return true;
     }
 
-    // Budget / FinOps Status
-    if (pathname === "/api/finops") {
-        try {
-            const { budgetManager } = await import("../utils/finops.js");
-            const state = budgetManager.getState();
-            serveJson(res, 200, { success: true, data: state });
-        } catch (e) { serveJson(res, 500, { success: false, error: (e as Error).message }); }
-        return true;
-    }
-
-    // Budget Check for an agent
-    if (pathname === "/api/finops/check") {
-        try {
-            const agent = params.agent || "default";
-            const { budgetManager } = await import("../utils/finops.js");
-            const result = budgetManager.checkBudget(agent);
-            serveJson(res, 200, { success: true, data: result });
-        } catch (e) { serveJson(res, 500, { success: false, error: (e as Error).message }); }
-        return true;
-    }
-
-    // Budget Reset
-    if (pathname === "/api/finops/reset" && method === "POST") {
-        try {
-            const { budgetManager } = await import("../utils/finops.js");
-            budgetManager.resetPeriod();
-            serveJson(res, 200, { success: true, message: "Budget period reset." });
-        } catch (e) { serveJson(res, 500, { success: false, error: (e as Error).message }); }
-        return true;
-    }
-
-    // License Scanner
-    if (pathname === "/api/license") {
-        try {
-            const { scanForLicenses, getLicenseSeveritySummary, LicenseScannerConfig } = await import("../utils/license-scanner.js");
-            const filePath = params.path || "";
-            const content = params.content || "";
-            const matches = filePath && content ? scanForLicenses(filePath, content) : [];
-            const summary = matches.length > 0 ? getLicenseSeveritySummary(matches) : null;
-            serveJson(res, 200, {
-                success: true, data: {
-                    matches,
-                    summary,
-                    config: LicenseScannerConfig,
-                }
-            });
-        } catch (e) { serveJson(res, 500, { success: false, error: (e as Error).message }); }
-        return true;
-    }
-
     // Auto-Rollback Stats
     if (pathname === "/api/rollback") {
         try {
@@ -225,13 +175,11 @@ export async function handleGovernanceRoutes(
         try {
             const { getAllLoopStats } = await import("../utils/loop-detector.js");
             const { AutoRollbackEngine } = await import("../utils/auto-rollback.js");
-            const { budgetManager } = await import("../utils/finops.js");
 
             serveJson(res, 200, {
                 success: true, data: {
                     loopDetection: getAllLoopStats(),
                     rollback: AutoRollbackEngine.getSnapshotStats(),
-                    budget: budgetManager.getState(),
                     telemetry: (await import("../utils/telemetry-streamer.js")).telemetryStreamer.getStatus(),
                 }
             });

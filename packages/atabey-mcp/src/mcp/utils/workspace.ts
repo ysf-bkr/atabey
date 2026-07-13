@@ -179,7 +179,6 @@ export class WorkspaceManager {
 
         for (const entry of entries) {
             if (entry.isDirectory()) {
-                const workspaceDir = path.join(WorkspaceManager.workspacesDir, entry.name);
                 const workspace = WorkspaceManager.getWorkspace(entry.name);
                 if (workspace) {
                     workspaces.push(workspace);

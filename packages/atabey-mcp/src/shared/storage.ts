@@ -1,5 +1,4 @@
 import Database from "better-sqlite3";
-import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import { getFrameworkDir } from "../mcp/utils/memory.js";

@@ -307,7 +307,7 @@ function resolveModel(
  */
 function buildSystemPrompt(
     ag: AgentDefinition,
-    baseKnowledgeDir: string = path.join(getPackageRoot(), "templates/standards"),
+    _baseKnowledgeDir: string = path.join(getPackageRoot(), "templates/standards"),
     stripMetaComments = false,
     paths: Record<string, string> = { backend: "apps/backend", frontend: "apps/web", mobile: "apps/mobile", docs: "docs" },
     backendLanguage: string = "Node.js (TypeScript)"
@@ -474,9 +474,7 @@ export function toGeminiCliMd(ag: AgentDefinition, baseKnowledgeDir?: string, pa
 //  Spec: Antigravity customAgentSpec JSON schema
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function toAntigravityJson(ag: AgentDefinition, baseKnowledgeDir?: string, paths?: Record<string, string>, backendLanguage: string = "Node.js (TypeScript)"): string {
-    const knowledgeBase = baseKnowledgeDir ?? path.join(getPackageRoot(), "templates/standards");
-
+export function toAntigravityJson(ag: AgentDefinition, _baseKnowledgeDir?: string, paths?: Record<string, string>, backendLanguage: string = "Node.js (TypeScript)"): string {
     const knowledgeSections = (ag.instructions.knowledgeFiles ?? []).map((f: string) => {
         const standardTopic = f.replace("-standards.md", "").replace(".md", "");
         return {

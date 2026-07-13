@@ -224,7 +224,7 @@ export function readActiveTraceId(memoryContent: string): string | null {
     try {
         const state = JSON.parse(memoryContent);
         return state.traceId || null;
-    } catch (_e) { /* ignore */
+    } catch { /* ignore */
         return null;
     }
 }
@@ -380,7 +380,7 @@ export function acquireMemoryLock(lockPath: string): boolean {
                     fs.writeFileSync(lockPath, String(Date.now()), { flag: "wx" });
                     return true;
                 }
-            } catch (_e) { /* ignore */
+            } catch { /* ignore */
                 // Ignore
             }
         }

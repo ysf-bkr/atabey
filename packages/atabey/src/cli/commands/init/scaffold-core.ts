@@ -24,31 +24,26 @@ const COLOR_PALETTES = {
 };
 
 function buildProfileServiceConfig(profile: string): {
-    finops: Record<string, unknown>;
     compliance: Record<string, unknown>;
     sandbox: Record<string, unknown>;
     auth: Record<string, unknown>;
 } {
     const presets: Record<string, {
-        finops: Record<string, unknown>;
         compliance: Record<string, unknown>;
         sandbox: Record<string, unknown>;
         auth: Record<string, unknown>;
     }> = {
         freelancer: {
-            finops: { tracking: true, enforcement: false, monthlyBudgetUsd: 0, agentMaxBudgetUsd: 0 },
             compliance: { retentionEnabled: true, consentLogging: true, piiMasking: true, dataProcessingBasis: "legitimate_interest" },
             sandbox: { runtime: "auto", required: false },
             auth: { required: false },
         },
         team: {
-            finops: { tracking: true, enforcement: false, monthlyBudgetUsd: 0, agentMaxBudgetUsd: 25 },
             compliance: { retentionEnabled: true, consentLogging: true, piiMasking: true, dataProcessingBasis: "contract" },
             sandbox: { runtime: "auto", required: false },
             auth: { required: false },
         },
         enterprise: {
-            finops: { tracking: true, enforcement: true, monthlyBudgetUsd: 500, agentMaxBudgetUsd: 50 },
             compliance: { retentionEnabled: true, consentLogging: true, piiMasking: true, dataProcessingBasis: "consent" },
             // Phase 1.3: fail closed without isolation
             sandbox: { runtime: "auto", required: true, network: "none", image: "node:20-bookworm-slim" },

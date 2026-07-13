@@ -140,14 +140,6 @@ export class PhaseEngine {
         // Execute transition
         AtabeyStorage.setMetadata("phase", targetPhase);
 
-        const transition: PhaseTransition = {
-            from: currentPhase,
-            to: targetPhase,
-            timestamp: new Date().toISOString(),
-            reason,
-            triggeredBy,
-        };
-
         // Log transition
         AtabeyStorage.saveLog({
             agent: triggeredBy,

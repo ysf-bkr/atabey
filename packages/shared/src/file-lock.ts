@@ -12,8 +12,8 @@
  */
 
 import fs from "fs";
-import path from "path";
 import os from "os";
+import path from "path";
 
 export interface FileLockOptions {
     /** Base directory for lock files. Default: `.atabey/locks` under cwd or projectRoot. */
@@ -195,6 +195,9 @@ export class AtomicFileLock {
     /**
      * Run `fn` while holding the lock.
      * ALWAYS releases in `finally` even if `fn` throws (disk full, parse errors, etc.).
+     * Without this, a leftover `.lock` file would deadlock every subsequent writer until TTL.
+     *
+     * Prefer this API over bare acquire/release for any mutating work.
      */
     public async withLock<T>(
         resource: string,
@@ -206,11 +209,13 @@ export class AtomicFileLock {
         try {
             return await fn();
         } finally {
+            // Never let release errors mask the original failure or leave a lock.
             try {
                 this.release(resource, ownerId);
             } catch {
                 this.forceRemove(this.getLockPath(resource), null);
             }
+            // Belt-and-suspenders: if our lock is somehow still present, force drop it.
             const stillHeld = this.isLocked(resource);
             if (stillHeld && stillHeld.ownerId === ownerId) {
                 this.forceRemove(this.getLockPath(resource), stillHeld);

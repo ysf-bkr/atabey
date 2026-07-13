@@ -174,7 +174,7 @@ export function createApprovalRequest(
     activeApprovals.set(traceId, request);
     try {
         AtabeyStorage.saveApproval(request);
-    } catch (e) {
+    } catch {
         // Non-fatal
     }
 

@@ -35,7 +35,7 @@ export function handleCheckPorts(projectRoot: string, args: CheckActivePortsArgs
                 text: `[SIGNAL] **Active Listening Ports:**\n\n${output || "No active listening ports found matching filter."}`
             }]
         };
-    } catch (_e) {
+    } catch {
         return {
             content: [{ type: "text", text: "[INFO] No active ports found or command failed (this is normal if nothing is listening)." }]
         };

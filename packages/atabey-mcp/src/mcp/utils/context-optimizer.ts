@@ -312,7 +312,6 @@ export function smartTruncateFile(
 
     // Smart truncation: keep imports + type defs + first/last functions
     const importantLines: number[] = [];
-    const summaryLines: string[] = [];
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];

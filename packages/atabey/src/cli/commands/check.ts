@@ -3,9 +3,9 @@ import fs from "fs";
 import path from "path";
 
 import { ALL_AGENTS } from "../../modules/agents/definitions.js";
-import { ADAPTERS } from "../platforms/core.js";
 import { FRAMEWORK, MCP, NATIVE_AGENT_PATHS } from "../../shared/constants.js";
 import { logger } from "../../shared/logger.js";
+import { ADAPTERS } from "../platforms/core.js";
 import { detectActiveAgentLayouts, findAgentInstruction, getUnifiedAgentLayoutBases } from "../platforms/paths.js";
 import { scanProjectCompliance } from "../utils/compliance.js";
 import {
@@ -217,32 +217,19 @@ export async function checkCommand() {
             logger.debug(`Failed unified layout check for ${configPath}: ${(err as Error).message}`);
         }
 
-        // Compliance & FinOps config validation
+        // Compliance config validation
         try {
             const config = JSON.parse(fs.readFileSync(configPath, "utf8")) as {
-                finops?: { tracking?: boolean; enforcement?: boolean; monthlyBudgetUsd?: number };
                 compliance?: { retentionEnabled?: boolean; consentLogging?: boolean; piiMasking?: boolean };
             };
 
-            UI.intent("Compliance & FinOps", "Validating token economy and privacy settings...");
+            UI.intent("Compliance", "Validating privacy and governance settings...");
 
             const llmGovPath = path.join(frameworkDir, "knowledge", "llm-governance.md");
             if (fs.existsSync(llmGovPath)) {
                 UI.success("LLM governance standard found (EU AI Act alignment).");
             } else {
                 UI.warning("Missing knowledge/llm-governance.md — re-run init to scaffold EU AI Act guidelines.");
-            }
-
-            if (config.finops?.tracking !== false) {
-                UI.success("FinOps token tracking enabled.");
-            } else {
-                UI.warning("FinOps tracking disabled in config.json.");
-            }
-
-            if (config.finops?.enforcement && (config.finops.monthlyBudgetUsd || 0) > 0) {
-                UI.success(`FinOps budget enforcement active ($${config.finops.monthlyBudgetUsd}/mo).`);
-            } else if (config.finops?.enforcement) {
-                UI.warning("FinOps enforcement enabled but monthlyBudgetUsd is 0 — tracking only.");
             }
 
             if (config.compliance?.piiMasking !== false) {
@@ -255,7 +242,7 @@ export async function checkCommand() {
                 UI.success("Consent logging enabled.");
             }
         } catch (err) {
-            logger.debug(`Failed compliance/finops check: ${(err as Error).message}`);
+            logger.debug(`Failed compliance check: ${(err as Error).message}`);
         }
     }
 
@@ -283,7 +270,7 @@ export async function checkCommand() {
 
     if (activeLayouts.length > 0) {
         UI.success(`Active agent layout(s): ${activeLayouts.join(", ")}`);
-        
+
         const configPath = path.join(frameworkDir, "config.json");
         let configuredAgents: string[] = [];
         if (fs.existsSync(configPath)) {

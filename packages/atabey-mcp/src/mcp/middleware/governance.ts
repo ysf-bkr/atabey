@@ -1,7 +1,7 @@
 import { generateULID } from "atabey/src/cli/utils/time.js";
+import { logger } from "../../shared/logger.js";
 import { maskToolArgs, maskToolResult } from "../../shared/pii.js";
 import { Storage } from "../../shared/storage.js";
-import { logger } from "../../shared/logger.js";
 import { TOOLS, toolHandlers, toolSchemas } from "../tools/index.js";
 
 function validateArgs(toolName: string, args: Record<string, unknown>): string | null {
@@ -167,38 +167,6 @@ export async function handleCallToolWithGovernance(
             }
         } catch (e) {
             logger.error(`[LOOP DETECT] Error: ${(e as Error).message}`);
-        }
-
-        // [FINOPS] Check budget BEFORE execution (record usage)
-        try {
-            const { budgetManager } = await import("../utils/finops.js");
-            const budgetError = budgetManager.recordUsage(detectedAgent, estimatedTokens);
-            if (budgetError) {
-                logger.warn(`[FINOPS] Budget blocked: ${budgetError}`);
-                broadcastWS("budget_blocked", { agent: detectedAgent, tool: toolName, error: budgetError, timestamp: new Date().toISOString() });
-                return { isError: true, content: [{ type: "text" as const, text: budgetError }] };
-            }
-        } catch (e) {
-            logger.error(`[FINOPS] Error: ${(e as Error).message}`);
-        }
-
-        // [LICENSE] Validate write content for license compliance (pre-execution)
-        if (toolName === "write_file" || toolName === "replace_text" || toolName === "patch_file") {
-            try {
-                const { validateLicenseCompliance } = await import("../utils/license-scanner.js");
-                const filePath = (maskedArgs.path as string) || "";
-                const content = (maskedArgs.content as string) || "";
-                if (filePath && content) {
-                    const licenseError = validateLicenseCompliance(filePath, content);
-                    if (licenseError) {
-                        logger.warn(`[LICENSE] Blocked: ${licenseError}`);
-                        broadcastWS("license_violation", { agent: detectedAgent, tool: toolName, error: licenseError, timestamp: new Date().toISOString() });
-                        return { isError: true, content: [{ type: "text" as const, text: licenseError }] };
-                    }
-                }
-            } catch (e) {
-                logger.error(`[LICENSE] Error: ${(e as Error).message}`);
-            }
         }
 
         // [AUTO-ROLLBACK] Prepare snapshot for write operations

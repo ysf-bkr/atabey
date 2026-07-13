@@ -73,7 +73,7 @@ function timingSafeTokenEqual(a: string, b: string): boolean {
 }
 
 function hasCredentialStore(): boolean {
-    let dbUsers = false;
+    let dbUsers: boolean;
     try {
         dbUsers = AtabeyStorage.hasUsers();
     } catch {
@@ -343,7 +343,7 @@ export function getConfiguredUsers(): string[] {
 
 export function getAuthStatus(): AuthStatus {
     if (!initialized) initAuth();
-    let dbUserCount = 0;
+    let dbUserCount: number;
     try {
         dbUserCount = AtabeyStorage.getUsers().length;
     } catch {

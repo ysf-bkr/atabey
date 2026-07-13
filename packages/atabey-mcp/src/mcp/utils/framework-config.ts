@@ -1,16 +1,6 @@
 import fs from "fs";
 import path from "path";
 
-export interface FinOpsConfigSection {
-    tracking?: boolean;
-    enforcement?: boolean;
-    monthlyBudgetUsd?: number;
-    agentMaxBudgetUsd?: number;
-    team?: string;
-    alertThresholds?: number[];
-    costPer1kTokensUsd?: number;
-}
-
 export interface ComplianceConfigSection {
     retentionEnabled?: boolean;
     consentLogging?: boolean;
@@ -34,34 +24,12 @@ export interface AuthConfigSection {
 export interface FrameworkConfig {
     profile?: string;
     orchestrator?: { autoStart?: boolean; intervalMs?: number };
-    finops?: FinOpsConfigSection;
     compliance?: ComplianceConfigSection;
     /** Phase 1 sandbox settings (enterprise sets required: true). */
     sandbox?: SandboxConfigSection;
     /** Phase 2.1 auth settings (enterprise sets required: true). */
     auth?: AuthConfigSection;
 }
-
-const PROFILE_FINOPS_DEFAULTS: Record<string, FinOpsConfigSection> = {
-    freelancer: {
-        tracking: true,
-        enforcement: false,
-        monthlyBudgetUsd: 0,
-        agentMaxBudgetUsd: 0,
-    },
-    team: {
-        tracking: true,
-        enforcement: false,
-        monthlyBudgetUsd: 0,
-        agentMaxBudgetUsd: 25,
-    },
-    enterprise: {
-        tracking: true,
-        enforcement: true,
-        monthlyBudgetUsd: 500,
-        agentMaxBudgetUsd: 50,
-    },
-};
 
 const PROFILE_COMPLIANCE_DEFAULTS: Record<string, ComplianceConfigSection> = {
     freelancer: {
@@ -92,23 +60,6 @@ export function loadFrameworkConfig(projectRoot: string): FrameworkConfig {
     } catch {
         return {};
     }
-}
-
-export function resolveFinOpsConfig(projectRoot: string): Required<FinOpsConfigSection> {
-    const raw = loadFrameworkConfig(projectRoot);
-    const profile = raw.profile || "freelancer";
-    const profileDefaults = PROFILE_FINOPS_DEFAULTS[profile] || PROFILE_FINOPS_DEFAULTS.freelancer;
-    const section = raw.finops || {};
-
-    return {
-        tracking: section.tracking ?? profileDefaults.tracking ?? true,
-        enforcement: section.enforcement ?? profileDefaults.enforcement ?? false,
-        monthlyBudgetUsd: section.monthlyBudgetUsd ?? profileDefaults.monthlyBudgetUsd ?? 0,
-        agentMaxBudgetUsd: section.agentMaxBudgetUsd ?? profileDefaults.agentMaxBudgetUsd ?? 0,
-        team: section.team ?? (process.env.ATABEY_BUDGET_TEAM || "default"),
-        alertThresholds: section.alertThresholds ?? [50, 80, 90, 100],
-        costPer1kTokensUsd: section.costPer1kTokensUsd ?? 0.003,
-    };
 }
 
 export function resolveComplianceConfig(projectRoot: string): Required<ComplianceConfigSection> {

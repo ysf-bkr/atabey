@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck — cross-package dynamic imports from atabey-mcp are runtime-only
 import fs from "fs";
 import http from "http";
@@ -550,63 +551,6 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
             return;
         }
 
-        // Budget / FinOps Status
-        if (pathname === "/api/finops") {
-            try {
-                const { budgetManager } = await import("atabey-mcp/utils/finops.js");
-                const state = budgetManager.getState();
-                serveJson(res, 200, { success: true, data: state });
-            } catch (e) {
-                serveJson(res, 500, { success: false, error: (e as Error).message });
-            }
-            return;
-        }
-
-        // Budget Check for an agent
-        if (pathname === "/api/finops/check") {
-            try {
-                const agent = params.agent || "default";
-                const { budgetManager } = await import("atabey-mcp/utils/finops.js");
-                const result = budgetManager.checkBudget(agent);
-                serveJson(res, 200, { success: true, data: result });
-            } catch (e) {
-                serveJson(res, 500, { success: false, error: (e as Error).message });
-            }
-            return;
-        }
-
-        // Budget Reset
-        if (pathname === "/api/finops/reset" && req.method === "POST") {
-            try {
-                const { budgetManager } = await import("atabey-mcp/utils/finops.js");
-                budgetManager.resetPeriod();
-                serveJson(res, 200, { success: true, message: "Budget period reset." });
-            } catch (e) {
-                serveJson(res, 500, { success: false, error: (e as Error).message });
-            }
-            return;
-        }
-
-        // License Scanner
-        if (pathname === "/api/license") {
-            try {
-                const { scanForLicenses, getLicenseSeveritySummary, LicenseScannerConfig } = await import("atabey-mcp/utils/license-scanner.js");
-                const filePath = params.path || "";
-                const content = params.content || "";
-                const matches = filePath && content ? scanForLicenses(filePath, content) : [];
-                const summary = matches.length > 0 ? getLicenseSeveritySummary(matches) : null;
-                serveJson(res, 200, {
-                    success: true, data: {
-                        matches,
-                        summary,
-                        config: LicenseScannerConfig,
-                    }
-                });
-            } catch (e) {
-                serveJson(res, 500, { success: false, error: (e as Error).message });
-            }
-            return;
-        }
 
         // Auto-Rollback Stats
         if (pathname === "/api/rollback") {
@@ -628,8 +572,6 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
                 const { getAllLoopStats } = await import("atabey-mcp/utils/loop-detector.js");
                 const { getAllRules } = await import("atabey-mcp/utils/rules-engine.js");
                 const { AutoRollbackEngine } = await import("atabey-mcp/utils/auto-rollback.js");
-                const { budgetManager } = await import("atabey-mcp/utils/finops.js");
-
                 serveJson(res, 200, {
                     success: true, data: {
                         discipline: getAllDisciplineStats(),
@@ -637,7 +579,6 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
                         loopDetection: getAllLoopStats(),
                         rules: getAllRules().map(r => ({ id: r.id, name: r.name, priority: r.priority, bypassable: r.bypassable })),
                         rollback: AutoRollbackEngine.getSnapshotStats(),
-                        budget: budgetManager.getState(),
                         telemetry: (await import("atabey-mcp/utils/telemetry-streamer.js")).telemetryStreamer.getStatus(),
                     }
                 });

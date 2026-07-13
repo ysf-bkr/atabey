@@ -1,3 +1,4 @@
+import { EventEmitter } from "events";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
     buildContainerArgs,
@@ -13,7 +14,6 @@ vi.mock("child_process", async (importOriginal) => {
     return {
         ...actual,
         spawn: vi.fn(() => {
-            const { EventEmitter } = require("events");
             const child = new EventEmitter() as any;
             child.stdout = new EventEmitter();
             child.stderr = new EventEmitter();

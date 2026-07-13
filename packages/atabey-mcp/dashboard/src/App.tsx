@@ -3,7 +3,6 @@ import {
     AlertTriangle,
     Ban,
     BarChart3,
-    BookOpen,
     Bot,
     Brain,
     CheckCircle,
@@ -36,7 +35,6 @@ import { ErrorTracker } from "./components/ErrorTracker";
 import { FinOpsPanel } from "./components/FinOpsPanel";
 import { HermesBrokerView } from "./components/HermesBrokerView";
 import { HermesStats } from "./components/HermesStats";
-import { LicensePanel } from "./components/LicensePanel";
 import { LogViewer } from "./components/LogViewer";
 import { LoopDetectorPanel } from "./components/LoopDetectorPanel";
 import { MCPSetupPanel } from "./components/MCPSetupPanel";
@@ -96,7 +94,6 @@ const TABS = [
     { id: "compliance", label: "Compliance",     Component: CompliancePanel,  desc: "Quality Gate Status",          icon: CheckCircle },
     { id: "finops",     label: "FinOps",         Component: FinOpsPanel,      desc: "Budget & Cost Management",     icon: DollarSign },
     { id: "loop",       label: "Loop Detector",  Component: LoopDetectorPanel, desc: "Loop Prevention & Cooldowns", icon: Ban },
-    { id: "license",    label: "License",        Component: LicensePanel,     desc: "SPDX & Copyleft Scanner",      icon: BookOpen },
     { id: "telemetry",  label: "Telemetry",      Component: TelemetryPanel,   desc: "Edge-to-Cloud Streaming",      icon: Wifi },
     { id: "privacy",    label: "GDPR / KVKK",    Component: PrivacyPanel,     desc: "GDPR & KVKK Compliance",       icon: ShieldCheck },
     { id: "discipline", label: "Discipline",     Component: DisciplinePanel,  desc: "AI Discipline & Rules",        icon: Ban },

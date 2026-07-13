@@ -44,7 +44,6 @@ export class AgentExecutor {
 
         // 2. Execute with exponential backoff + circuit breaker (Polly-style, no external deps)
         let lastOutput = "";
-        let lastError = "";
         let attemptsUsed = 0;
         const breaker = getCircuitBreaker(`agent:${agent}`, {
             failureThreshold: 5,
@@ -76,7 +75,6 @@ export class AgentExecutor {
 
                     const qualityResult = await QualityGate.check(agent, output, taskDescription);
                     if (!qualityResult.passed) {
-                        lastError = qualityResult.reason;
                         logger.warn(`[EXECUTOR] Quality check FAILED: ${qualityResult.reason}`, {
                             agent,
                             attempt,
@@ -133,7 +131,7 @@ export class AgentExecutor {
             );
             return result;
         } catch (err) {
-            lastError = err instanceof Error ? err.message : String(err);
+            const lastError = err instanceof Error ? err.message : String(err);
             logger.error(`[EXECUTOR] ${agent} FAILED after ${attemptsUsed || 3} attempts. Last error: ${lastError}`);
             AtabeyStorage.updateAgentStatus(
                 agent.replace("@", ""),

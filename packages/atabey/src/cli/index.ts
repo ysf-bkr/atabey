@@ -160,7 +160,7 @@ const COMMANDS: Record<string, { run: (args: string[]) => Promise<void>; descrip
         description: "Run compliance check against ATABEY.md constitution",
     },
     contract: {
-        run: async (args) => {
+        run: async (_args) => {
             const { verifyApiContractCommand } = await import("./commands/contract.js");
             await verifyApiContractCommand();
         },

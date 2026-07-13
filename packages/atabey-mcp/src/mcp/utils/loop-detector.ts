@@ -122,7 +122,7 @@ function getOrCreateHistory(agent: string): AgentHistory {
                     cooldownUntil: persisted.cooldownUntil,
                 };
             }
-        } catch (e) {
+        } catch {
             // Non-fatal
         }
 
@@ -386,7 +386,7 @@ function applyCooldown(history: AgentHistory, alert: LoopAlert, agent: string): 
     // Persist so cooldown survives MCP restart
     try {
         Storage.saveLoopCooldown(agent, history.cooldownUntil, alert.detail, history.cooldownCount);
-    } catch (e) {
+    } catch {
         // Non-fatal, still enforce in-memory
     }
 
@@ -418,7 +418,7 @@ export function isInCooldown(agent: string): {
     const remaining = history.cooldownUntil - Date.now();
     if (remaining <= 0) {
         history.inCooldown = false;
-        try { Storage.clearLoopCooldown(agent); } catch {}
+        try { Storage.clearLoopCooldown(agent); } catch { /* ignore */ }
         return { inCooldown: false, remainingMs: 0, reason: null };
     }
 
@@ -441,7 +441,9 @@ export function clearCooldown(agent: string): boolean {
     }
     try {
         Storage.clearLoopCooldown(agent);
-    } catch {}
+    } catch {
+        /* ignore */
+    }
     return true;
 }
 

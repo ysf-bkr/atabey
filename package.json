@@ -1,6 +1,6 @@
 {
   "name": "atabey-monorepo",
-  "version": "0.0.27",
+  "version": "0.0.28",
   "description": "Atabey — AI Governance & Multi-Agent Platform / Orchestrator — Monorepo",
   "author": "Yusuf BEKAR",
   "license": "AGPL-3.0",
@@ -72,14 +72,14 @@
     "@types/node": "^25.9.1",
     "@vitejs/plugin-react": "^4.3.4",
     "tsx": "^4.22.3",
-    "atabey": "^0.0.25"
+    "atabey": "^0.0.27"
   },
   "atabey": {
-    "version": "0.0.25",
+    "version": "0.0.27",
     "initializedAt": "2026-07-02T15:20:22.742Z"
   },
   "dependencies": {
-    "atabey-mcp": "^0.0.25",
-    "atabey-shared": "^0.0.25"
+    "atabey-mcp": "^0.0.27",
+    "atabey-shared": "^0.0.27"
   }
 }

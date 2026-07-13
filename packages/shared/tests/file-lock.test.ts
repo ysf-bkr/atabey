@@ -63,6 +63,7 @@ describe("AtomicFileLock", () => {
             }),
         ).rejects.toThrow("inside");
         expect(lock.isLocked("x.txt")).toBeNull();
+        // Next agent can acquire immediately — no permanent deadlock
         expect(lock.tryAcquire("x.txt", "next").acquired).toBe(true);
         lock.release("x.txt", "next");
     });
@@ -74,12 +75,21 @@ describe("AtomicFileLock", () => {
             }),
         ).toThrow("sync boom");
         expect(lock.isLocked("sync-fail.txt")).toBeNull();
+        expect(lock.tryAcquire("sync-fail.txt", "next").acquired).toBe(true);
+        lock.release("sync-fail.txt", "next");
+    });
+
+    it("withLock releases even when work succeeds then caller continues", async () => {
+        const value = await lock.withLock("ok.txt", "w", async () => 42);
+        expect(value).toBe(42);
+        expect(lock.isLocked("ok.txt")).toBeNull();
     });
 
     it("orphans empty lock file after failed meta write path is reclaimable", () => {
+        // Simulate a leftover empty lock (disk-full style partial acquire)
         const lockPath = lock.getLockPath("orphan.txt");
         fs.mkdirSync(path.dirname(lockPath), { recursive: true });
-        fs.writeFileSync(lockPath, "", "utf8");
+        fs.writeFileSync(lockPath, "", "utf8"); // corrupt / empty
         const again = lock.tryAcquire("orphan.txt", "recover");
         expect(again.acquired).toBe(true);
         lock.release("orphan.txt", "recover");

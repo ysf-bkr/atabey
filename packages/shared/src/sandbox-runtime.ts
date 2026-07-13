@@ -137,7 +137,7 @@ export function resolveSandboxRuntimeConfig(projectRoot: string, timeoutMs?: num
     const identity = resolveSandboxIdentity();
     const required = envBool("ATABEY_SANDBOX_REQUIRED", false);
 
-    let effectiveMode: SandboxRuntimeConfig["effectiveMode"] = "none";
+    let effectiveMode: SandboxRuntimeConfig["effectiveMode"];
     if (mode === "none") {
         effectiveMode = "none";
     } else if (mode === "uid") {

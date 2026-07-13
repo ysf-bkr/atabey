@@ -130,7 +130,7 @@ function resolveDashboardPath(): string {
     // Fallback — will show placeholder in the dashboard route handler
     return "";
 }
-let UI_DIST_PATH = resolveDashboardPath();
+const UI_DIST_PATH = resolveDashboardPath();
 
 // ─── Ports ────────────────────────────────────────────────────────
 

@@ -77,19 +77,21 @@ class SnapshotManager {
                 try {
                     const full = path.join(dir, f);
                     const content = fs.readFileSync(full, "utf8");
-                    const data = JSON.parse(content);
-                    if (data.filePath === resolved) {
-                        return {
-                            filePath: data.filePath,
-                            originalContent: data.originalContent,
-                            timestamp: data.timestamp,
-                            traceId: data.traceId,
-                            restored: false,
-                        };
-                    }
-                } catch {}
+                    try {
+                        const data = JSON.parse(content);
+                        if (data.filePath === resolved) {
+                            return {
+                                filePath: data.filePath,
+                                originalContent: data.originalContent,
+                                timestamp: data.timestamp,
+                                traceId: data.traceId,
+                                restored: false,
+                            };
+                        }
+                    } catch { /* ignore */ }
+                } catch { /* ignore */ }
             }
-        } catch {}
+        } catch { /* ignore */ }
         return null;
     }
 
@@ -171,7 +173,7 @@ class SnapshotManager {
             try {
                 const backupPath = this.getRollbackPath(resolvedPath, snapshot.traceId);
                 if (fs.existsSync(backupPath)) fs.unlinkSync(backupPath);
-            } catch {}
+            } catch { /* ignore */ }
 
             return true;
         } catch (error) {
@@ -191,7 +193,7 @@ class SnapshotManager {
                 try {
                     const backupPath = this.getRollbackPath(filePath, snapshot.traceId);
                     if (fs.existsSync(backupPath)) fs.unlinkSync(backupPath);
-                } catch {}
+                } catch { /* ignore */ }
                 this.snapshots.delete(filePath);
             }
         }
@@ -208,10 +210,10 @@ class SnapshotManager {
                         if (stat.mtimeMs < cutoff) {
                             fs.unlinkSync(full);
                         }
-                    } catch {}
+                    } catch { /* ignore */ }
                 }
             }
-        } catch {}
+        } catch { /* ignore */ }
     }
 
     /**

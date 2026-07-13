@@ -123,6 +123,7 @@ export class FileLock {
 
     /**
      * Run fn while holding an exclusive lock on filePath.
+     * Always releases in finally (even if fn throws) — prevents stuck .lock deadlocks.
      */
     public static async withLock<T>(
         agentName: string,
@@ -133,6 +134,19 @@ export class FileLock {
         return FileLock.locker().withLock(filePath, agentName, fn, {
             reason: "multi-agent file write",
             timeoutMs,
+        });
+    }
+
+    /**
+     * Synchronous withLock — same try/finally release guarantee.
+     */
+    public static withLockSync<T>(
+        agentName: string,
+        filePath: string,
+        fn: () => T,
+    ): T {
+        return FileLock.locker().withLockSync(filePath, agentName, fn, {
+            reason: "multi-agent file write",
         });
     }
 

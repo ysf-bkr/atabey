@@ -183,9 +183,6 @@ export function mergePackageJson(targetPath: string, sourcePath: string): void {
   });
 
   // Merge scripts
-  const pkgMgr = getPackageManager();
-  const runCmd = pkgMgr === "yarn" ? "yarn" : (pkgMgr === "pnpm" ? "pnpm" : "npm run");
-
   targetPkg.scripts = {
       ...targetPkg.scripts,
       "atabey:status": "atabey status",
