@@ -1,7 +1,7 @@
 {
   "name": "atabey-mcp",
-  "version": "0.0.30",
-  "description": "Atabey — AI Governance & Multi-Agent Platform / Orchestrator — MCP Server",
+  "version": "0.0.31",
+  "description": "Atabey \u2014 AI Governance & Multi-Agent Platform / Orchestrator \u2014 MCP Server",
   "author": "Yusuf BEKAR",
   "license": "AGPL-3.0",
   "keywords": [
@@ -54,11 +54,12 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "atabey-shared": "^0.0.30",
+    "atabey-shared": "^0.0.31",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "better-sqlite3": "^12.10.1",
     "chalk": "^5.6.2",
     "js-yaml": "^4.2.0",
+    "typescript": "^5.9.3",
     "ws": "^8.21.0",
     "zod": "^3.24.2"
   },
@@ -68,7 +69,6 @@
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^3.2.6",
     "tsx": "^4.22.3",
-    "typescript": "^5.9.3",
     "vitest": "^3.0.0"
   }
 }

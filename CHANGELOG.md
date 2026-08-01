@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## [0.0.31] — 2026-08-01
+
+### Fixed
+- **CRITICAL — Missing runtime `typescript`**: Restored `typescript` as a production dependency of `atabey` and `atabey-mcp`. The compliance AST scanner (`cli/utils/compliance.ts` / MCP utils) imports the TypeScript compiler API at runtime; keeping it in `devDependencies` caused `ERR_MODULE_NOT_FOUND` on global/npx installs (`Cannot find package 'typescript'`).
+
+### Changed
+- **Version Bump**: All packages updated to v0.0.31.
+
 ## [0.0.30] — 2026-08-01
 
 ### Changed
