@@ -1,6 +1,6 @@
 {
   "name": "atabey",
-  "version": "0.0.28",
+  "version": "0.0.30",
   "description": "Atabey — AI Governance & Multi-Agent Platform / Orchestrator — Core Engine",
   "author": "Yusuf BEKAR",
   "license": "AGPL-3.0",
@@ -54,7 +54,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "atabey-shared": "^0.0.28",
+    "atabey-shared": "^0.0.30",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "better-sqlite3": "^12.10.1",
     "chalk": "^5.6.2",

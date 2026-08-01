@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## [0.0.30] — 2026-08-01
+
+### Changed
+- **Version Bump**: All packages updated to v0.0.30 (`atabey`, `atabey-mcp`, `atabey-shared`, monorepo, dashboard).
+- **Internal Dependency Ranges**: Aligned workspace and package dependency ranges to `^0.0.30` so `0.0.x` caret installs resolve the correct patch.
+- **Lockfile Refresh**: Regenerated `package-lock.json` so workspace packages resolve local `atabey-shared@0.0.30` instead of a stale nested registry copy.
+
+### Fixed
+- **Stale Root Metadata**: Root `package.json` `atabey.version` metadata updated to `0.0.30` (was left at `0.0.27` after earlier bumps).
+
 ## [0.0.25] — 2026-07-12
 
 ### Added
