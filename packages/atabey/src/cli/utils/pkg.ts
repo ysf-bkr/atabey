@@ -85,7 +85,7 @@ export function getDependencyVersions() {
         "typeorm": dependencies["typeorm"] || "^0.3.0",
         "reflect-metadata": dependencies["reflect-metadata"] || "^0.2.0",
         "pg": dependencies["pg"] || "^8.13.0",
-        "better-sqlite3": dependencies["better-sqlite3"] || "^11.0.0",
+        "better-sqlite3": dependencies["better-sqlite3"] || "^13.0.2",
 
         // ── Authentication ────────────────────────────────────────
         "bcrypt": dependencies["bcrypt"] || "^5.1.0",

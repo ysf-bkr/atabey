@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## [0.0.32] — 2026-08-01
+
+### Changed
+- **`better-sqlite3` → v13**: Upgraded from `^12.10.1` to `^13.0.2` (N-API). Prebuilt binaries ship inside the package; the deprecated `prebuild-install` dependency is gone, and there is no install lifecycle script — so npm `allow-scripts` / `prebuild-install` deprecation warnings no longer appear on clean installs.
+- **Node engine**: Raised to `>=22.0.0` (required by `better-sqlite3@13`). CI matrix is now Node 22.x / 24.x.
+- **Version Bump**: All packages updated to v0.0.32.
+
 ## [0.0.31] — 2026-08-01
 
 ### Fixed
