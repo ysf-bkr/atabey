@@ -25,7 +25,19 @@ import {
     scaffoldShims
 } from "./init/scaffold-core.js";
 import { scaffoldProjectDocs } from "./init/scaffold-docs.js";
+import { scaffoldApp, type FocusKind } from "./init/scaffold-app.js";
 import { scaffoldOps } from "./init/scaffold-ops.js";
+import {
+    BACKEND_LANGUAGES,
+    DEFAULT_BACKEND_LANGUAGE,
+    DEFAULT_FRONTEND_FRAMEWORK,
+    DEFAULT_NATIVE_LANGUAGE,
+    FRONTEND_FRAMEWORKS,
+    NATIVE_LANGUAGES,
+    normalizeBackendLanguage,
+    normalizeFrontendFramework,
+    normalizeNativeLanguage,
+} from "./init/languages.js";
 import {
     scaffoldSkills,
     scaffoldStandards
@@ -162,7 +174,7 @@ async function checkAndCleanupLegacy(forceYes: boolean): Promise<void> {
     }
 }
 
-async function runInteractiveInit(profile?: InitProfile, presetLanguage?: SupportedLanguage): Promise<{ selectedDirs: string[]; selectedAgents: string[]; selectedPalette: string; backendLanguage: string; frontendFramework: string; language: SupportedLanguage }> {
+async function runInteractiveInit(profile?: InitProfile, presetLanguage?: SupportedLanguage): Promise<{ selectedDirs: string[]; selectedAgents: string[]; selectedPalette: string; backendLanguage: string; frontendFramework: string; nativeLanguage: string; focus: FocusKind; language: SupportedLanguage }> {
     // If profile is set, skip interactive agent/dir selection
     if (profile) {
         const p = PROFILES[profile];
@@ -201,23 +213,27 @@ async function runInteractiveInit(profile?: InitProfile, presetLanguage?: Suppor
             const selectedAgents = resolveAgentsByFocus(profile, projectFocus);
             process.stdout.write(`\n[AGENTS] Selected Agents for ${projectFocus}: ${selectedAgents.join(", ")}\n`);
 
-            let backendLanguage = "Node.js (TypeScript)";
+            let backendLanguage = DEFAULT_BACKEND_LANGUAGE;
             if (projectFocus !== "frontend" && projectFocus !== "mobile") {
                 process.stdout.write(`\n${t.select_backend}:\n`);
-                const languages = ["Node.js (TypeScript)", "Go", "Java (Spring Boot)", "Python (FastAPI)", ".NET"];
-                languages.forEach((l, i) => process.stdout.write(`${i + 1}. ${l}\n`));
-                const bLangInput = await question("\nSelect (1-5) or Enter for \"Node.js\": ");
-                backendLanguage = languages[parseInt(bLangInput.trim()) - 1] || "Node.js (TypeScript)";
+                BACKEND_LANGUAGES.forEach((l, i) => process.stdout.write(`${i + 1}. ${l}\n`));
+                const bLangInput = await question(`\nSelect (1-${BACKEND_LANGUAGES.length}) or Enter for "${DEFAULT_BACKEND_LANGUAGE}": `);
+                backendLanguage = BACKEND_LANGUAGES[parseInt(bLangInput.trim()) - 1] || DEFAULT_BACKEND_LANGUAGE;
             }
 
             let frontendFramework = "Vanilla HTML/JS";
             if (projectFocus !== "backend") {
                 process.stdout.write(`\n${t.select_frontend}:\n`);
-                const frontendFrameworks = ["Vite (React)", "Next.js (App Router)", "Vanilla HTML/JS"];
-                frontendFrameworks.forEach((f, i) => process.stdout.write(`${i + 1}. ${f}\n`));
-                const fFrameInput = await question("\nSelect (1-3) or Enter for \"Vite (React)\": ");
-                frontendFramework = frontendFrameworks[parseInt(fFrameInput.trim()) - 1] || "Vite (React)";
+                FRONTEND_FRAMEWORKS.forEach((f, i) => process.stdout.write(`${i + 1}. ${f}\n`));
+                const fFrameInput = await question(`\nSelect (1-${FRONTEND_FRAMEWORKS.length}) or Enter for "${DEFAULT_FRONTEND_FRAMEWORK}": `);
+                frontendFramework = FRONTEND_FRAMEWORKS[parseInt(fFrameInput.trim()) - 1] || DEFAULT_FRONTEND_FRAMEWORK;
             }
+
+            let nativeLanguage = DEFAULT_NATIVE_LANGUAGE;
+            process.stdout.write("\n[NATIVE / PLATFORM LAYER] Select the native/platform-tier language (Rust or Go - TypeScript is forbidden here):\n");
+            NATIVE_LANGUAGES.forEach((n, i) => process.stdout.write(`${i + 1}. ${n}\n`));
+            const nLangInput = await question(`\nSelect (1-${NATIVE_LANGUAGES.length}) or Enter for "${DEFAULT_NATIVE_LANGUAGE}": `);
+            nativeLanguage = NATIVE_LANGUAGES[parseInt(nLangInput.trim()) - 1] || DEFAULT_NATIVE_LANGUAGE;
 
             process.stdout.write("\n[Available Color Palettes]:\n");
             const palettes = ["Modern Blue", "Enterprise Slate", "Deep Purple"];
@@ -231,6 +247,8 @@ async function runInteractiveInit(profile?: InitProfile, presetLanguage?: Suppor
                 selectedPalette,
                 backendLanguage,
                 frontendFramework,
+                nativeLanguage,
+                focus: projectFocus as FocusKind,
                 language,
             };
         } finally { rl.close(); }
@@ -266,16 +284,19 @@ async function runInteractiveInit(profile?: InitProfile, presetLanguage?: Suppor
         process.stdout.write(`\n[START] ${t.welcome}\n`);
 
         process.stdout.write(`\n${t.select_backend}:\n`);
-        const languages = ["Node.js (TypeScript)", "Go", "Java (Spring Boot)", "Python (FastAPI)", ".NET"];
-        languages.forEach((l, i) => process.stdout.write(`${i + 1}. ${l}\n`));
-        const bLangInput = await question("\nSelect (1-5) or Enter for \"Node.js\": ");
-        const backendLanguage = languages[parseInt(bLangInput.trim()) - 1] || "Node.js (TypeScript)";
+        BACKEND_LANGUAGES.forEach((l, i) => process.stdout.write(`${i + 1}. ${l}\n`));
+        const bLangInput = await question(`\nSelect (1-${BACKEND_LANGUAGES.length}) or Enter for "${DEFAULT_BACKEND_LANGUAGE}": `);
+        const backendLanguage = BACKEND_LANGUAGES[parseInt(bLangInput.trim()) - 1] || DEFAULT_BACKEND_LANGUAGE;
 
         process.stdout.write(`\n${t.select_frontend}:\n`);
-        const frontendFrameworks = ["Vite (React)", "Next.js (App Router)", "Vanilla HTML/JS"];
-        frontendFrameworks.forEach((f, i) => process.stdout.write(`${i + 1}. ${f}\n`));
-        const fFrameInput = await question("\nSelect (1-3) or Enter for \"Vite (React)\": ");
-        const frontendFramework = frontendFrameworks[parseInt(fFrameInput.trim()) - 1] || "Vite (React)";
+        FRONTEND_FRAMEWORKS.forEach((f, i) => process.stdout.write(`${i + 1}. ${f}\n`));
+        const fFrameInput = await question(`\nSelect (1-${FRONTEND_FRAMEWORKS.length}) or Enter for "${DEFAULT_FRONTEND_FRAMEWORK}": `);
+        const frontendFramework = FRONTEND_FRAMEWORKS[parseInt(fFrameInput.trim()) - 1] || DEFAULT_FRONTEND_FRAMEWORK;
+
+        process.stdout.write("\n[NATIVE / PLATFORM LAYER] Select the native/platform-tier language (Rust or Go - TypeScript is forbidden here):\n");
+        NATIVE_LANGUAGES.forEach((n, i) => process.stdout.write(`${i + 1}. ${n}\n`));
+        const nLangInput = await question(`\nSelect (1-${NATIVE_LANGUAGES.length}) or Enter for "${DEFAULT_NATIVE_LANGUAGE}": `);
+        const nativeLanguage = NATIVE_LANGUAGES[parseInt(nLangInput.trim()) - 1] || DEFAULT_NATIVE_LANGUAGE;
 
         process.stdout.write("\nAvailable Framework Directories:\n");
         FRAMEWORK_SUBDIRS.forEach((d, i) => process.stdout.write(`${i + 1}. ${d}\n`));
@@ -293,11 +314,11 @@ async function runInteractiveInit(profile?: InitProfile, presetLanguage?: Suppor
         const palInput = await question(`\n${t.select_palette} `);
         const selectedPalette = palettes[parseInt(palInput.trim()) - 1] || "Modern Blue";
 
-        return { selectedDirs, selectedAgents, selectedPalette, backendLanguage, frontendFramework, language };
+        return { selectedDirs, selectedAgents, selectedPalette, backendLanguage, frontendFramework, nativeLanguage, focus: "fullstack", language };
     } finally { rl.close(); }
 }
 
-export async function initCommand(adapterName: string, options: { unified?: boolean; dryRun?: boolean; yes?: boolean; profile?: InitProfile; focus?: string; language?: SupportedLanguage }) {
+export async function initCommand(adapterName: string, options: { unified?: boolean; dryRun?: boolean; yes?: boolean; profile?: InitProfile; focus?: string; language?: SupportedLanguage; backend?: string; frontend?: string; native?: string }) {
     const rawAdapterId = (adapterName || "gemini");
     const adapter = resolveAdapter(rawAdapterId);
 
@@ -328,7 +349,9 @@ export async function initCommand(adapterName: string, options: { unified?: bool
     let selectedPalette: string;
     let backendLanguage: string;
     let frontendFramework: string;
+    let nativeLanguage: string;
     let language: SupportedLanguage;
+    let resolvedFocus: FocusKind;
 
     if (forceYes) {
         const profile = options.profile || "team";
@@ -337,10 +360,13 @@ export async function initCommand(adapterName: string, options: { unified?: bool
         selectedDirs = [...p.dirs];
         selectedAgents = resolveAgentsByFocus(profile, focus);
         selectedPalette = "Modern Blue";
-        backendLanguage = "Node.js (TypeScript)";
-        frontendFramework = "Vite (React)";
+        backendLanguage = normalizeBackendLanguage(options.backend);
+        frontendFramework = normalizeFrontendFramework(options.frontend);
+        nativeLanguage = normalizeNativeLanguage(options.native);
         language = options.language || "en";
+        resolvedFocus = focus as FocusKind;
         UI.success(`Non-interactive mode: ${profile} profile (${selectedAgents.length} agents, focus: ${focus}, language: ${language}).`);
+        UI.success(`Stack: backend=${backendLanguage}, frontend=${frontendFramework}, native=${nativeLanguage}.`);
     } else {
         const result = await runInteractiveInit(options.profile, options.language);
         selectedDirs = result.selectedDirs.filter(d => d !== "agents" && d !== "skills");
@@ -348,7 +374,9 @@ export async function initCommand(adapterName: string, options: { unified?: bool
         selectedPalette = result.selectedPalette;
         backendLanguage = result.backendLanguage;
         frontendFramework = result.frontendFramework;
+        nativeLanguage = result.nativeLanguage;
         language = result.language;
+        resolvedFocus = result.focus;
     }
 
     const t = TRANSLATIONS[language];
@@ -369,6 +397,7 @@ export async function initCommand(adapterName: string, options: { unified?: bool
         adapters: isUnified ? [...ADAPTER_IDS] : [adapterId],
         backendLanguage,
         frontendFramework,
+        nativeLanguage,
         language,
         profile: options.profile || (forceYes ? "team" : "custom"),
         agents: selectedAgents,
@@ -397,6 +426,19 @@ export async function initCommand(adapterName: string, options: { unified?: bool
     scaffoldOps(path.join(projectRoot, coreDir), dryRun);
     scaffoldProjectDocs(projectRoot, { backendLanguage, frontendFramework }, dryRun);
     scaffoldShims(projectRoot, coreDir, adapterId, adapter, dryRun, isUnified);
+
+    // Generate the real application skeleton under apps/ based on the user's
+    // stack selection (backend language, frontend framework, mobile, native tier).
+    const appProjectName = path.basename(projectRoot).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "app";
+    scaffoldApp(projectRoot, {
+        backendLanguage,
+        frontendFramework,
+        nativeLanguage,
+        focus: resolvedFocus,
+        projectName: appProjectName,
+        projectRoot,
+        dryRun,
+    });
 
     if (!dryRun) {
         ensureDir(path.join(projectRoot, coreDir, "messages"));

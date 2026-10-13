@@ -38,6 +38,7 @@ export function getDefaultLintCommand(language: string): string {
     if (language.includes("Java")) return "./gradlew check"; // or mvn check
     if (language.includes("Python")) return "ruff check .";
     if (language.includes(".NET")) return "dotnet format";
+    if (language.includes("Rust")) return "cargo clippy";
     return "npm run lint";
 }
 

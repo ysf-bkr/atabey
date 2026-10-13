@@ -49,6 +49,20 @@ const COMMANDS: Record<string, { run: (args: string[]) => Promise<void>; descrip
             const langIndex = args.findIndex(a => a === "--lang" || a === "-l");
             const language = (langIndex !== -1 && args[langIndex + 1]) ? args[langIndex + 1] as "tr" | "en" : undefined;
 
+            const flagValue = (names: string[]): string | undefined => {
+                for (const name of names) {
+                    const eq = args.find(a => a.startsWith(`${name}=`));
+                    if (eq) return eq.slice(name.length + 1);
+                    const idx = args.findIndex(a => a === name);
+                    if (idx !== -1 && args[idx + 1] && !args[idx + 1].startsWith("-")) return args[idx + 1];
+                }
+                return undefined;
+            };
+
+            const backend = flagValue(["--backend", "--backend-language", "-b"]);
+            const frontend = flagValue(["--frontend", "--frontend-framework", "-f"]);
+            const native = flagValue(["--native", "--native-language"]);
+
             await initCommand(adapter, {
                 dryRun: args.includes("--dry-run"),
                 unified: args.includes("--unified"),
@@ -56,9 +70,12 @@ const COMMANDS: Record<string, { run: (args: string[]) => Promise<void>; descrip
                 profile,
                 focus,
                 language,
+                backend,
+                frontend,
+                native,
             });
         },
-        description: "Initialize Atabey (--profile freelancer|team|enterprise [--focus fullstack|backend|frontend|mobile] [--lang en])",
+        description: "Initialize Atabey (--profile freelancer|team|enterprise [--focus fullstack|backend|frontend|mobile] [--backend node|go|java|python|dotnet|rust] [--frontend vite|next|vanilla] [--native rust|go] [--lang en])",
     },
     mcp: {
         run: async (args) => { await mcpCommand(args); },
@@ -268,7 +285,8 @@ Usage:
   atabey "natural language"    (auto-routed to @manager)
 
 Core Commands:
-  init [adapter] [--profile freelancer|team|enterprise]  Initialize project
+  init [adapter] [--profile freelancer|team|enterprise]      Initialize project
+  init [adapter] [--backend go --frontend next --native rust]  Choose stack (--yes)
   mcp start|install|status                               MCP server management
   dashboard [port]                                       Web dashboard
   orchestrate                                            Start orchestration loop

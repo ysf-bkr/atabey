@@ -3,7 +3,7 @@
 **This document is the authoritative record of known limitations.**
 It is written in a deliberately realistic and unvarnished tone. Atabey is pre-alpha software developed primarily by a single person. Many capabilities described in the README and marketing materials are partial, local-only, heuristic, or aspirational.
 
-**Current version at time of writing:** 0.0.25
+**Current version at time of writing:** 0.0.32
 
 ---
 
@@ -288,6 +288,33 @@ The following items from this document have received direct code-level attention
 - Lint errors resolved.
 - Tool count documentation synchronized (now consistently 39).
 
+### v0.0.32 hardening (2026-10-13)
+- **Runtime smoke test added** (`runtime-smoke.test.ts`): spawns the compiled MCP
+  server over stdio and verifies exports resolution + 39 tools — closes the gap
+  where unit tests passed but the published artifact crashed (`ERR_PACKAGE_PATH_NOT_EXPORTED`).
+- **`exports` subpaths fixed** in `atabey` (`./src/*`) and `atabey-mcp`
+  (`./utils/*`, `./shared/*`) — the double-`.js` mapping bug.
+- **Node.js engine aligned to `>=22`** across runtime checks, bin wrappers, and docs.
+- **Dependency vulnerabilities cleared**: `npm audit` now reports 0 (was 18, incl.
+  3 critical RCE in `tinypool`); test runner upgraded to Vitest 5.
+- **Language selection completed**: `--backend` / `--frontend` / `--native` flags,
+  non-interactive `--yes` selection, interactive native (Rust/Go) prompt, and
+  `nativeLanguage` persisted to `config.json`.
+- **Real application scaffolding**: `atabey init` now generates a runnable
+  skeleton under `apps/` (Node/Go/Python/.NET/Java/Rust backend · Vite/Next/Vanilla
+  frontend · React Native mobile · Rust/Go native FFI tier), gated by `--focus`.
+- **Native/platform tier policy**: Rust or Go is mandatory; TypeScript forbidden
+  (enforced via `native-standards.md` and the `@native` agent rules).
+- **CI green**: `atabey check` exits 0 (framework-monorepo memory/agent-dir checks
+  are now optional, not hard failures).
+
 These changes make the governance and risk control layers more robust and restart-safe, better aligning the implementation with the project's "AI Governance" identity.
 
 More items (sandboxing, universal permission enforcement, real tokenization, full E2E testing) remain as documented above.
+
+## Known Consolidation Debt
+
+- **Storage SSOT**: two near-duplicate `AtabeyStorage` implementations exist
+  (`packages/atabey/src/shared/storage.ts`, `packages/atabey-mcp/src/shared/storage.ts`)
+  plus the shared `databaseHolder`. Consolidation plan: `docs/storage-ssot-plan.md`.
+- **Sandboxing** (section 1) remains the single highest-risk gap and is unchanged.

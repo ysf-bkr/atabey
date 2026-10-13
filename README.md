@@ -2,7 +2,7 @@
 
 > **Language / Dil:** [English](#atabey--mcp-based-multi-agent-orchestration-tool) · [Türkçe](#türkçe)
 
-*Pre-alpha · v0.0.32 · Single-developer project · 519 tests passing (78 files)*
+*Pre-alpha · v0.0.32 · Single-developer project · 536 tests passing (80 files)*
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![npm](https://img.shields.io/npm/v/atabey)](https://www.npmjs.com/package/atabey)
@@ -184,9 +184,9 @@ Disable auto-start: set `"orchestrator": { "autoStart": false }` in `.atabey/con
 
 ### Project kinds
 
-| Kind | Where | App paths (`apps/backend`, `apps/web`) |
-|------|-------|----------------------------------------|
-| **consumer** | Your application repo after `atabey init` | ✅ Scaffolded by init |
+| Kind | Where | App code scaffolding |
+|------|-------|----------------------|
+| **consumer** | Your application repo after `atabey init` | ✅ Governance layer (`.atabey/`) + agents + **real app skeleton under `apps/`** (backend/frontend/mobile/native) matching your stack selection |
 | **framework-monorepo** | This GitHub repository (`packages/*`) | ❌ Not applicable — use `packages/atabey`, `packages/atabey-mcp/dashboard` |
 
 ---
@@ -195,8 +195,8 @@ Disable auto-start: set `"orchestrator": { "autoStart": false }` in `.atabey/con
 
 ### 1. Initialize Atabey in Your Project
 
-> **Consumer projects:** `atabey init` scaffolds `apps/backend`, `apps/web`, `docs/`, etc.
-> The **Atabey framework monorepo** itself does not contain `apps/*` — those paths appear only after you install Atabey in your own application repository.
+> **Consumer projects:** `atabey init` scaffolds the governance layer (`.atabey/` brain, agent definitions, standards, docs) **and** a real, runnable application skeleton under `apps/` based on your stack selection (`--backend`, `--frontend`, `--focus`, `--native`). You get working project files — `go.mod`/`main.go`, `Cargo.toml`/`main.rs`, `package.json`/`index.ts`, `pom.xml`, `requirements.txt`, React/Next frontends, and a Rust/Go native (FFI) tier — all governed by Atabey from the first commit.
+> The **Atabey framework monorepo** itself does not contain `apps/*` — those paths apply only to your own application repositories.
 
 ```bash
 # Single platform (your app repo)
@@ -379,7 +379,7 @@ Atabey AL supports **7 platforms** with automatic adapter configuration:
 
 | Requirement | Version |
 |------------|---------|
-| **Node.js** | >= 18.0.0 |
+| **Node.js** | >= 22.0.0 |
 | **npm** | >= 9.0.0 |
 | **AI Interface** | Claude Code, Gemini CLI, Cursor, Codex CLI, Grok, Antigravity, Local LLM |
 
@@ -459,6 +459,33 @@ npx atabey init gemini --profile enterprise
 | **Security** | Human-in-the-Loop, KVKK PII masking, audit log |
 | **Governance** | Full governance with circuit breakers |
 | **Best For** | Enterprise with compliance requirements |
+
+### Stack-Based Application Scaffolding
+
+`atabey init` generates a **real, runnable** application skeleton under `apps/` that matches your stack selection. Choose the backend, frontend, and native/platform languages and get working project files — all governed by Atabey from the first commit.
+
+```bash
+# Go backend + Next.js frontend, Rust native tier (mobile)
+npx atabey init gemini --profile team --yes --focus mobile-fullstack --backend go --frontend next --native rust
+```
+
+| Selection | Generated under `apps/` | Key files |
+|-----------|-------------------------|-----------|
+| **Backend `node`** | `apps/backend/` | `package.json`, `tsconfig.json`, `src/index.ts` (Fastify) |
+| **Backend `go`** | `apps/backend/` | `go.mod`, `main.go`, `internal/server/` |
+| **Backend `python`** | `apps/backend/` | `requirements.txt`, `main.py` (FastAPI) |
+| **Backend `dotnet`** | `apps/backend/` | `<name>.csproj`, `Program.cs` |
+| **Backend `java`** | `apps/backend/` | `pom.xml`, `src/main/java/.../Application.java` (Spring Boot) |
+| **Backend `rust`** | `apps/backend/` | `Cargo.toml`, `src/main.rs` (Axum) |
+| **Frontend `vite`** | `apps/web/` | `package.json`, `vite.config.ts`, `src/App.tsx` |
+| **Frontend `next`** | `apps/web/` | `package.json`, `next.config.mjs`, `app/` |
+| **Frontend `vanilla`** | `apps/web/` | `index.html`, `style.css`, `app.js` |
+| **Mobile** | `apps/mobile/` | `package.json`, `App.tsx` (Expo / React Native) |
+| **Native `rust`** | `apps/native/` | `Cargo.toml` (cdylib), `src/lib.rs` — FFI tier |
+| **Native `go`** | `apps/native/` | `go.mod`, `main.go` — FFI tier |
+
+> **`--focus` gating:** `fullstack` → backend + frontend · `backend` → backend only · `frontend` → frontend only · `mobile` → mobile + native · `mobile-fullstack` → backend + mobile + native.
+> The **native/platform tier is Rust or Go only** (TypeScript is forbidden here — see [native-standards](#native--platform-layer-standards)).
 
 ---
 
@@ -697,9 +724,18 @@ atabey quickstart               Generate example task file
 | `[adapter]` | `gemini`, `claude`, `cursor`, `grok`, `codex`, `local`, `antigravity-cli` | Target AI platform |
 | `--profile` | `freelancer`, `team`, `enterprise` | Preset agent group layout |
 | `--focus` | `fullstack`, `backend`, `frontend`, `mobile`, `mobile-fullstack` | Project type optimization |
-| `--lang` | `tr`, `en` | Constitution language |
+| `--backend` | `node`, `go`, `java`, `python`, `dotnet`, `rust` | Backend application-tier language (aliases accepted, e.g. `golang`, `fastapi`) |
+| `--frontend` | `vite`, `next`, `vanilla` | Frontend framework (aliases: `react`, `nextjs`, `html`) |
+| `--native` | `rust`, `go` | Native/platform-tier language (TypeScript is forbidden for this tier) |
+| `--lang` | `tr`, `en` | Constitution language (content is English-only) |
 | `--unified` | Flag | Multi-platform export |
 | `--yes` | Flag | Non-interactive mode |
+
+> **Language selection:** In interactive mode you are prompted for backend, frontend, and native languages. With `--yes`, pass them explicitly, e.g.:
+> ```bash
+> atabey init gemini --profile team --yes --backend go --frontend next --native rust
+> ```
+> The native/platform tier must be **Rust or Go**. Selections are stored in `.atabey/config.json` and drive the `run_tests` / lint commands the agents use.
 
 ---
 
@@ -1051,7 +1087,7 @@ npx atabey init claude --unified   # tüm platformlara export
 
 | Gereksinim | Sürüm |
 |------------|--------|
-| Node.js | >= 18 |
+| Node.js | >= 22 |
 | npm | >= 9 |
 | AI arayüzü | Claude, Gemini, Cursor, Codex, Grok, Antigravity veya local LLM |
 

@@ -116,7 +116,7 @@ export function scaffoldFrameworkConfigs(
     adapter: AdapterConfig,
     dryRun: boolean,
     selectedPalette: string,
-    options?: { unified?: boolean; adapters?: string[]; backendLanguage?: string; frontendFramework?: string; language?: SupportedLanguage; profile?: string; agents?: string[] }
+    options?: { unified?: boolean; adapters?: string[]; backendLanguage?: string; frontendFramework?: string; nativeLanguage?: string; language?: SupportedLanguage; profile?: string; agents?: string[] }
 ) {
     if (dryRun) return;
     const frameworkDir = path.join(targetDir, fDir);
@@ -139,6 +139,7 @@ export function scaffoldFrameworkConfigs(
         paths,
         backendLanguage: options?.backendLanguage || "Node.js (TypeScript)",
         frontendFramework: options?.frontendFramework || "Vite (React)",
+        nativeLanguage: options?.nativeLanguage || "Rust",
         language: language,
         theme: {
             palette: selectedPalette,

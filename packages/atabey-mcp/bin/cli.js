@@ -27,18 +27,18 @@ const ERRORS = {
 ╔══════════════════════════════════════════════════════════╗
 ║  ⚠️  Unsupported Node.js version                       ║
 ╠══════════════════════════════════════════════════════════╣
-║  Atabey requires Node.js >= 18.0.0                      ║
+║  Atabey requires Node.js >= 22.0.0                      ║
 ║                                                         ║
 ║  Current version: {version}                             ║
 ║                                                         ║
 ║  📋  To fix this:                                       ║
-║     • Install Node.js 18+ via:                          ║
-║       nvm install 18  (if using nvm)                    ║
+║     • Install Node.js 22+ via:                          ║
+║       nvm install 22  (if using nvm)                    ║
 ║       brew install node  (if using Homebrew)            ║
 ║       https://nodejs.org  (official installer)          ║
 ║                                                         ║
 ║     • Then switch to it:                                ║
-║       nvm use 18    (if using nvm)                      ║
+║       nvm use 22    (if using nvm)                      ║
 ╚══════════════════════════════════════════════════════════╝
 `,
     SPAWN_FAILED: `
@@ -59,7 +59,7 @@ const ERRORS = {
 
 // ─── Node.js Version Check ────────────────────────────────────────
 const nodeMajor = parseInt(process.versions.node.split(".")[0], 10);
-if (nodeMajor < 18) {
+if (nodeMajor < 22) {
     process.stderr.write(ERRORS.NODE_VERSION.replace("{version}", process.versions.node));
     process.exit(1);
 }

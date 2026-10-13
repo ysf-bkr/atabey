@@ -45,6 +45,7 @@ This document outlines the strict ESLint coding standards for Agent Atabey proje
         { file: "nextjs-standards.md", template: "templates/standards/nextjs-standards.md", default: "# [REACT] Corporate Next.js Standards" },
         { file: "tailwind-standards.md", template: "templates/standards/tailwind-standards.md", default: "# 🌊 Corporate Tailwind Standards" },
         { file: "mobile-standards.md", template: "templates/standards/mobile-standards.md", default: "# 📱 Corporate Mobile Standards" },
+        { file: "native-standards.md", template: "templates/standards/native-standards.md", default: "# [NATIVE] Corporate Native / Platform-Layer Standards (Rust / Go)" },
         { file: "security-standards.md", template: "templates/standards/security-standards.md", default: "# [SECURITY] Corporate Security Standards" },
         { file: "quality-standards.md", template: "templates/standards/quality-standards.md", default: "# [CHECK] Corporate Code Quality Standards" },
         { file: "logging-and-secrets.md", template: "templates/standards/logging-and-secrets.md", default: "# 🪵 Corporate Logging Standards" },

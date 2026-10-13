@@ -74,7 +74,7 @@ export async function checkCommand() {
 
     const checks = [
         { name: "Constitution (ATABEY.md)", path: constitutionPath },
-        { name: "Memory (PROJECT_MEMORY.md)", path: path.relative(process.cwd(), memoryPath) },
+        { name: "Memory (PROJECT_MEMORY.md)", path: path.relative(process.cwd(), memoryPath), optional: isFrameworkDevelopment },
         { name: "Command Map (cli-commands.json)", path: path.join(frameworkDir, "cli-commands.json") },
         { name: "Framework Config (config.json)", path: path.join(frameworkDir, "config.json") },
         { name: "Agent Status (STATUS.md)", path: path.join(frameworkDir, "STATUS.md") },
@@ -295,6 +295,8 @@ export async function checkCommand() {
                 issues++;
             }
         });
+    } else if (isFrameworkDevelopment) {
+        UI.warning("No active agent instruction directory detected — expected in the framework monorepo (adapter dirs are gitignored). Run 'npm run atabey:setup' to scaffold locally.");
     } else {
         UI.warning("No active agent instruction directory detected. Run 'atabey init [adapter]' first.");
         issues++;

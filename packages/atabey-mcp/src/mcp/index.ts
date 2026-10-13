@@ -31,17 +31,17 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 function validateEnvironment(): void {
     // Node.js version check
     const nodeMajor = parseInt(process.versions.node.split(".")[0], 10);
-    if (nodeMajor < 18) {
+    if (nodeMajor < 22) {
         process.stderr.write(`
 ╔══════════════════════════════════════════════════════════╗
 ║  ⚠️  Unsupported Node.js version                       ║
 ╠══════════════════════════════════════════════════════════╣
-║  Atabey MCP requires Node.js >= 18.0.0                  ║
+║  Atabey MCP requires Node.js >= 22.0.0                  ║
 ║                                                         ║
 ║  Current version: ${process.versions.node}                             ║
 ║                                                         ║
 ║  📋  To fix this:                                       ║
-║     nvm install 18 && nvm use 18   (if using nvm)      ║
+║     nvm install 22 && nvm use 22   (if using nvm)      ║
 ║     brew install node             (if using Homebrew)  ║
 ║     https://nodejs.org            (official installer) ║
 ╚══════════════════════════════════════════════════════════╝
