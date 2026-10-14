@@ -81,7 +81,7 @@ export async function bootstrapOrchestrator(
     AgentLoop.start(activeAgents, intervalMs);
 
     if (!timeoutHandle) {
-        const { Storage } = await import("atabey/src/shared/storage.js");
+        const { Storage } = await import("../../shared/storage.js");
         timeoutHandle = setInterval(() => {
             try {
                 const agents = Storage.getAllAgents();

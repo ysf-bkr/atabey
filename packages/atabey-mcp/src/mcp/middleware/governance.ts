@@ -1,4 +1,4 @@
-import { generateULID } from "atabey/src/cli/utils/time.js";
+import { generateULID } from "atabey-shared/time.js";
 import { logger } from "../../shared/logger.js";
 import { maskToolArgs, maskToolResult } from "../../shared/pii.js";
 import { Storage } from "../../shared/storage.js";

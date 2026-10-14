@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { getFrameworkDir } from "atabey/src/cli/utils/memory.js";
+import { resolveFrameworkDir } from "./security.js";
 import {
     bootstrapOrchestrator,
     isOrchestratorActive,
@@ -18,7 +18,9 @@ export interface WebConfig {
 let cachedConfig: WebConfig | null = null;
 
 function getConfigPath(): string {
-    const dir = getFrameworkDir();
+    const root = cachedConfig?.projectPath || process.env.ATABEY_PROJECT_ROOT || process.cwd();
+    const relDir = resolveFrameworkDir(root);
+    const dir = path.isAbsolute(relDir) ? relDir : path.resolve(root, relDir);
     if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
     }
@@ -41,7 +43,7 @@ export function loadWebConfig(): WebConfig {
         }
     }
     cachedConfig = {
-        projectPath: path.resolve(getFrameworkDir(), "../"),
+        projectPath: process.env.ATABEY_PROJECT_ROOT || process.cwd(),
         activeProvider: "gemini",
     };
     return cachedConfig;

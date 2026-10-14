@@ -49,17 +49,20 @@ async function startMcpServer() {
     if (!fs.existsSync(mcpPath)) {
         mcpPath = path.join(process.cwd(), "node_modules/atabey-mcp/dist/atabey-mcp/src/mcp/index.js");
         if (!fs.existsSync(mcpPath)) {
-            mcpPath = path.resolve(__dirname, "../../../atabey-mcp/src/mcp/index.ts");
-            runner = "npx";
-            if (!fs.existsSync(mcpPath)) {
-                UI.error(`MCP Server entry point not found at ${mcpPath}`);
-                UI.info("Try running 'npm run build' first.");
-                process.exit(70);
+            const devPath = path.resolve(__dirname, "../../../atabey-mcp/src/mcp/index.ts");
+            if (fs.existsSync(devPath)) {
+                mcpPath = devPath;
+                runner = "npx";
+            } else {
+                runner = "npx";
+                mcpPath = "atabey-mcp";
             }
         }
     }
 
-    const args = runner === "npx" ? ["tsx", mcpPath] : [mcpPath];
+    const args = runner === "npx"
+        ? (mcpPath === "atabey-mcp" ? ["-y", "atabey-mcp"] : ["tsx", mcpPath])
+        : [mcpPath];
 
     UI.success("MCP Server starting via " + runner + "...");
     logger.info("[MCP] Starting MCP server", { runner, path: mcpPath });

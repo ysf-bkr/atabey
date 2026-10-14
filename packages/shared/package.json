@@ -1,6 +1,6 @@
 {
   "name": "atabey-shared",
-  "version": "0.0.33",
+  "version": "0.0.35",
   "description": "Shared utility modules for Atabey — AI Governance & Multi-Agent Platform / Orchestrator",
   "author": "Yusuf BEKAR",
   "license": "AGPL-3.0",
@@ -55,7 +55,8 @@
     "./sandbox-fs.js": "./dist/sandbox-fs.js",
     "./resilience.js": "./dist/resilience.js",
     "./policy-gate.js": "./dist/policy-gate.js",
-    "./storage.js": "./dist/storage.js"
+    "./storage.js": "./dist/storage.js",
+    "./time.js": "./dist/time.js"
   },
   "scripts": {
     "build": "tsc",
