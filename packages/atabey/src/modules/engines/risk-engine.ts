@@ -14,22 +14,32 @@ import { RiskAssessment, RiskFactor, RiskSeverity } from "./types.js";
  */
 export class RiskEngine {
     private static HIGH_RISK_KEYWORDS = [
-        { word: "delete",   weight: 40 },
-        { word: "drop",     weight: 50 },
-        { word: "truncate", weight: 50 },
-        { word: "rm -rf",   weight: 60 },
-        { word: "purge",    weight: 40 },
-        { word: "format",   weight: 50 },
-        { word: "force",    weight: 20 },
+        { word: "delete",         weight: 40 },
+        { word: "drop",           weight: 50 },
+        { word: "truncate",       weight: 50 },
+        { word: "rm -rf",         weight: 60 },
+        { word: "purge",          weight: 40 },
+        { word: "format",         weight: 50 },
+        { word: "force",          weight: 20 },
+        { word: "shred",          weight: 60 },
+        { word: "mkfs",           weight: 60 },
+        { word: "wipefs",         weight: 60 },
+        { word: "chmod 777",      weight: 50 },
+        { word: "git reset --hard", weight: 50 },
     ];
 
     private static SENSITIVE_PATHS = [
-        { pattern: /\.env/i,      weight: 50 },
-        { pattern: /config/i,     weight: 20 },
-        { pattern: /database/i,   weight: 30 },
-        { pattern: /auth/i,       weight: 30 },
-        { pattern: /security/i,   weight: 30 },
-        { pattern: /atabey/i,     weight: 40 }, // Framework self-protection
+        { pattern: /\.env/i,                                  weight: 50 },
+        { pattern: /config/i,                                 weight: 20 },
+        { pattern: /database/i,                               weight: 30 },
+        { pattern: /auth/i,                                   weight: 30 },
+        { pattern: /security/i,                               weight: 30 },
+        { pattern: /atabey/i,                                 weight: 40 }, // Framework self-protection
+        { pattern: /\.\.[\/\\]/,                              weight: 60 }, // Directory traversal escape
+        { pattern: /(?:^|\/)(\.ssh|\.gnupg|\.aws|\.kube|\.docker)(?:\/|$)/i, weight: 60 }, // Secret stores
+        { pattern: /(?:^|\/)(etc|usr|bin|sbin|var|root)(?:\/|$)/i,           weight: 70 }, // Host system dirs
+        { pattern: /(?:id_rsa|id_ed25519|\.pem|\.key|\.crt|passwd|shadow)/i, weight: 60 }, // Private keys/creds
+        { pattern: /\.(npmrc|yarnrc|netrc)\b/i,               weight: 50 }, // Package auth
     ];
 
     // ─── Behavioral Signal Patterns ──────────────────────────────────────────

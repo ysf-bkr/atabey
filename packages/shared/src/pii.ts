@@ -39,10 +39,8 @@ const SENSITIVE_PATTERNS = [
     // Date of birth patterns - must be before generic phone
     { pattern: /\b(0[1-9]|[12][0-9]|3[01])[/.-](0[1-9]|1[0-2])[/.-](19[0-9]{2}|20[0-9]{2})\b/g, replacement: "**/**/****" },
 
-    // IBAN (international bank account) - must be before generic alphanumeric patterns
-    // Only matches valid IBAN format: 2 letters + 2 digits + 4-30 alphanumeric chars
-    // More specific: requires minimum 8 chars total, starts with country code
-    { pattern: /\b[A-Z]{2}[0-9]{2}[A-Z0-9]{4,30}\b/g, replacement: "****-IBAN-REDACTED-****" },
+    // IBAN (international bank account) - strictly matches ISO country codes and length >= 15
+    { pattern: /\b(?:TR|DE|FR|GB|IT|ES|NL|CH|AT|BE|PL|SE|NO|DK|FI|PT|GR|IE|CZ|RO|HU|BG|HR|LT|SI|LV|EE|CY|LU|MT|SK|US|CA)\d{2}[A-Z0-9]{11,30}\b/g, replacement: "****-IBAN-REDACTED-****" },
 
     // TC Kimlik (11 digits starting with 1-9, isolated word boundary) - must be before phone
     { pattern: /\b[1-9][0-9]{10}\b/g, replacement: "***********" },
@@ -50,11 +48,13 @@ const SENSITIVE_PATTERNS = [
     // Email
     { pattern: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, replacement: "***@***" },
 
-    // Phone (Turkish: +90 5xx xxx xx xx) - specific before generic
-    { pattern: /(\+90|0)?\s?[0-9]{3}\s?[0-9]{3}\s?[0-9]{2}\s?[0-9]{2}/g, replacement: "***-***-****" },
+    // Phone (Turkish: +90 5xx xxx xx xx, 05xx xxx xx xx, or formatted 5xx xxx xx xx)
+    { pattern: /(?:(?:\+90|0090|\b0)[\s.-]?)5\d{2}[\s.-]?\d{3}[\s.-]?\d{2}[\s.-]?\d{2}\b/g, replacement: "***-***-****" },
+    { pattern: /\b5\d{2}[\s.-]\d{3}[\s.-]\d{2}[\s.-]\d{2}\b/g, replacement: "***-***-****" },
 
-    // Phone (international: +90, +1, +44, +49, +33, etc.) - generic, keep last among phones
-    { pattern: /(\+\d{1,2}[\s-]?)?\(?\d{2,4}\)?[\s-]?\d{2,4}[\s-]?\d{2,4}[\s-]?\d{2,4}/g, replacement: "***-***-****" },
+    // Phone (international with leading + or delimited format e.g. +1 (555) 123-4567, +44 20 7946 0950)
+    // Delimiters or leading '+' are strictly required so that raw Unix timestamps / IDs are not falsely masked.
+    { pattern: /\b(?:\+\d{1,3}[\s.-]?)?(?:\(\d{2,4}\)[\s.-]?|\d{2,4}[\s.-])\d{3,4}[\s.-]\d{2,4}(?:[\s.-]\d{2,4})?\b/g, replacement: "***-***-****" },
 
     // IP addresses (IPv4)
     { pattern: /\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b/g, replacement: "***.***.***.***" },
@@ -63,16 +63,20 @@ const SENSITIVE_PATTERNS = [
     // IPv6 compressed
     { pattern: /\b(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}\b/g, replacement: "****:****:****" },
 
-    // Credit card (16 digits, optional spaces/dashes)
-    { pattern: /\b(?:\d[ -]*?){13,16}\b/g, replacement: "****-****-****-****" },
+    // Credit card (Delimited 16 digits or major card issuer BIN prefixes: Visa 4, MC 51-55/22-27, Discover 6011/65)
+    // Prevents false-positive masking of 13-digit Unix timestamps (e.g. 1713000000000)
+    { pattern: /\b\d{4}[ -]\d{4}[ -]\d{4}[ -]\d{4}\b/g, replacement: "****-****-****-****" },
+    { pattern: /\b4\d{3}[ -]?\d{4}[ -]?\d{4}[ -]?\d{4}\b/g, replacement: "****-****-****-****" },
+    { pattern: /\b(?:5[1-5]\d{2}|222[1-9]|22[3-9]\d|2[3-6]\d{2}|27[01]\d|2720)[ -]?\d{4}[ -]?\d{4}[ -]?\d{4}\b/g, replacement: "****-****-****-****" },
+    { pattern: /\b(?:6011|65\d{2})[ -]?\d{4}[ -]?\d{4}[ -]?\d{4}\b/g, replacement: "****-****-****-****" },
     // AMEX (15 digits, starts with 34/37)
     { pattern: /\b3[47][0-9\s-]{13,14}\b/g, replacement: "****-****-***" },
 
     // Password fields in JSON
     { pattern: /"(password|passwd|secret|api_key|apiKey|apikey|auth_token|refresh_token|access_token)"\s*:\s*"[^"]+"/gi, replacement: "\"$1\": \"***-REDACTED-***\"" },
 
-    // Turkish address patterns (optional - sokak, cadde, mahalle, no:)
-    { pattern: /(?:no|no:|numara)[:\s]*\d+/gi, replacement: "no: ****" },
+    // Turkish address patterns (contextual: only when accompanied by street/neighborhood identifiers)
+    { pattern: /(?:(?:sokak|cadde|mahalle|bulvar|apt|daire|blok)[^,\n]*\b(?:no|kapı no|daire no|numara)[:\s]*\d+)/gi, replacement: "no: ****" },
 ];
 
 // Fields that are considered sensitive and should always be redacted in structured data

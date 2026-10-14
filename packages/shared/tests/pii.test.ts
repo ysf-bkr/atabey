@@ -69,6 +69,12 @@ describe("PII Masking Service", () => {
             expect(result).toContain("***-REDACTED-***");
             expect(result).not.toContain("mySecret123");
         });
+
+        it("should NOT corrupt technical data such as Unix timestamps or variable names", () => {
+            expect(maskText("Build timestamp: 1713000000000")).toBe("Build timestamp: 1713000000000");
+            expect(maskText("const AZ12testValue = 42;")).toBe("const AZ12testValue = 42;");
+            expect(maskText("Issue no: 42 in backlog")).toBe("Issue no: 42 in backlog");
+        });
     });
 
     describe("maskObject", () => {

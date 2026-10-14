@@ -1023,6 +1023,17 @@ export class AtabeyStorage {
         }
     }
 
+    public static checkIntegrity(): { ok: boolean; message: string } {
+        try {
+            const db = this.getDB();
+            const rows = db.pragma("quick_check") as Array<{ quick_check: string }>;
+            const status = rows && rows[0] ? rows[0].quick_check : "unknown";
+            return { ok: status === "ok", message: status };
+        } catch (err) {
+            return { ok: false, message: (err as Error).message };
+        }
+    }
+
     public static reset() {
         if (this.db) {
             this.db.close();
