@@ -18,3 +18,4 @@ export * from "./sandbox-runtime.js";
 export * from "./sandbox-fs.js";
 export * from "./resilience.js";
 export * from "./policy-gate.js";
+export * from "./storage.js";

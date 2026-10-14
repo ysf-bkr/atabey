@@ -54,7 +54,8 @@
     "./sandbox-runtime.js": "./dist/sandbox-runtime.js",
     "./sandbox-fs.js": "./dist/sandbox-fs.js",
     "./resilience.js": "./dist/resilience.js",
-    "./policy-gate.js": "./dist/policy-gate.js"
+    "./policy-gate.js": "./dist/policy-gate.js",
+    "./storage.js": "./dist/storage.js"
   },
   "scripts": {
     "build": "tsc",

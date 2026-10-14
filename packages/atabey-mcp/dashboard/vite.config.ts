@@ -9,7 +9,7 @@ const WS_TARGET = process.env.VITE_WS_TARGET || "ws://localhost:5858";
 export default defineConfig({
     plugins: [react()],
     build: {
-        outDir: "../dist/dashboard",
+        outDir: "dist",
         emptyOutDir: true,
     },
     server: {

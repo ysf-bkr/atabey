@@ -108,12 +108,13 @@ const FRAMEWORK_DIR = process.env.ATABEY_FRAMEWORK_DIR || path.join(PROJECT_ROOT
 // Resolve dashboard UI dist path across monorepo and npm install layouts
 function resolveDashboardPath(): string {
     const candidates = [
-        // Monorepo dev layout (source)
-        path.join(__dirname, "../../dashboard"),
         // Monorepo dev layout (built)
+        path.join(__dirname, "../../../../dashboard/dist"),
+        path.join(__dirname, "../../../dashboard/dist"),
         path.join(__dirname, "../../dashboard/dist"),
+        path.join(__dirname, "../../dashboard"),
         // npm global install layout
-        path.join(__dirname, "../../dashboard/dist"),
+        path.join(PROJECT_ROOT, "packages/atabey-mcp/dashboard/dist"),
         // npm local install (node_modules/atabey-mcp)
         path.join(PROJECT_ROOT, "node_modules/atabey-mcp/dashboard/dist"),
         path.join(PROJECT_ROOT, "node_modules/atabey-mcp/dashboard"),
