@@ -17,5 +17,5 @@
     }
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "src/cli/commands/dashboard.ts"]
+  "exclude": ["node_modules", "dist"]
 }

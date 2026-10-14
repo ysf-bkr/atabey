@@ -35,7 +35,7 @@ export class RiskEngine {
         { pattern: /auth/i,                                   weight: 30 },
         { pattern: /security/i,                               weight: 30 },
         { pattern: /atabey/i,                                 weight: 40 }, // Framework self-protection
-        { pattern: /\.\.[\/\\]/,                              weight: 60 }, // Directory traversal escape
+        { pattern: /\.\.[/\\]/,                               weight: 60 }, // Directory traversal escape
         { pattern: /(?:^|\/)(\.ssh|\.gnupg|\.aws|\.kube|\.docker)(?:\/|$)/i, weight: 60 }, // Secret stores
         { pattern: /(?:^|\/)(etc|usr|bin|sbin|var|root)(?:\/|$)/i,           weight: 70 }, // Host system dirs
         { pattern: /(?:id_rsa|id_ed25519|\.pem|\.key|\.crt|passwd|shadow)/i, weight: 60 }, // Private keys/creds
