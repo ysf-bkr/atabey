@@ -52,9 +52,9 @@
     "atabey:setup": "atabey init gemini --unified --profile freelancer --yes --lang en",
     "atabey:orchestrate": "atabey orchestrate",
     "atabey:test": "vitest run",
-    "atabey:build": "npm run build -w packages/atabey-mcp",
-    "atabey:trace": "atabey trace:new",
-    "atabey:verify": "atabey verify-contract",
+    "atabey:build": "npm run build --workspaces",
+    "atabey:trace": "atabey trace new",
+    "atabey:verify": "atabey contract",
     "atabey:test:watch": "vitest",
     "postinstall": "node scripts/atabey-postinstall.mjs"
   },

@@ -183,19 +183,52 @@ const COMMANDS: Record<string, { run: (args: string[]) => Promise<void>; descrip
         },
         description: "Verify contract integrity",
     },
+    hitl: {
+        run: async (args) => {
+            const sub = args[0] || "status";
+            const { hitlStatusCommand, hitlAnswerCommand, hitlApproveCommand, hitlRejectCommand } = await import("./commands/hitl.js");
+            if (sub === "status") {
+                await hitlStatusCommand();
+            } else if (sub === "answer") {
+                await hitlAnswerCommand(args.slice(1).join(" "));
+            } else if (sub === "approve") {
+                await hitlApproveCommand(args[1]);
+            } else if (sub === "reject") {
+                await hitlRejectCommand(args[1], args.slice(2).join(" "));
+            } else {
+                await hitlAnswerCommand(args.join(" "));
+            }
+        },
+        description: "Human-in-the-loop responses & approvals (status|answer|approve|reject)",
+    },
     knowledge: {
         run: async (args) => {
-            const { searchKnowledgeBaseCommand } = await import("./commands/knowledge.js");
-            await searchKnowledgeBaseCommand(args.join(" "));
+            const sub = args[0];
+            if (sub === "update" || sub === "store" || sub === "add") {
+                const { updateKnowledgeBaseCommand } = await import("./commands/knowledge.js");
+                await updateKnowledgeBaseCommand(args[1], args.slice(2).join(" "));
+            } else if (sub === "search") {
+                const { searchKnowledgeBaseCommand } = await import("./commands/knowledge.js");
+                await searchKnowledgeBaseCommand(args.slice(1).join(" "));
+            } else {
+                const { searchKnowledgeBaseCommand } = await import("./commands/knowledge.js");
+                await searchKnowledgeBaseCommand(args.join(" "));
+            }
         },
-        description: "Manage knowledge base (search|store|delete)",
+        description: "Manage knowledge base (search|update)",
     },
     log: {
         run: async (args) => {
-            const { logAgentActionCommand } = await import("./commands/log.js");
-            await logAgentActionCommand({ agent: args[0], action: "VIEW_LOG", status: "SUCCESS", summary: args.slice(1).join(" ") || "Agent log view" });
+            const { viewLogsCommand } = await import("./commands/log.js");
+            let limit = 20;
+            const limitIdx = args.findIndex(a => a === "--limit" || a === "-n");
+            if (limitIdx !== -1 && args[limitIdx + 1]) {
+                limit = parseInt(args[limitIdx + 1], 10) || 20;
+            }
+            const agentArg = args.find(a => !a.startsWith("-") && a !== `${limit}`);
+            await viewLogsCommand({ agent: agentArg, limit });
         },
-        description: "View agent execution logs",
+        description: "View agent execution logs (atabey log [@agent] [--limit 20])",
     },
     script: {
         run: async (args) => {
@@ -293,6 +326,7 @@ Core Commands:
   check                                                  System health check
   status                                                 Agent status + costs
   plan [submit <json>]                                   Task planning
+  hitl [status|answer|approve|reject]                    HITL responses & approvals
   approve <traceId>                                      Approve blocked task
   trace new|replay <id>                                  Execution traces
   memory update <section> <content>                      Project memory
@@ -301,9 +335,9 @@ Core Commands:
   security <path>                                        Security audit
   compliance <path>                                      Compliance check
   contract                                               Verify contract integrity
-  knowledge <query>                                      Knowledge base search
+  knowledge [search|update] <query>                      Knowledge base operations
   lint                                                   Run ESLint
-  log <agent> <message>                                  View agent logs
+  log [@agent] [--limit N]                               View agent logs
   script <name> [dir]                                    Run predefined script
   index [dir]                                            Index codebase for RAG
   coverage                                               Test coverage reports

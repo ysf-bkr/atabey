@@ -116,11 +116,61 @@ function isWriteCommand(parsed: { cmd: string; args: string[] }): boolean {
 }
 
 /**
+ * Tokenizes a command line string into tokens handling single and double quotes.
+ * Allows commands like `git commit -m "fix(auth): correct token expiry"` to preserve
+ * arguments with spaces without splitting them into words.
+ */
+export function tokenizeCommandLine(cmdString: string): string[] {
+    const tokens: string[] = [];
+    let current = "";
+    let inQuote: '"' | "'" | null = null;
+    let escaped = false;
+
+    for (let i = 0; i < cmdString.length; i++) {
+        const char = cmdString[i];
+
+        if (escaped) {
+            current += char;
+            escaped = false;
+            continue;
+        }
+
+        if (char === "\\") {
+            escaped = true;
+            continue;
+        }
+
+        if (inQuote) {
+            if (char === inQuote) {
+                inQuote = null;
+            } else {
+                current += char;
+            }
+        } else if (char === '"' || char === "'") {
+            inQuote = char;
+        } else if (/\s/.test(char)) {
+            if (current.length > 0) {
+                tokens.push(current);
+                current = "";
+            }
+        } else {
+            current += char;
+        }
+    }
+
+    if (current.length > 0) {
+        tokens.push(current);
+    }
+
+    return tokens;
+}
+
+/**
  * Parse a command string into executable + args array.
  * Uses spawn for safety (no shell injection).
  */
 function parseCommand(cmdString: string): { cmd: string; args: string[] } | null {
-    const parts = cmdString.trim().split(/\s+/);
+    const parts = tokenizeCommandLine(cmdString.trim());
     if (parts.length === 0) return null;
     return { cmd: parts[0], args: parts.slice(1) };
 }

@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { handleBatchSurgicalEdit } from "../../../../src/mcp/tools/file_system/batch_surgical_edit.js";
 import { handlePatchFile } from "../../../../src/mcp/tools/file_system/patch_file.js";
 import { handleReadFile } from "../../../../src/mcp/tools/file_system/read_file.js";
 import { handleReplaceText } from "../../../../src/mcp/tools/file_system/replace_text.js";
@@ -89,6 +90,41 @@ describe("File System Tools", () => {
             expect(fs.existsSync(metricsPath)).toBe(true);
             const metrics = JSON.parse(fs.readFileSync(metricsPath, "utf8"));
             expect(metrics[0].action).toContain("replace_text");
+        });
+
+        it("should preserve regex backreference patterns literally ($1, $&, $$)", async () => {
+            fs.writeFileSync(TEST_FILE, "const token = OLD_PATTERN;", "utf8");
+            const replacement = 'const token = text.replace(/foo/, "$1") + "$&" + "$$";';
+            const args: ToolArgs = {
+                path: TEST_FILE,
+                oldText: "const token = OLD_PATTERN;",
+                newText: replacement,
+            };
+            await handleReplaceText(TEST_DIR, args as any);
+            expect(fs.readFileSync(TEST_FILE, "utf8")).toBe(replacement + "\n");
+        });
+    });
+
+    describe("handleBatchSurgicalEdit", () => {
+        it("should perform batch surgical edits preserving regex backreference patterns literally", async () => {
+            const fileA = path.join(TEST_DIR, "fileA.ts");
+            const fileB = path.join(TEST_DIR, "fileB.ts");
+            fs.writeFileSync(fileA, "export const A = 'old_a';", "utf8");
+            fs.writeFileSync(fileB, "export const B = 'old_b';", "utf8");
+
+            const newTextA = 'export const A = "$1_processed";';
+            const newTextB = 'export const B = "$&_matched";';
+
+            const result = await handleBatchSurgicalEdit(TEST_DIR, {
+                edits: [
+                    { path: "fileA.ts", oldText: "export const A = 'old_a';", newText: newTextA },
+                    { path: "fileB.ts", oldText: "export const B = 'old_b';", newText: newTextB },
+                ]
+            });
+
+            expect(result.content[0].text).toContain("Successfully performed 2 edits");
+            expect(fs.readFileSync(fileA, "utf8")).toBe(newTextA + "\n");
+            expect(fs.readFileSync(fileB, "utf8")).toBe(newTextB + "\n");
         });
     });
 

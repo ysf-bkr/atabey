@@ -117,9 +117,10 @@ export class DistributedLock {
      */
     public static isLocked(resource: string): boolean {
         const db = databaseHolder.getDB();
+        const nowIso = new Date().toISOString();
         const lock = db.prepare(
-            `SELECT * FROM ${this.TABLE} WHERE resource = ? AND expiresAt > datetime('now')`
-        ).get(resource) as LockInfo | undefined;
+            `SELECT * FROM ${this.TABLE} WHERE resource = ? AND expiresAt > ?`
+        ).get(resource, nowIso) as LockInfo | undefined;
 
         return !!lock;
     }
@@ -143,9 +144,10 @@ export class DistributedLock {
     public static listActiveLocks(): LockInfo[] {
         const db = databaseHolder.getDB();
         this.releaseStaleLocks();
+        const nowIso = new Date().toISOString();
         return db.prepare(
-            `SELECT * FROM ${this.TABLE} WHERE expiresAt > datetime('now') ORDER BY acquiredAt DESC`
-        ).all() as LockInfo[];
+            `SELECT * FROM ${this.TABLE} WHERE expiresAt > ? ORDER BY acquiredAt DESC`
+        ).all(nowIso) as LockInfo[];
     }
 
     /**
@@ -175,9 +177,10 @@ export class DistributedLock {
      */
     private static releaseStaleLocks(): number {
         const db = databaseHolder.getDB();
+        const nowIso = new Date().toISOString();
         const result = db.prepare(
-            `DELETE FROM ${this.TABLE} WHERE expiresAt < datetime('now')`
-        ).run();
+            `DELETE FROM ${this.TABLE} WHERE expiresAt < ?`
+        ).run(nowIso);
 
         return result.changes;
     }

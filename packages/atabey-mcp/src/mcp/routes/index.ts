@@ -12,6 +12,7 @@ import { handleOrchestratorRoutes } from "./api-orchestrator.js";
 import { handleGovernanceRoutes } from "./api-governance.js";
 import { handleWorkspaceRoutes } from "./api-workspace.js";
 import { handleConfigRoutes } from "./api-config.js";
+import { handleFinOpsRoutes } from "./api-finops.js";
 
 export interface McpSession {
     transport: SSEServerTransport;
@@ -167,6 +168,7 @@ export async function handleRequest(
         if (await handleGovernanceRoutes(pathname, params, method, req, res, context)) return;
         if (await handleWorkspaceRoutes(pathname, params, method, req, res, context)) return;
         if (await handleConfigRoutes(pathname, params, method, req, res, context)) return;
+        if (await handleFinOpsRoutes(pathname, params, method, req, res, context)) return;
     }
 
     // SSE (legacy support)
@@ -179,12 +181,20 @@ export async function handleRequest(
     }
 
     // ───────────── STATIC UI ─────────────────────────────
-    const uiPath = path.join(UI_DIST_PATH, pathname === "/" ? "index.html" : pathname);
-    const finalPath = (fs.existsSync(uiPath) && !fs.statSync(uiPath).isDirectory())
-        ? uiPath
-        : path.join(UI_DIST_PATH, "index.html");
+    const resolvedDist = path.resolve(UI_DIST_PATH);
+    const sanitizedRelPath = path.normalize(pathname === "/" ? "index.html" : pathname).replace(/^(\.\.[/\\])+/, "");
+    const requestedPath = path.resolve(resolvedDist, sanitizedRelPath.startsWith("/") ? sanitizedRelPath.slice(1) : sanitizedRelPath);
 
-    if (fs.existsSync(finalPath) && !fs.statSync(finalPath).isDirectory()) {
+    const isInsideDist = requestedPath === resolvedDist || requestedPath.startsWith(resolvedDist + path.sep);
+    const candidatePath = (isInsideDist && fs.existsSync(requestedPath) && !fs.statSync(requestedPath).isDirectory())
+        ? requestedPath
+        : path.join(resolvedDist, "index.html");
+
+    const finalPath = (fs.existsSync(candidatePath) && !fs.statSync(candidatePath).isDirectory())
+        ? candidatePath
+        : null;
+
+    if (finalPath && (finalPath === resolvedDist || finalPath.startsWith(resolvedDist + path.sep))) {
         const ext = path.extname(finalPath).toLowerCase();
         const mimeTypes: Record<string, string> = {
             ".html": "text/html", ".js": "application/javascript", ".css": "text/css",

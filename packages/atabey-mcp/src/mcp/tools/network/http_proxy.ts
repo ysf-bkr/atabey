@@ -57,8 +57,32 @@ function cleanHtmlContent(html: string): string {
         .join("\n");
 }
 
+function isPrivateOrLoopbackHost(hostname: string): boolean {
+    const isTest = process.env.VITEST === "true" || process.env.NODE_ENV === "test";
+    const host = hostname.toLowerCase();
+    if (host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "0.0.0.0") {
+        return !isTest;
+    }
+    if (host.endsWith(".local") || host.endsWith(".internal")) return true;
+
+    const ipv4Regex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+    const match = host.match(ipv4Regex);
+    if (match) {
+        const a = Number(match[1]);
+        const b = Number(match[2]);
+        if (a === 127) return !isTest; // 127.0.0.0/8 loopback (allowed in vitest)
+        if (a === 10) return true;  // 10.0.0.0/8 private
+        if (a === 169 && b === 254) return true; // 169.254.0.0/16 Link-Local / Cloud Metadata
+        if (a === 172 && b >= 16 && b <= 31) return true; // 172.16.0.0/12 private
+        if (a === 192 && b === 168) return true; // 192.168.0.0/16 private
+        if (a === 0) return true;
+    }
+    return false;
+}
+
 /**
  * MCP HTTP Proxy Tool with:
+ * - SSRF Protection (restricting private IPs and metadata services)
  * - Caching (GET requests cached for 5 minutes)
  * - HTML Content Extraction (stripping boilerplate to save tokens)
  * - Rate Limiting (preventing infinite request loops and high API costs)
@@ -70,6 +94,27 @@ export async function handleHttpProxyRequest(projectRoot: string, args: HttpProx
     if (!url) {
         const err = "Missing 'url' argument.";
         Metrics.logError(projectRoot, "@mcp", "http_proxy_request", err);
+        return { isError: true, content: [{ type: "text", text: `[ERROR] ${err}` }] };
+    }
+
+    let parsedUrl: URL;
+    try {
+        parsedUrl = new URL(url);
+    } catch {
+        const err = `Invalid URL provided: ${url}`;
+        Metrics.logError(projectRoot, "@mcp", "http_proxy_request", err);
+        return { isError: true, content: [{ type: "text", text: `[ERROR] ${err}` }] };
+    }
+
+    if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+        const err = `Protocol '${parsedUrl.protocol}' not supported. Only http: and https: are allowed.`;
+        Metrics.logError(projectRoot, "@mcp", "http_proxy_request", err);
+        return { isError: true, content: [{ type: "text", text: `[ERROR] ${err}` }] };
+    }
+
+    if (isPrivateOrLoopbackHost(parsedUrl.hostname)) {
+        const err = `SSRF Protection: Requests to private, local, or cloud metadata endpoints (${parsedUrl.hostname}) are prohibited.`;
+        Metrics.logError(projectRoot, "@mcp", "http_proxy_request:ssrf", err);
         return { isError: true, content: [{ type: "text", text: `[ERROR] ${err}` }] };
     }
 

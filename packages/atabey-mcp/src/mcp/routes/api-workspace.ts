@@ -148,17 +148,18 @@ export async function handleWorkspaceRoutes(
         return true;
     }
 
-    // Browse directories
+    // Browse directories within project boundary
     if (pathname === "/api/project/browse-dirs" && method === "GET") {
         try {
-            const os = await import("os");
-            let target = params.path ? String(params.path) : "";
-            if (!target) {
-                const { loadWebConfig } = await import("../utils/web-config.js");
-                target = loadWebConfig().projectPath || os.homedir();
-            }
+            const { loadWebConfig } = await import("../utils/web-config.js");
+            const projectDir = path.resolve(loadWebConfig().projectPath || context.PROJECT_ROOT);
+            const reqPath = params.path ? String(params.path) : "";
+            const target = reqPath ? path.resolve(projectDir, reqPath) : projectDir;
 
-            target = path.resolve(target);
+            if (target !== projectDir && !target.startsWith(projectDir + path.sep)) {
+                serveJson(res, 403, { success: false, error: "Access denied: outside project directory" });
+                return true;
+            }
 
             if (!fs.existsSync(target)) {
                 serveJson(res, 404, { success: false, error: "Path not found" });
@@ -211,7 +212,7 @@ export async function handleWorkspaceRoutes(
 
             if (subDir) {
                 targetDir = path.resolve(projectDir, subDir);
-                if (!targetDir.startsWith(projectDir)) {
+                if (targetDir !== projectDir && !targetDir.startsWith(projectDir + path.sep)) {
                     serveJson(res, 403, { success: false, error: "Access denied" });
                     return true;
                 }
@@ -270,7 +271,7 @@ export async function handleWorkspaceRoutes(
             }
 
             const absoluteFilePath = path.resolve(projectDir, filePath);
-            if (!absoluteFilePath.startsWith(projectDir)) {
+            if (absoluteFilePath !== projectDir && !absoluteFilePath.startsWith(projectDir + path.sep)) {
                 serveJson(res, 403, { success: false, error: "Access denied" });
                 return true;
             }

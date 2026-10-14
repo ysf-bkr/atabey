@@ -40,6 +40,14 @@ describe("CLI Command Exports", () => {
         expect(mod.searchKnowledgeBaseCommand).toBeDefined();
     });
 
+    it("should export hitl commands", async () => {
+        const mod = await import("../../../src/cli/commands/hitl.js");
+        expect(mod.hitlStatusCommand).toBeDefined();
+        expect(mod.hitlAnswerCommand).toBeDefined();
+        expect(mod.hitlApproveCommand).toBeDefined();
+        expect(mod.hitlRejectCommand).toBeDefined();
+    });
+
     it("should export logAgentActionCommand", async () => {
         const mod = await import("../../../src/cli/commands/log.js");
         expect(mod.logAgentActionCommand).toBeDefined();

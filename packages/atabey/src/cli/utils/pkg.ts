@@ -186,12 +186,11 @@ export function mergePackageJson(targetPath: string, sourcePath: string): void {
   targetPkg.scripts = {
       ...targetPkg.scripts,
       "atabey:status": "atabey status",
-      "atabey:trace": "atabey trace:new",
-      "atabey:verify": "atabey verify-contract",
+      "atabey:trace": "atabey trace new",
+      "atabey:verify": "atabey contract",
       "atabey:check": "atabey check",
       "atabey:test": "vitest run",
       "atabey:test:watch": "vitest",
-      "atabey:build": `npm run build -w packages/atabey-mcp`,
   };
 
   const sourceDevDeps = sourcePkg.devDependencies || {};
@@ -217,7 +216,7 @@ export function mergePackageJson(targetPath: string, sourcePath: string): void {
 
   // Ensure basic fields
   if (!targetPkg.name) targetPkg.name = path.basename(process.cwd());
-  if (!targetPkg.version) targetPkg.version = "0.0.12";
+  if (!targetPkg.version) targetPkg.version = sourcePkg.version || "0.1.0";
   if (!targetPkg.type) targetPkg.type = "module";
   // DO NOT add atabey-mcp to workspaces in consumer projects
   // if (!targetPkg.workspaces) targetPkg.workspaces = ["atabey-mcp"];

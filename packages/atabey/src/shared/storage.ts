@@ -226,6 +226,23 @@ export class AtabeyStorage {
                 trace_id TEXT
             )
         `);
+
+        // Approvals Table
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS approvals (
+                trace_id TEXT PRIMARY KEY,
+                tool_name TEXT NOT NULL,
+                agent TEXT NOT NULL,
+                risk_score INTEGER NOT NULL,
+                risk_level TEXT NOT NULL,
+                reason TEXT NOT NULL,
+                args TEXT NOT NULL,
+                created_at INTEGER NOT NULL,
+                expires_at INTEGER NOT NULL,
+                status TEXT DEFAULT 'PENDING',
+                passcode TEXT
+            )
+        `);
     }
 
     public static saveLog(log: {
@@ -543,6 +560,141 @@ export class AtabeyStorage {
     public static getMetadata(key: string): string | null {
         const row = this.getDB().prepare("SELECT value FROM metadata WHERE key = ?").get(key) as { value: string } | undefined;
         return row ? row.value : null;
+    }
+
+    // --- Approval Operations ---
+
+    public static saveApprovalRequest(request: {
+        traceId: string;
+        toolName: string;
+        agent: string;
+        riskScore: number;
+        riskLevel: string;
+        reason: string;
+        args: Record<string, unknown>;
+        createdAt: number;
+        expiresAt: number;
+        status?: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
+        passcode?: string;
+    }): void {
+        const db = this.getDB();
+        db.prepare(`
+            INSERT OR REPLACE INTO approvals (
+                trace_id, tool_name, agent, risk_score, risk_level, reason, args,
+                created_at, expires_at, status, passcode
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+            request.traceId,
+            request.toolName,
+            request.agent,
+            request.riskScore,
+            request.riskLevel,
+            request.reason,
+            JSON.stringify(request.args),
+            request.createdAt,
+            request.expiresAt,
+            request.status || "PENDING",
+            request.passcode || null
+        );
+    }
+
+    public static updateApprovalStatus(
+        traceId: string,
+        status: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED"
+    ): void {
+        const db = this.getDB();
+        db.prepare("UPDATE approvals SET status = ? WHERE trace_id = ?").run(status, traceId);
+    }
+
+    public static getApproval(traceId: string): {
+        traceId: string;
+        toolName: string;
+        agent: string;
+        riskScore: number;
+        riskLevel: string;
+        reason: string;
+        args: Record<string, unknown>;
+        createdAt: number;
+        expiresAt: number;
+        status: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
+        passcode?: string;
+    } | null {
+        try {
+            const row = this.getDB().prepare("SELECT * FROM approvals WHERE trace_id = ?").get(traceId) as {
+                trace_id: string;
+                tool_name: string;
+                agent: string;
+                risk_score: number;
+                risk_level: string;
+                reason: string;
+                args: string;
+                created_at: number;
+                expires_at: number;
+                status: string;
+                passcode: string | null;
+            } | undefined;
+            if (!row) return null;
+            return {
+                traceId: row.trace_id,
+                toolName: row.tool_name,
+                agent: row.agent,
+                riskScore: row.risk_score,
+                riskLevel: row.risk_level,
+                reason: row.reason,
+                args: JSON.parse(row.args || "{}") as Record<string, unknown>,
+                createdAt: row.created_at,
+                expiresAt: row.expires_at,
+                status: row.status as "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED",
+                passcode: row.passcode || undefined
+            };
+        } catch {
+            return null;
+        }
+    }
+
+    public static getPendingApprovals(): Array<{
+        traceId: string;
+        toolName: string;
+        agent: string;
+        riskScore: number;
+        riskLevel: string;
+        reason: string;
+        args: Record<string, unknown>;
+        createdAt: number;
+        expiresAt: number;
+        status: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
+        passcode?: string;
+    }> {
+        try {
+            const rows = this.getDB().prepare("SELECT * FROM approvals WHERE status = 'PENDING'").all() as Array<{
+                trace_id: string;
+                tool_name: string;
+                agent: string;
+                risk_score: number;
+                risk_level: string;
+                reason: string;
+                args: string;
+                created_at: number;
+                expires_at: number;
+                status: string;
+                passcode: string | null;
+            }>;
+            return rows.map(row => ({
+                traceId: row.trace_id,
+                toolName: row.tool_name,
+                agent: row.agent,
+                riskScore: row.risk_score,
+                riskLevel: row.risk_level,
+                reason: row.reason,
+                args: JSON.parse(row.args || "{}") as Record<string, unknown>,
+                createdAt: row.created_at,
+                expiresAt: row.expires_at,
+                status: row.status as "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED",
+                passcode: row.passcode || undefined
+            }));
+        } catch {
+            return [];
+        }
     }
 
     public static reset() {

@@ -47,8 +47,9 @@ export async function handleCallToolWithGovernance(
             return { isError: true, content: [{ type: "text" as const, text: `[ERROR] Validation Error: ${validationError}` }] };
         }
 
-        // [PII/GDPR/KVKK] Mask args before handler
-        const maskedArgs = maskToolArgs(args || {});
+        const rawArgs = args || {};
+        // [PII/GDPR/KVKK] Mask args for audit/telemetry/logging only, NOT for mutating disk execution
+        const maskedArgs = maskToolArgs(rawArgs);
 
         // [POLICY GATE] Hard deny for mutating tools (path safety, recon, protected paths)
         // Phase 0 enterprise foundation — every mutating tool must pass this gate.
@@ -57,7 +58,7 @@ export async function handleCallToolWithGovernance(
             const policyDenial = denyIfMutatingBlocked({
                 projectRoot: PROJECT_ROOT,
                 tool: toolName,
-                args: maskedArgs,
+                args: rawArgs,
                 clientAgent,
             });
             if (policyDenial) {
@@ -173,7 +174,7 @@ export async function handleCallToolWithGovernance(
         if (toolName === "write_file" || toolName === "replace_text" || toolName === "patch_file") {
             try {
                 const { AutoRollbackEngine } = await import("../utils/auto-rollback.js");
-                const filePath = (maskedArgs.path as string) || "";
+                const filePath = (rawArgs.path as string) || "";
                 if (filePath) {
                     AutoRollbackEngine.prepareWrite(filePath, traceId);
                 }
@@ -204,14 +205,14 @@ export async function handleCallToolWithGovernance(
             logger.error(`[RISK GATE] Error: ${(e as Error).message}`);
         }
 
-        // Execute
-        const result = (await handler(PROJECT_ROOT, maskedArgs)) as { isError?: boolean; content: Array<{ type: "text"; text: string }> };
+        // Execute handler with raw arguments so code/file content is not corrupted by PII masking
+        const result = (await handler(PROJECT_ROOT, rawArgs)) as { isError?: boolean; content: Array<{ type: "text"; text: string }> };
 
         // [AUTO-ROLLBACK] Check write results for governance violations
         if (toolName === "write_file" || toolName === "replace_text" || toolName === "patch_file") {
             try {
-                const filePath = (maskedArgs.path as string) || "";
-                const content = (maskedArgs.content as string) || "";
+                const filePath = (rawArgs.path as string) || "";
+                const content = (rawArgs.content as string) || "";
                 if (filePath && content) {
                     const { AutoRollbackEngine } = await import("../utils/auto-rollback.js");
                     const { scanFileForViolations } = await import("../utils/rules-engine.js");

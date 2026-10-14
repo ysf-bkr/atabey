@@ -77,17 +77,26 @@ export async function handleOrchestratorRoutes(
         return true;
     }
 
-    // Approvals
+    // Approvals (Real Human-In-The-Loop gate from SQLite)
     if (pathname === "/api/approvals") {
         try {
-            const allMessages = Storage.getPendingMessages();
-            const approvals = allMessages.filter(m => m.category === "ALERT" || m.category === "ACTION")
-                .map(m => ({
-                    id: String(m.id || m.traceId), traceId: m.traceId,
-                    description: m.content ? (typeof m.content === "string" ? maskText(m.content) : maskText(JSON.stringify(m.content))) : "Approval required",
-                    status: m.status || "PENDING", timestamp: m.timestamp || new Date().toISOString()
-                }));
-            serveJson(res, 200, { success: true, data: approvals });
+            const { getPendingApprovals } = await import("../utils/human-in-loop.js");
+            const realApprovals = getPendingApprovals();
+            const data = realApprovals.map(a => ({
+                id: a.traceId,
+                traceId: a.traceId,
+                actionTitle: `${a.toolName} (@${a.agent})`,
+                toolName: a.toolName,
+                agent: a.agent,
+                riskScore: a.riskScore,
+                riskLevel: a.riskLevel,
+                riskSummary: a.reason,
+                riskAssessment: `Risk score ${a.riskScore}/100 (${a.riskLevel})`,
+                description: a.reason,
+                status: a.status || "Pending",
+                timestamp: new Date(a.createdAt).toISOString()
+            }));
+            serveJson(res, 200, { success: true, data });
         } catch (e) {
             serveJson(res, 500, { success: false, error: (e as Error).message });
         }
@@ -99,13 +108,11 @@ export async function handleOrchestratorRoutes(
         const traceId = pathname.replace("/api/approve/", "");
         if (!traceId) { serveJson(res, 400, { success: false, error: "Trace ID required" }); return true; }
         try {
-            const pendingMessages = Storage.getPendingMessages().filter(m => m.traceId === traceId && (m.category === "ALERT" || m.category === "ACTION"));
-            if (pendingMessages.length === 0) { serveJson(res, 404, { success: false, error: "No pending approval found" }); return true; }
             const { approveOperation } = await import("../utils/human-in-loop.js");
             const result = approveOperation(traceId, undefined, undefined, true);
             if (result.success) {
                 broadcastWS("approval", { traceId, status: "APPROVED" });
-                serveJson(res, 200, { success: true, message: result.message, approved: pendingMessages.length });
+                serveJson(res, 200, { success: true, message: result.message });
             } else {
                 serveJson(res, 400, { success: false, error: result.message });
             }
@@ -118,13 +125,11 @@ export async function handleOrchestratorRoutes(
         const traceId = pathname.replace("/api/reject/", "");
         if (!traceId) { serveJson(res, 400, { success: false, error: "Trace ID required" }); return true; }
         try {
-            const pendingMessages = Storage.getPendingMessages().filter(m => m.traceId === traceId && (m.category === "ALERT" || m.category === "ACTION"));
-            if (pendingMessages.length === 0) { serveJson(res, 404, { success: false, error: "No pending approval found" }); return true; }
             const { rejectOperation } = await import("../utils/human-in-loop.js");
             const result = rejectOperation(traceId, undefined, true);
             if (result.success) {
                 broadcastWS("approval", { traceId, status: "REJECTED" });
-                serveJson(res, 200, { success: true, message: result.message, rejected: pendingMessages.length });
+                serveJson(res, 200, { success: true, message: result.message });
             } else {
                 serveJson(res, 400, { success: false, error: result.message });
             }

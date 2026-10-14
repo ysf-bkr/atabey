@@ -59,9 +59,12 @@ export async function handleBatchSurgicalEdit(projectRoot: string, args: BatchSu
             }
         }
 
+        // Perform replacement(s).
+        // Use a function replacer so special patterns ($&, $1, $$) inside newText
+        // are treated literally and never reinterpreted as regex backreferences.
         const newContent = allowMultiple
-            ? content.replace(new RegExp(oldText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"), newText)
-            : content.replace(oldText, newText);
+            ? content.replace(new RegExp(oldText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"), () => newText)
+            : content.replace(oldText, () => newText);
 
         // ENFORCE CORPORATE COMPLIANCE
         verifyCorporateCompliance(newContent, edit.path);

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { handleRunCommand } from "../../../../src/mcp/tools/shell/run_command.js";
+import { handleRunCommand, tokenizeCommandLine } from "../../../../src/mcp/tools/shell/run_command.js";
 
 const { mockRunInSandbox } = vi.hoisted(() => ({
     mockRunInSandbox: vi.fn(),
@@ -93,5 +93,37 @@ describe("handleRunCommand", () => {
         expect(result.content[0].text).toContain("Command failed with exit code 1");
         expect(result.content[0].text).toContain("Error details");
         expect(result.content[0].text).toContain("sandbox:");
+    });
+
+    it("should correctly tokenize double and single quoted strings preserving spaces", () => {
+        const tokens = tokenizeCommandLine('git commit -m "fix(auth): fix password validation bug"');
+        expect(tokens).toEqual(["git", "commit", "-m", "fix(auth): fix password validation bug"]);
+
+        const singleQuoteTokens = tokenizeCommandLine("git commit -m 'feat: add user support'");
+        expect(singleQuoteTokens).toEqual(["git", "commit", "-m", "feat: add user support"]);
+    });
+
+    it("should execute git commit with quoted message preserving message as a single argument", async () => {
+        const args = { command: 'git commit -m "feat(core): initial industrial release"' };
+
+        mockRunInSandbox.mockResolvedValue({
+            code: 0,
+            stdout: "[main 1234567] feat(core): initial industrial release",
+            stderr: "",
+            runtime: "none",
+            engine: "none",
+            isolationLabel: "none",
+        });
+
+        const result = await handleRunCommand(projectRoot, args);
+
+        expect(mockRunInSandbox).toHaveBeenCalledWith({
+            command: "git",
+            args: ["commit", "-m", "feat(core): initial industrial release"],
+            projectRoot,
+            timeoutMs: 30000,
+        });
+        expect(result.isError).toBeUndefined();
+        expect(result.content[0].text).toContain("feat(core): initial industrial release");
     });
 });

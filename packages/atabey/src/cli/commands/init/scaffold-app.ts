@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { UI } from "../../utils/ui.js";
 import { ensureDir, writeTextFile } from "../../utils/fs.js";
+import { detectProjectKind } from "../../utils/memory.js";
 
 /**
  * Generates a real, runnable application skeleton under `apps/` based on the
@@ -81,57 +82,83 @@ coverage/
 
 export function scaffoldApp(projectRoot: string, opts: ScaffoldAppOptions): void {
     const created: string[] = [];
+    const skipped: string[] = [];
     const appsRoot = path.join(projectRoot, "apps");
+
+    // Guard: never scaffold a consumer app skeleton inside the Atabey framework
+    // monorepo itself — it uses packages/* instead of apps/*.
+    if (detectProjectKind(projectRoot) === "framework-monorepo") {
+        if (!opts.dryRun) {
+            UI.warning("  Skipped application scaffolding — framework monorepo uses packages/*, not apps/*.");
+        }
+        return;
+    }
 
     if (wantsBackend(opts.focus)) {
         const dir = path.join(appsRoot, "backend");
         switch (backendKind(opts.backendLanguage)) {
-            case "go": scaffoldGoBackend(dir, opts, created); break;
-            case "python": scaffoldPythonBackend(dir, opts, created); break;
-            case "dotnet": scaffoldDotnetBackend(dir, opts, created); break;
-            case "java": scaffoldJavaBackend(dir, opts, created); break;
-            case "rust": scaffoldRustBackend(dir, opts, created); break;
-            default: scaffoldNodeBackend(dir, opts, created); break;
+            case "go": scaffoldGoBackend(dir, opts, created, skipped); break;
+            case "python": scaffoldPythonBackend(dir, opts, created, skipped); break;
+            case "dotnet": scaffoldDotnetBackend(dir, opts, created, skipped); break;
+            case "java": scaffoldJavaBackend(dir, opts, created, skipped); break;
+            case "rust": scaffoldRustBackend(dir, opts, created, skipped); break;
+            default: scaffoldNodeBackend(dir, opts, created, skipped); break;
         }
     }
 
     if (wantsFrontend(opts.focus)) {
         const dir = path.join(appsRoot, "web");
         switch (frontendKind(opts.frontendFramework)) {
-            case "next": scaffoldNextFrontend(dir, opts, created); break;
-            case "vanilla": scaffoldVanillaFrontend(dir, opts, created); break;
-            default: scaffoldViteFrontend(dir, opts, created); break;
+            case "next": scaffoldNextFrontend(dir, opts, created, skipped); break;
+            case "vanilla": scaffoldVanillaFrontend(dir, opts, created, skipped); break;
+            default: scaffoldViteFrontend(dir, opts, created, skipped); break;
         }
     }
 
     if (wantsMobile(opts.focus)) {
-        scaffoldReactNativeMobile(path.join(appsRoot, "mobile"), opts, created);
+        scaffoldReactNativeMobile(path.join(appsRoot, "mobile"), opts, created, skipped);
     }
 
     if (wantsNative(opts.focus)) {
         const dir = path.join(appsRoot, "native");
-        if (nativeKind(opts.nativeLanguage) === "go") scaffoldGoNative(dir, opts, created);
-        else scaffoldRustNative(dir, opts, created);
+        if (nativeKind(opts.nativeLanguage) === "go") scaffoldGoNative(dir, opts, created, skipped);
+        else scaffoldRustNative(dir, opts, created, skipped);
     }
 
-    if (!opts.dryRun && created.length > 0) {
+    if (!opts.dryRun && (created.length > 0 || skipped.length > 0)) {
         for (const rel of created) UI.success(`  Created: ${rel}`);
-        UI.success(` Application skeleton generated under apps/ (${created.length} files).`);
+        if (skipped.length > 0) {
+            for (const rel of skipped) UI.warning(`  Kept existing (not overwritten): ${rel}`);
+        }
+        UI.success(` Application skeleton under apps/ — ${created.length} created, ${skipped.length} preserved.`);
     }
 }
 
-function writeInto(baseDir: string, relPath: string, content: string, opts: ScaffoldAppOptions, created: string[]): void {
+function writeInto(
+    baseDir: string,
+    relPath: string,
+    content: string,
+    opts: ScaffoldAppOptions,
+    created: string[],
+    skipped: string[] = [],
+): void {
     const full = path.join(baseDir, relPath);
+    const rel = path.relative(opts.projectRoot, full);
     ensureDir(path.dirname(full), opts.dryRun);
+    // Never clobber existing user files — scaffolding only fills gaps.
+    if (fs.existsSync(full)) {
+        if (!opts.dryRun) skipped.push(rel);
+        return;
+    }
     if (opts.dryRun) return;
     writeTextFile(full, content);
-    created.push(path.relative(opts.projectRoot, full));
+    created.push(rel);
 }
 
 // ─── Backend: Node.js / TypeScript (Fastify) ────────────────────────────────
 
-function scaffoldNodeBackend(dir: string, opts: ScaffoldAppOptions, created: string[]): void {
-    const write = (rel: string, content: string) => writeInto(dir, rel, content, opts, created);
+function scaffoldNodeBackend(dir: string, opts: ScaffoldAppOptions, created: string[], skipped: string[]): void {
+    const write = (rel: string, content: string) => writeInto(dir, rel, content, opts, created, skipped);
     ensureDir(path.join(dir, "src"), opts.dryRun);
     write("package.json", JSON.stringify({
         name: `${opts.projectName}-backend`,
@@ -190,8 +217,8 @@ start();
 
 // ─── Backend: Go ────────────────────────────────────────────────────────────
 
-function scaffoldGoBackend(dir: string, opts: ScaffoldAppOptions, created: string[]): void {
-    const write = (rel: string, content: string) => writeInto(dir, rel, content, opts, created);
+function scaffoldGoBackend(dir: string, opts: ScaffoldAppOptions, created: string[], skipped: string[]): void {
+    const write = (rel: string, content: string) => writeInto(dir, rel, content, opts, created, skipped);
     write("go.mod", `module ${opts.projectName}/backend
 
 go 1.22
@@ -237,8 +264,8 @@ func NewRouter() *http.ServeMux {
 
 // ─── Backend: Python (FastAPI) ──────────────────────────────────────────────
 
-function scaffoldPythonBackend(dir: string, opts: ScaffoldAppOptions, created: string[]): void {
-    const write = (rel: string, content: string) => writeInto(dir, rel, content, opts, created);
+function scaffoldPythonBackend(dir: string, opts: ScaffoldAppOptions, created: string[], skipped: string[]): void {
+    const write = (rel: string, content: string) => writeInto(dir, rel, content, opts, created, skipped);
     write("requirements.txt", `fastapi==0.115.0
 uvicorn[standard]==0.32.0
 pydantic==2.9.2
@@ -265,8 +292,8 @@ if __name__ == "__main__":
 
 // ─── Backend: .NET (C#) ─────────────────────────────────────────────────────
 
-function scaffoldDotnetBackend(dir: string, opts: ScaffoldAppOptions, created: string[]): void {
-    const write = (rel: string, content: string) => writeInto(dir, rel, content, opts, created);
+function scaffoldDotnetBackend(dir: string, opts: ScaffoldAppOptions, created: string[], skipped: string[]): void {
+    const write = (rel: string, content: string) => writeInto(dir, rel, content, opts, created, skipped);
     write(`${opts.projectName}.csproj`, `<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
@@ -289,8 +316,8 @@ app.Run("http://0.0.0.0:3000");
 
 // ─── Backend: Java (Spring Boot) ────────────────────────────────────────────
 
-function scaffoldJavaBackend(dir: string, opts: ScaffoldAppOptions, created: string[]): void {
-    const write = (rel: string, content: string) => writeInto(dir, rel, content, opts, created);
+function scaffoldJavaBackend(dir: string, opts: ScaffoldAppOptions, created: string[], skipped: string[]): void {
+    const write = (rel: string, content: string) => writeInto(dir, rel, content, opts, created, skipped);
     const pkg = opts.projectName.replace(/[^a-zA-Z0-9]/g, "") || "app";
     const pkgPath = path.join("src", "main", "java", "com", pkg);
     write("pom.xml", `<?xml version="1.0" encoding="UTF-8"?>
@@ -342,8 +369,8 @@ public class Application {
 
 // ─── Backend: Rust (as application tier) ────────────────────────────────────
 
-function scaffoldRustBackend(dir: string, opts: ScaffoldAppOptions, created: string[]): void {
-    const write = (rel: string, content: string) => writeInto(dir, rel, content, opts, created);
+function scaffoldRustBackend(dir: string, opts: ScaffoldAppOptions, created: string[], skipped: string[]): void {
+    const write = (rel: string, content: string) => writeInto(dir, rel, content, opts, created, skipped);
     const crate = opts.projectName.replace(/-/g, "_");
     write("Cargo.toml", `[package]
 name = "${crate}_backend"
@@ -371,8 +398,8 @@ async fn main() {
 
 // ─── Frontend: Vite + React ─────────────────────────────────────────────────
 
-function scaffoldViteFrontend(dir: string, opts: ScaffoldAppOptions, created: string[]): void {
-    const write = (rel: string, content: string) => writeInto(dir, rel, content, opts, created);
+function scaffoldViteFrontend(dir: string, opts: ScaffoldAppOptions, created: string[], skipped: string[]): void {
+    const write = (rel: string, content: string) => writeInto(dir, rel, content, opts, created, skipped);
     ensureDir(path.join(dir, "src"), opts.dryRun);
     write("package.json", JSON.stringify({
         name: `${opts.projectName}-web`,
@@ -423,8 +450,8 @@ createRoot(document.getElementById("root")!).render(
 
 // ─── Frontend: Next.js ──────────────────────────────────────────────────────
 
-function scaffoldNextFrontend(dir: string, opts: ScaffoldAppOptions, created: string[]): void {
-    const write = (rel: string, content: string) => writeInto(dir, rel, content, opts, created);
+function scaffoldNextFrontend(dir: string, opts: ScaffoldAppOptions, created: string[], skipped: string[]): void {
+    const write = (rel: string, content: string) => writeInto(dir, rel, content, opts, created, skipped);
     ensureDir(path.join(dir, "app"), opts.dryRun);
     write("package.json", JSON.stringify({
         name: `${opts.projectName}-web`,
@@ -457,8 +484,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 // ─── Frontend: Vanilla HTML/JS ──────────────────────────────────────────────
 
-function scaffoldVanillaFrontend(dir: string, opts: ScaffoldAppOptions, created: string[]): void {
-    const write = (rel: string, content: string) => writeInto(dir, rel, content, opts, created);
+function scaffoldVanillaFrontend(dir: string, opts: ScaffoldAppOptions, created: string[], skipped: string[]): void {
+    const write = (rel: string, content: string) => writeInto(dir, rel, content, opts, created, skipped);
     write("index.html", `<!doctype html>
 <html lang="en">
   <head>
@@ -481,8 +508,8 @@ function scaffoldVanillaFrontend(dir: string, opts: ScaffoldAppOptions, created:
 
 // ─── Mobile: React Native (Expo) ────────────────────────────────────────────
 
-function scaffoldReactNativeMobile(dir: string, opts: ScaffoldAppOptions, created: string[]): void {
-    const write = (rel: string, content: string) => writeInto(dir, rel, content, opts, created);
+function scaffoldReactNativeMobile(dir: string, opts: ScaffoldAppOptions, created: string[], skipped: string[]): void {
+    const write = (rel: string, content: string) => writeInto(dir, rel, content, opts, created, skipped);
     write("package.json", JSON.stringify({
         name: `${opts.projectName}-mobile`,
         version: "0.1.0",
@@ -515,8 +542,8 @@ export default function App() {
 
 // ─── Native / Platform Tier: Rust (cdylib for FFI) ──────────────────────────
 
-function scaffoldRustNative(dir: string, opts: ScaffoldAppOptions, created: string[]): void {
-    const write = (rel: string, content: string) => writeInto(dir, rel, content, opts, created);
+function scaffoldRustNative(dir: string, opts: ScaffoldAppOptions, created: string[], skipped: string[]): void {
+    const write = (rel: string, content: string) => writeInto(dir, rel, content, opts, created, skipped);
     const crate = opts.projectName.replace(/-/g, "_");
     write("Cargo.toml", `[package]
 name = "${crate}_native"
@@ -552,8 +579,8 @@ mod tests {
 
 // ─── Native / Platform Tier: Go ─────────────────────────────────────────────
 
-function scaffoldGoNative(dir: string, opts: ScaffoldAppOptions, created: string[]): void {
-    const write = (rel: string, content: string) => writeInto(dir, rel, content, opts, created);
+function scaffoldGoNative(dir: string, opts: ScaffoldAppOptions, created: string[], skipped: string[]): void {
+    const write = (rel: string, content: string) => writeInto(dir, rel, content, opts, created, skipped);
     write("go.mod", `module ${opts.projectName}/native
 
 go 1.22

@@ -76,10 +76,20 @@ export class CoreMemory {
     public static generateEmbedding(text: string): number[] {
         const vector = new Array(this.VECTOR_DIM).fill(0);
 
-        // Tokenize and clean
-        const tokens = text
+        // Tokenize and clean with Turkish and multi-language normalization
+        const normalized = text
+            .replace(/İ/g, "i")
+            .replace(/I/g, "ı")
             .toLowerCase()
-            .replace(/[^a-z0-9_ ]/g, " ")
+            .replace(/ç/g, "c")
+            .replace(/ğ/g, "g")
+            .replace(/ı/g, "i")
+            .replace(/ö/g, "o")
+            .replace(/ş/g, "s")
+            .replace(/ü/g, "u")
+            .replace(/[^a-z0-9_ ]/g, " ");
+
+        const tokens = normalized
             .split(/\s+/)
             .filter(t => t.length > 2 && !this.STOP_WORDS.has(t));
 

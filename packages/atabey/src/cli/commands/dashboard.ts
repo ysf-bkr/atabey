@@ -92,7 +92,13 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
     const frameworkDir = getFrameworkDir();
     const __dirname = path.dirname(fileURLToPath(import.meta.url));
     const projectRoot = path.resolve(__dirname, "../../../../");
-    const uiDistPath = path.join(projectRoot, "atabey-mcp/dashboard/dist");
+    const possibleUiDistPaths = [
+        path.join(projectRoot, "atabey-mcp/dist/dashboard"),
+        path.join(projectRoot, "atabey-mcp/dashboard/dist"),
+        path.join(projectRoot, "packages/atabey-mcp/dist/dashboard"),
+        path.join(projectRoot, "packages/atabey-mcp/dashboard/dist"),
+    ];
+    const uiDistPath = possibleUiDistPaths.find(p => fs.existsSync(p)) || possibleUiDistPaths[0];
 
     const server = http.createServer(async (req, res) => {
         // CORS & Cache Headers

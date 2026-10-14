@@ -167,6 +167,22 @@ describe("scaffoldApp — real application skeleton per stack", () => {
         expect(exists("apps/native/main.go")).toBe(true);
     });
 
+    it("does not overwrite existing files (scaffold only fills gaps)", () => {
+        // Pre-create a backend file with custom content.
+        fs.mkdirSync(path.join(tempDir, "apps", "backend", "src"), { recursive: true });
+        fs.writeFileSync(path.join(tempDir, "apps", "backend", "src", "index.ts"), "// CUSTOM — do not clobber");
+        scaffoldApp(tempDir, base({ focus: "backend" }));
+        // The user's file must be preserved verbatim.
+        expect(read("apps/backend/src/index.ts")).toBe("// CUSTOM — do not clobber");
+    });
+
+    it("skips app scaffolding inside the Atabey framework monorepo", () => {
+        // Simulate a framework monorepo by writing a package.json marker.
+        fs.writeFileSync(path.join(tempDir, "package.json"), JSON.stringify({ name: "atabey-monorepo", private: true, workspaces: ["packages/atabey"] }));
+        scaffoldApp(tempDir, base({}));
+        expect(exists("apps")).toBe(false);
+    });
+
     it("does not write any files in dry-run mode", () => {
         scaffoldApp(tempDir, base({ dryRun: true }));
         expect(exists("apps")).toBe(false);
