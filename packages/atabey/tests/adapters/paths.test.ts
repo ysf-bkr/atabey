@@ -27,6 +27,7 @@ describe("Adapter Paths", () => {
         it("should use adapter-specific dir in legacy mode", () => {
             expect(resolveAgentsDir("gemini", false).agentsDir).toBe(".gemini/agents");
             expect(resolveAgentsDir("codex", false).agentsDir).toBe(".agents/instructions");
+            expect(resolveAgentsDir("opencode", false).agentsDir).toBe(".opencode/agents");
         });
 
         it("should use per-platform subtree under unified hub in unified mode", () => {
@@ -38,8 +39,9 @@ describe("Adapter Paths", () => {
 
         it("should expose a layout base for every adapter slug", () => {
             const bases = getUnifiedAgentLayoutBases();
-            expect(bases).toHaveLength(7);
+            expect(bases).toHaveLength(8);
             expect(bases.some((b) => b.includes(UNIFIED_ADAPTER_SLUG.gemini))).toBe(true);
+            expect(bases.some((b) => b.includes(UNIFIED_ADAPTER_SLUG.opencode))).toBe(true);
         });
     });
 

@@ -416,6 +416,88 @@ export const ADAPTER_SKILLS: Record<AdapterId, AdapterSkillConfig> = {
             acquire_lock: "write_file", release_lock: "write_file",
             register_agent: "write_file", check_lint: "run_shell_command"
         }
+    },
+
+    // ─── OpenCode (opencode.ai) ─────────────────────────────────────
+    "opencode": {
+        adapterId: "opencode",
+        enabledSkills: {
+            file_system: {
+                name: "File System Operations",
+                tools: ["read_file", "write_file", "list_dir"],
+                description: "Read, write, and list project files via OpenCode workspace.",
+                mandates: [
+                    "Read file contents before modification",
+                    "List directory when resolving paths"
+                ]
+            },
+            editing: {
+                name: "Surgical Code Editing",
+                tools: ["replace_text", "batch_surgical_edit", "patch_file"],
+                description: "Precise code modification without rewriting whole files.",
+                mandates: [
+                    "Perform contiguous, surgical text replacements",
+                    "Never destroy unchanged code or comments"
+                ]
+            },
+            orchestration: {
+                name: "Hermes Task Orchestration",
+                tools: ["orchestrate_loop", "send_agent_message", "get_framework_status", "log_agent_action"],
+                description: "Multi-agent task delegation and state sync.",
+                mandates: [
+                    "Include active Trace ID in all dispatched tasks",
+                    "Follow role boundaries when delegating to specialist subagents"
+                ]
+            },
+            governance: {
+                name: "Policy & Resource Governance",
+                tools: ["acquire_lock", "release_lock", "register_agent", "update_contract_hash"],
+                description: "Lock acquisition and agent identity verification.",
+                mandates: [
+                    "Acquire locks before mutating shared schemas or configurations",
+                    "Release lock promptly after task execution"
+                ]
+            },
+            quality: {
+                name: "Quality Assurance & Verification",
+                tools: ["run_shell_command", "run_tests", "check_lint"],
+                description: "Continuous testing, linting, and quality verification.",
+                mandates: [
+                    "Run test suites after structural modifications",
+                    "Zero-tolerance policy for lint and build errors"
+                ]
+            },
+            search: {
+                name: "Codebase Exploration",
+                tools: ["grep_search", "get_project_map", "get_project_gaps"],
+                description: "Structural code search and architectural gap analysis.",
+                mandates: [
+                    "Explore codebase structure before proposing architectural changes"
+                ]
+            }
+        },
+        toolMapping: {
+            read_file: "read",
+            write_file: "write",
+            replace_text: "edit",
+            batch_surgical_edit: "multiedit",
+            patch_file: "patch",
+            list_dir: "ls",
+            run_shell_command: "bash",
+            run_tests: "test",
+            check_lint: "lint",
+            grep_search: "grep",
+            get_project_map: "map",
+            get_project_gaps: "gaps",
+            send_agent_message: "task",
+            get_framework_status: "status",
+            log_agent_action: "log",
+            acquire_lock: "lock",
+            release_lock: "unlock",
+            register_agent: "register",
+            update_contract_hash: "hash",
+            orchestrate_loop: "loop"
+        }
     }
 };
 

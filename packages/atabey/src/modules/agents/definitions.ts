@@ -611,10 +611,29 @@ export function toCursorMdc(ag: AgentDefinition, baseKnowledgeDir?: string, path
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+//  OPENCODE AI  →  .opencode/agents/{name}.md
+//  Ref: https://opencode.ai/docs
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function toOpenCodeMd(ag: AgentDefinition, baseKnowledgeDir?: string, paths?: Record<string, string>, backendLanguage?: string): string {
+    const cleanDesc = sanitizeFrontmatterText(ag.description);
+    const frontmatter = [
+        "---",
+        `description: "${cleanDesc.slice(0, 150).replace(/"/g, "\\\"")}"`,
+        "mode: subagent",
+        `model: anthropic/claude-sonnet-4-5#high`,
+        "---",
+    ].join("\n");
+
+    const body = buildSystemPrompt(ag, baseKnowledgeDir, false, paths, backendLanguage);
+    return `${frontmatter}\n\n${body}${buildMetaFooter(ag)}`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 //  Batch export
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type ExportTarget = "claude-code" | "gemini-cli" | "antigravity" | "codex-cli" | "cursor";
+export type ExportTarget = "claude-code" | "gemini-cli" | "antigravity" | "codex-cli" | "cursor" | "opencode";
 
 export interface ExportedFile {
   path: string;
@@ -634,6 +653,8 @@ export function exportAllAgents(target: ExportTarget, paths?: Record<string, str
                 return { path: `.agents/${ag.name}.md`,                content: toCodexMd(ag, undefined, paths, backendLanguage) };
             case "cursor":
                 return { path: `.cursor/rules/${ag.name}.mdc`,         content: toCursorMdc(ag, undefined, paths, backendLanguage) };
+            case "opencode":
+                return { path: `.opencode/agents/${ag.name}.md`,       content: toOpenCodeMd(ag, undefined, paths, backendLanguage) };
         }
     });
 }

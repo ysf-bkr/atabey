@@ -19,6 +19,7 @@ export const FRAMEWORK_DIR_CANDIDATES = [
     ".github",
     ".grok",
     ".antigravity",
+    ".opencode",
     ".agent",
     ".gemini/antigravity-cli",
     ".gemini",

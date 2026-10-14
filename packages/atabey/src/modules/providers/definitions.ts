@@ -1,3 +1,4 @@
+import fs from "fs";
 import path from "path";
 import type { AdapterConfig, AdapterId } from "./types.js";
 import { addMcpServerToClaude, findClaudeConfigPath } from "../../cli/utils/claude.js";
@@ -157,6 +158,63 @@ registry.register(
         writeJsonFile(path.join(projectRoot, frameworkDir, "mcp_config.json"), mcpBlock);
         UI.success(`Antigravity CLI MCP → ${frameworkDir}/mcp_config.json`);
         registerGlobalAntigravityPlugins(mcpBlock);
+    }
+);
+
+// [OPENCODE] OpenCode (opencode.ai)
+registry.register(
+    {
+        id: "opencode",
+        frameworkDir: ".opencode",
+        shimFile: "OPENCODE.md",
+        shimTemplate: "src/cli/shims/opencode.md",
+        role: "implementer",
+        templateDir: ".atabey",
+        nestedDirs: ["agents", "rules"],
+        agentsDir: ".opencode/agents",
+        agentsExt: ".md"
+    },
+    (projectRoot, mcpBlock) => {
+        const frameworkDir = ".opencode";
+        writeJsonFile(path.join(projectRoot, frameworkDir, "mcp_config.json"), mcpBlock);
+
+        // Standard OpenCode opencode.json in project root
+        const opencodePath = path.join(projectRoot, "opencode.json");
+        let existing: Record<string, unknown> = {};
+        if (fs.existsSync(opencodePath)) {
+            try {
+                existing = JSON.parse(fs.readFileSync(opencodePath, "utf8"));
+            } catch {
+                existing = {};
+            }
+        }
+
+        const block = mcpBlock as { mcpServers: Record<string, { command?: string; args?: string[]; url?: string }> };
+        const mcpEntry = block.mcpServers?.["atabey"];
+        const localCommand = mcpEntry?.command
+            ? [mcpEntry.command, ...(mcpEntry.args || [])]
+            : ["node", "node_modules/atabey-mcp/dist/atabey-mcp/src/mcp/index.js"];
+
+        existing["$schema"] = "https://opencode.ai/config.json";
+        const existingMcp = (existing["mcp"] as Record<string, unknown>) || {};
+        existingMcp["atabey"] = {
+            type: "remote",
+            url: "http://localhost:5858/mcp/sse",
+            enabled: true
+        };
+        existingMcp["atabey-local"] = {
+            type: "local",
+            command: localCommand,
+            enabled: true
+        };
+        existing["mcp"] = existingMcp;
+
+        const instructions = Array.isArray(existing["instructions"]) ? existing["instructions"] : [];
+        if (!instructions.includes("AGENTS.md")) instructions.push("AGENTS.md");
+        existing["instructions"] = instructions;
+
+        writeJsonFile(opencodePath, existing);
+        UI.success("OpenCode AI Config → opencode.json (100% compliant schema)");
     }
 );
 

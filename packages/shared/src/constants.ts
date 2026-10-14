@@ -34,6 +34,7 @@ export const ADAPTER_DIRS = {
     CODEX: ".agents",
     ANTIGRAVITY: ".agents",
     LOCAL: ".atabey",
+    OPENCODE: ".opencode",
     LEGACY_AGENT: ".agent",
 } as const;
 
@@ -46,6 +47,7 @@ export const FRAMEWORK_DIR_CANDIDATES = [
     ADAPTER_DIRS.GROK,
     ADAPTER_DIRS.CURSOR,
     ADAPTER_DIRS.ANTIGRAVITY,
+    ADAPTER_DIRS.OPENCODE,
     ADAPTER_DIRS.LOCAL,
 ] as const;
 
@@ -57,6 +59,7 @@ export const UNIFIED_ADAPTER_SLUG = {
     cursor: "cursor",
     codex: "codex",
     local: "local",
+    opencode: "opencode",
     "antigravity-cli": "antigravity",
 } as const;
 
@@ -71,6 +74,7 @@ export const NATIVE_AGENT_PATHS = {
     cursor: pathJoin(ADAPTER_DIRS.CURSOR, "rules"),
     codex: pathJoin(ADAPTER_DIRS.CODEX, "instructions"),
     local: pathJoin(ADAPTER_DIRS.LOCAL, "agents"),
+    opencode: pathJoin(ADAPTER_DIRS.OPENCODE, "agents"),
     "antigravity-cli": pathJoin(ADAPTER_DIRS.ANTIGRAVITY, "agents"),
 } as const;
 
@@ -82,6 +86,7 @@ export const LEGACY_AGENT_LAYOUT_BASES = [
     NATIVE_AGENT_PATHS.grok,
     NATIVE_AGENT_PATHS.codex,
     NATIVE_AGENT_PATHS.local,
+    NATIVE_AGENT_PATHS.opencode,
     NATIVE_AGENT_PATHS["antigravity-cli"],
 ] as const;
 

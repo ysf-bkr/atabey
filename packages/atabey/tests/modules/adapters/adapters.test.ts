@@ -9,6 +9,9 @@ describe("Adapters", () => {
 
             const claude = resolveAdapter("claude");
             expect(claude.id).toBe("claude");
+
+            const opencode = resolveAdapter("opencode");
+            expect(opencode.id).toBe("opencode");
         });
 
         it("should resolve fallbacks", () => {
@@ -22,6 +25,9 @@ describe("Adapters", () => {
 
             const github = resolveAdapter("github");
             expect(github.id).toBe("codex");
+
+            const openCodeAlias = resolveAdapter("open-code");
+            expect(openCodeAlias.id).toBe("opencode");
         });
     });
 
@@ -29,6 +35,7 @@ describe("Adapters", () => {
         it("should identify valid shim files", () => {
             expect(isAdapterShimFile("GEMINI.md")).toBe(true);
             expect(isAdapterShimFile("CLAUDE.md")).toBe(true);
+            expect(isAdapterShimFile("OPENCODE.md")).toBe(true);
             expect(isAdapterShimFile("non-existent.md")).toBe(false);
         });
     });

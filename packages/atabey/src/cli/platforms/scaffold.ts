@@ -6,7 +6,8 @@ import {
     toClaudeCodeMd,
     toCodexMd,
     toCursorMdc,
-    toGeminiCliMd
+    toGeminiCliMd,
+    toOpenCodeMd
 } from "../../modules/agents/definitions.js";
 import { writeTextFile } from "../utils/fs.js";
 import { getPackageRoot } from "../utils/pkg.js";
@@ -64,6 +65,9 @@ export function scaffoldAgents(
                     break;
                 case "codex":
                     content = toCodexMd(agent, baseKnowledgeDir, paths, backendLanguage);
+                    break;
+                case "opencode":
+                    content = toOpenCodeMd(agent, baseKnowledgeDir, paths, backendLanguage);
                     break;
                 case "antigravity-cli": {
                     // Antigravity uses nested folders: agents/{name}/agent.json and agents/{name}/agent.md
