@@ -1,0 +1,17 @@
+{
+  "$schema": "https://unpkg.com/knip@5/overview/configuration.json",
+  "workspaces": {
+    "packages/shared": {
+      "entry": ["tests/**/*.test.ts!"]
+    },
+    "packages/atabey": {
+      "entry": ["src/cli/index.ts", "tests/**/*.test.ts!"]
+    },
+    "packages/atabey-mcp": {
+      "entry": ["tests/**/*.test.ts!"]
+    }
+  },
+  "ignoreBinaries": ["netstat"],
+  "ignoreDependencies": ["tsx"],
+  "ignoreExportsUsedInFile": true
+}

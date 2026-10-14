@@ -302,12 +302,22 @@ export async function handleCallToolWithGovernance(
 
         // [CONTEXT OPTIMIZER] Check token budget after execution
         try {
-            const { checkTokenBudget } = await import("../utils/context-optimizer.js");
+            const { checkTokenBudget, smartTruncateFile, detectProvider } = await import("../utils/context-optimizer.js");
             const responseText = result.content?.filter(b => b.type === "text").map(b => b.text).join(" ") || "";
             const budgetError = checkTokenBudget(detectedAgent, toolName, responseText);
             if (budgetError) {
                 logger.warn(`[TOKEN BUDGET] Warning: ${budgetError}`);
                 broadcastWS("token_budget_warning", { agent: detectedAgent, tool: toolName, error: budgetError, timestamp: new Date().toISOString() });
+
+                // If read_file exceeds token budget, apply smart truncation to prevent LLM context overflow
+                if (toolName === "read_file" && rawArgs.path && typeof rawArgs.path === "string") {
+                    const provider = detectProvider(detectedAgent);
+                    for (let i = 0; i < result.content.length; i++) {
+                        if (result.content[i].type === "text" && result.content[i].text) {
+                            result.content[i].text = smartTruncateFile(result.content[i].text, rawArgs.path, provider);
+                        }
+                    }
+                }
             }
         } catch (e) {
             logger.error(`[TOKEN BUDGET] Error: ${(e as Error).message}`);

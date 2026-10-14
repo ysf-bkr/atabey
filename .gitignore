@@ -110,11 +110,13 @@ packages/shared/src/**/*.js.map
 .cursor/
 .gemini/
 .grok/
+.opencode/
 AGENTS.md
 CLAUDE.md
 CURSOR.md
 GROK.md
 LOCAL_AI.md
+OPENCODE.md
 copilot-instructions.md
 GEMINI.md
 .mcp.json

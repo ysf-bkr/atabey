@@ -18,7 +18,7 @@ import { Storage } from "../shared/storage.js";
 import { handleCallToolWithGovernance } from "./middleware/governance.js";
 import { RESOURCES, handleReadResource } from "./resources/index.js";
 import { handleRequest } from "./routes/index.js";
-import { TOOLS } from "./tools/index.js";
+import { TOOLS, filterTools } from "./tools/index.js";
 import { bootstrapComplianceServices, shutdownComplianceServices } from "./utils/compliance-bootstrap.js";
 import { bootstrapOrchestrator, shutdownOrchestrator } from "./utils/orchestrator-bootstrap.js";
 
@@ -196,10 +196,12 @@ function broadcastWS(type: string, payload: unknown) {
 
 server.setRequestHandler(ListToolsRequestSchema, async (request) => {
     const meta = (request as { _meta?: { client?: { name?: string; version?: string } } })._meta;
+    const clientName = meta?.client?.name;
     if (meta) {
-        process.stderr.write(`[MCP] ListTools from ${meta.client?.name || "unknown"} v${meta.client?.version || "?.?"}\n`);
+        process.stderr.write(`[MCP] ListTools from ${clientName || "unknown"} v${meta.client?.version || "?.?"}\n`);
     }
-    return { tools: TOOLS };
+    const tools = filterTools(TOOLS, { clientName });
+    return { tools };
 });
 
 server.setRequestHandler(ListResourcesRequestSchema, async () => {

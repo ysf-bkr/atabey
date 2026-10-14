@@ -58,7 +58,6 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "better-sqlite3": "^13.0.2",
     "chalk": "^5.6.2",
-    "js-yaml": "^4.2.0",
     "typescript": "^5.9.3",
     "ws": "^8.21.0",
     "zod": "^3.24.2"

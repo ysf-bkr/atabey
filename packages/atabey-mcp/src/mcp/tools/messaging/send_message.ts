@@ -32,7 +32,7 @@ export async function handleSendAgentMessage(projectRoot: string, args: SendAgen
         return { isError: true, content: [{ type: "text", text: `[ERROR] ${err}` }] };
     }
 
-    const messagesDir = path.join(projectRoot, frameworkDir, "messages");
+    const messagesDir = path.join(absoluteFrameworkPath, "messages");
     const agentName = to.replace("@", "");
     const messagePath = path.join(messagesDir, `${agentName}.json`);
     const lockPath = path.join(messagesDir, `${agentName}.lock`);

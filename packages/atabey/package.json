@@ -56,7 +56,6 @@
   },
   "dependencies": {
     "atabey-shared": "^0.0.32",
-    "@modelcontextprotocol/sdk": "^1.29.0",
     "better-sqlite3": "^13.0.2",
     "chalk": "^5.6.2",
     "js-yaml": "^4.2.0",

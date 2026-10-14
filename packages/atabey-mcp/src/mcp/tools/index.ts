@@ -144,3 +144,4 @@ export const toolSchemas: Record<string, z.ZodType> = {
 };
 
 export { TOOLS };
+export * from "./profiles.js";

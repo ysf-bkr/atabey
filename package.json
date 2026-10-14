@@ -41,6 +41,7 @@
     "build:mcp": "npm run build -w packages/atabey-mcp",
     "build:dashboard": "npm run build -w packages/atabey-mcp/dashboard",
     "lint": "eslint packages/",
+    "knip": "knip",
     "test": "npm run test --workspaces --if-present",
     "test:atabey": "npm run test -w packages/atabey",
     "test:mcp": "npm run test -w packages/atabey-mcp",
@@ -63,23 +64,22 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/node": "^25.9.1",
+    "@vitest/coverage-v8": "^5.0.0",
+    "atabey": "^0.0.32",
     "eslint": "^10.4.0",
     "globals": "^17.6.0",
-    "typescript-eslint": "^8.0.0",
-    "vitest": "^5.0.0",
-    "@vitest/coverage-v8": "^5.0.0",
-    "typescript": "^5.9.3",
-    "@types/node": "^25.9.1",
-    "@vitejs/plugin-react": "^4.3.4",
+    "knip": "^6.41.0",
     "tsx": "^4.22.3",
-    "atabey": "^0.0.32"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^5.0.0"
   },
   "atabey": {
     "version": "0.0.32",
     "initializedAt": "2026-07-02T15:20:22.742Z"
   },
   "dependencies": {
-    "atabey-mcp": "^0.0.32",
-    "atabey-shared": "^0.0.32"
+    "atabey-mcp": "^0.0.32"
   }
 }

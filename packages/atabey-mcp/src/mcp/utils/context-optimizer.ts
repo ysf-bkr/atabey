@@ -40,12 +40,17 @@ interface ProviderLimits {
 }
 
 const PROVIDER_LIMITS: Record<string, ProviderLimits> = {
-    "claude":   { maxContextTokens: 200000, maxResponseTokens: 8192,  maxTokensPerMinute: 100000, maxTokensPerHour: 500000, maxFileReadSize: 204800, maxFileLines: 400,  charsPerToken: 3.5, maxToolCallsPerMinute: 60 },
-    "cursor":   { maxContextTokens: 100000, maxResponseTokens: 4096,  maxTokensPerMinute: 50000,  maxTokensPerHour: 250000, maxFileReadSize: 102400, maxFileLines: 200,  charsPerToken: 4,   maxToolCallsPerMinute: 30 },
-    "gemini":   { maxContextTokens: 1000000, maxResponseTokens: 32768, maxTokensPerMinute: 500000, maxTokensPerHour: 2000000, maxFileReadSize: 512000, maxFileLines: 1000, charsPerToken: 3,   maxToolCallsPerMinute: 120 },
-    "vscode":   { maxContextTokens: 64000,  maxResponseTokens: 4096,  maxTokensPerMinute: 30000,  maxTokensPerHour: 150000, maxFileReadSize: 102400, maxFileLines: 200,  charsPerToken: 4,   maxToolCallsPerMinute: 20 },
-    "copilot":  { maxContextTokens: 64000,  maxResponseTokens: 4096,  maxTokensPerMinute: 30000,  maxTokensPerHour: 150000, maxFileReadSize: 102400, maxFileLines: 200,  charsPerToken: 4,   maxToolCallsPerMinute: 20 },
-    "default":  { maxContextTokens: 100000, maxResponseTokens: 4000,  maxTokensPerMinute: 20000,  maxTokensPerHour: 100000, maxFileReadSize: 102400, maxFileLines: 200,  charsPerToken: 4,   maxToolCallsPerMinute: 30 },
+    "claude":      { maxContextTokens: 200000, maxResponseTokens: 8192,  maxTokensPerMinute: 100000, maxTokensPerHour: 500000, maxFileReadSize: 204800, maxFileLines: 400,  charsPerToken: 3.5, maxToolCallsPerMinute: 60 },
+    "cursor":      { maxContextTokens: 100000, maxResponseTokens: 4096,  maxTokensPerMinute: 50000,  maxTokensPerHour: 250000, maxFileReadSize: 102400, maxFileLines: 200,  charsPerToken: 4,   maxToolCallsPerMinute: 30 },
+    "opencode":    { maxContextTokens: 128000, maxResponseTokens: 8192,  maxTokensPerMinute: 80000,  maxTokensPerHour: 400000, maxFileReadSize: 204800, maxFileLines: 400,  charsPerToken: 3.5, maxToolCallsPerMinute: 60 },
+    "antigravity": { maxContextTokens: 1000000, maxResponseTokens: 32768, maxTokensPerMinute: 500000, maxTokensPerHour: 2000000, maxFileReadSize: 512000, maxFileLines: 1000, charsPerToken: 3,   maxToolCallsPerMinute: 120 },
+    "gemini":      { maxContextTokens: 1000000, maxResponseTokens: 32768, maxTokensPerMinute: 500000, maxTokensPerHour: 2000000, maxFileReadSize: 512000, maxFileLines: 1000, charsPerToken: 3,   maxToolCallsPerMinute: 120 },
+    "grok":        { maxContextTokens: 128000, maxResponseTokens: 8192,  maxTokensPerMinute: 80000,  maxTokensPerHour: 400000, maxFileReadSize: 204800, maxFileLines: 400,  charsPerToken: 3.5, maxToolCallsPerMinute: 60 },
+    "codex":       { maxContextTokens: 64000,  maxResponseTokens: 4096,  maxTokensPerMinute: 30000,  maxTokensPerHour: 150000, maxFileReadSize: 102400, maxFileLines: 200,  charsPerToken: 4,   maxToolCallsPerMinute: 20 },
+    "vscode":      { maxContextTokens: 64000,  maxResponseTokens: 4096,  maxTokensPerMinute: 30000,  maxTokensPerHour: 150000, maxFileReadSize: 102400, maxFileLines: 200,  charsPerToken: 4,   maxToolCallsPerMinute: 20 },
+    "copilot":     { maxContextTokens: 64000,  maxResponseTokens: 4096,  maxTokensPerMinute: 30000,  maxTokensPerHour: 150000, maxFileReadSize: 102400, maxFileLines: 200,  charsPerToken: 4,   maxToolCallsPerMinute: 20 },
+    "local":       { maxContextTokens: 16000,  maxResponseTokens: 2048,  maxTokensPerMinute: 20000,  maxTokensPerHour: 100000, maxFileReadSize: 32768,  maxFileLines: 120,  charsPerToken: 4,   maxToolCallsPerMinute: 20 },
+    "default":     { maxContextTokens: 100000, maxResponseTokens: 4000,  maxTokensPerMinute: 20000,  maxTokensPerHour: 100000, maxFileReadSize: 102400, maxFileLines: 200,  charsPerToken: 4,   maxToolCallsPerMinute: 30 },
 };
 
 // ─── Environment Overrides ────────────────────────────────────────
@@ -94,9 +99,14 @@ export function detectProvider(clientName: string): string {
     const name = clientName.toLowerCase();
     if (name.includes("claude")) return "claude";
     if (name.includes("cursor")) return "cursor";
+    if (name.includes("opencode") || name.includes("open-code")) return "opencode";
+    if (name.includes("antigravity") || name.includes("agy")) return "antigravity";
     if (name.includes("gemini")) return "gemini";
-    if (name.includes("vscode") || name.includes("visual studio")) return "vscode";
+    if (name.includes("grok") || name.includes("xai")) return "grok";
+    if (name.includes("codex")) return "codex";
     if (name.includes("copilot") || name.includes("github")) return "copilot";
+    if (name.includes("vscode") || name.includes("visual studio")) return "vscode";
+    if (name.includes("ollama") || name.includes("lmstudio") || name.includes("local") || name.includes("vllm")) return "local";
     return process.env.MCP_PROVIDER || "default";
 }
 

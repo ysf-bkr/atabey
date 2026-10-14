@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
     checkTokenBudget,
+    detectProvider,
     estimateTokens,
     getTokenBudgetStats,
     resetTokenBudgets,
@@ -74,6 +75,23 @@ describe("Context Optimizer", () => {
             expect(stats.totalTokens).toBe(0);
             expect(stats.callCount).toBe(0);
             expect(stats.blocked).toBe(false);
+        });
+    });
+
+    describe("detectProvider", () => {
+        it("should detect all supported clients correctly", () => {
+            expect(detectProvider("Claude-Code/1.0")).toBe("claude");
+            expect(detectProvider("Cursor-IDE")).toBe("cursor");
+            expect(detectProvider("OpenCode-Client")).toBe("opencode");
+            expect(detectProvider("Antigravity-CLI")).toBe("antigravity");
+            expect(detectProvider("agy-agent")).toBe("antigravity");
+            expect(detectProvider("Grok-Assistant")).toBe("grok");
+            expect(detectProvider("xAI-CLI")).toBe("grok");
+            expect(detectProvider("Codex-Client")).toBe("codex");
+            expect(detectProvider("GitHub-Copilot")).toBe("copilot");
+            expect(detectProvider("Ollama-Llama3")).toBe("local");
+            expect(detectProvider("LMStudio-Mistral")).toBe("local");
+            expect(detectProvider("UnknownClient")).toBe("default");
         });
     });
 });
