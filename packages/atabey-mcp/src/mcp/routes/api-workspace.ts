@@ -1,7 +1,7 @@
 import http from "http";
 import fs from "fs";
 import path from "path";
-import { RouteContext, serveJson } from "./types.js";
+import { RouteContext, serveJson, parseJsonBody } from "./types.js";
 import { Storage } from "../../shared/storage.js";
 
 export async function handleWorkspaceRoutes(
@@ -29,43 +29,37 @@ export async function handleWorkspaceRoutes(
     // Workspace Setup
     if (pathname === "/api/workspace/setup" && method === "POST") {
         try {
-            let body = "";
-            req.on("data", chunk => { body += chunk.toString(); });
-            req.on("end", async () => {
-                try {
-                    const parsed = JSON.parse(body);
-                    const { userName } = parsed;
-                    if (!userName) {
-                        serveJson(res, 400, { success: false, error: "userName required" });
-                        return;
-                    }
-                    const { WorkspaceManager } = await import("../utils/workspace.js");
-                    const { ClientConfigGenerator } = await import("../utils/client-config.js");
-                    WorkspaceManager.initialize(PROJECT_ROOT);
-                    const workspace = await WorkspaceManager.getOrCreateWorkspace(userName);
+            const parsed = await parseJsonBody<{ userName?: string }>(req);
+            const { userName } = parsed;
+            if (!userName) {
+                serveJson(res, 400, { success: false, error: "userName required" });
+                return true;
+            }
+            const { WorkspaceManager } = await import("../utils/workspace.js");
+            const { ClientConfigGenerator } = await import("../utils/client-config.js");
+            WorkspaceManager.initialize(PROJECT_ROOT);
+            const workspace = await WorkspaceManager.getOrCreateWorkspace(userName);
 
-                    const userToken = process.env[`MCP_TOKEN_${workspace.developerId.toUpperCase()}`] ||
-                        `atabey_${workspace.developerId}_${Date.now().toString(36)}`;
+            const userToken = process.env[`MCP_TOKEN_${workspace.developerId.toUpperCase()}`] ||
+                `atabey_${workspace.developerId}_${Date.now().toString(36)}`;
 
-                    const guide = ClientConfigGenerator.generateSetupGuide(
-                        PROJECT_ROOT, userName, userToken, HOST, PORT
-                    );
+            const guide = ClientConfigGenerator.generateSetupGuide(
+                PROJECT_ROOT, userName, userToken, HOST, PORT
+            );
 
-                    serveJson(res, 200, {
-                        success: true,
-                        data: {
-                            workspace,
-                            userToken,
-                            setupGuide: guide,
-                            configs: ClientConfigGenerator.generateAll(PROJECT_ROOT, userName, userToken, HOST, PORT)
-                                .map(c => ({ clientType: c.clientType, configPath: c.configPath }))
-                        }
-                    });
-                } catch (err) {
-                    serveJson(res, 400, { success: false, error: (err as Error).message });
+            serveJson(res, 200, {
+                success: true,
+                data: {
+                    workspace,
+                    userToken,
+                    setupGuide: guide,
+                    configs: ClientConfigGenerator.generateAll(PROJECT_ROOT, userName, userToken, HOST, PORT)
+                        .map(c => ({ clientType: c.clientType, configPath: c.configPath }))
                 }
             });
-        } catch (e) { serveJson(res, 500, { success: false, error: (e as Error).message }); }
+        } catch (err) {
+            serveJson(res, 400, { success: false, error: (err as Error).message });
+        }
         return true;
     }
 
@@ -86,64 +80,60 @@ export async function handleWorkspaceRoutes(
     // Dispatch Task
     if (pathname === "/api/chat/dispatch" && method === "POST") {
         try {
-            let body = "";
-            req.on("data", chunk => { body += chunk.toString(); });
-            req.on("end", async () => {
-                try {
-                    const parsed = JSON.parse(body);
-                    const { projectPath, agent, message } = parsed;
+            const parsed = await parseJsonBody<{
+                projectPath?: string;
+                agent?: string;
+                message?: string;
+            }>(req);
+            const { projectPath, agent, message } = parsed;
 
-                    if (!projectPath || !agent || !message) {
-                        serveJson(res, 400, { success: false, error: "projectPath, agent, and message are required." });
-                        return;
-                    }
+            if (!projectPath || !agent || !message) {
+                serveJson(res, 400, { success: false, error: "projectPath, agent, and message are required." });
+                return true;
+            }
 
-                    const { saveWebConfig } = await import("../utils/web-config.js");
-                    saveWebConfig({ projectPath });
+            const { saveWebConfig } = await import("../utils/web-config.js");
+            saveWebConfig({ projectPath });
 
-                    const { asAgentID, asTraceID } = await import("../../shared/types.js");
-                    const traceId = "T-" + Date.now().toString().slice(-6);
+            const { asAgentID, asTraceID } = await import("../../shared/types.js");
+            const traceId = "T-" + Date.now().toString().slice(-6);
 
-                    Storage.setMetadata("traceId", traceId);
-                    Storage.setMetadata("phase", "PHASE_0");
+            Storage.setMetadata("traceId", traceId);
+            Storage.setMetadata("phase", "PHASE_0");
 
-                    const hermesMsg = {
-                        timestamp: new Date().toISOString(),
-                        from: asAgentID("web-user"),
-                        to: asAgentID(agent),
-                        category: "DELEGATION" as const,
-                        content: message,
-                        traceId: asTraceID(traceId),
-                        status: "PENDING" as const,
-                        priority: "HIGH" as const,
-                        requiresApproval: false
-                    };
-                    Storage.saveMessage(hermesMsg);
+            const hermesMsg = {
+                timestamp: new Date().toISOString(),
+                from: asAgentID("web-user"),
+                to: asAgentID(agent),
+                category: "DELEGATION" as const,
+                content: message,
+                traceId: asTraceID(traceId),
+                status: "PENDING" as const,
+                priority: "HIGH" as const,
+                requiresApproval: false
+            };
+            Storage.saveMessage(hermesMsg);
 
-                    context.broadcastWS("message", hermesMsg);
-                    context.broadcastWS("log", {
-                        timestamp: new Date().toISOString(),
-                        agent: "web-user",
-                        action: "DISPATCH",
-                        trace_id: traceId,
-                        status: "SUCCESS",
-                        summary: `Dispatched task to ${agent}: ${message.substring(0, 50)}...`
-                    });
-
-                    const { startOrchestratorLoop } = await import("../utils/web-config.js");
-                    const runResult = startOrchestratorLoop();
-
-                    serveJson(res, 200, {
-                        success: true,
-                        traceId,
-                        message: `Task dispatched to ${agent}. ${runResult.message}`
-                    });
-                } catch (err) {
-                    serveJson(res, 400, { success: false, error: (err as Error).message });
-                }
+            context.broadcastWS("message", hermesMsg);
+            context.broadcastWS("log", {
+                timestamp: new Date().toISOString(),
+                agent: "web-user",
+                action: "DISPATCH",
+                trace_id: traceId,
+                status: "SUCCESS",
+                summary: `Dispatched task to ${agent}: ${message.substring(0, 50)}...`
             });
-        } catch (e) {
-            serveJson(res, 500, { success: false, error: (e as Error).message });
+
+            const { startOrchestratorLoop } = await import("../utils/web-config.js");
+            const runResult = startOrchestratorLoop();
+
+            serveJson(res, 200, {
+                success: true,
+                traceId,
+                message: `Task dispatched to ${agent}. ${runResult.message}`
+            });
+        } catch (err) {
+            serveJson(res, 400, { success: false, error: (err as Error).message });
         }
         return true;
     }

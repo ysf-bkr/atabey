@@ -1,7 +1,7 @@
 import http from "http";
 import path from "path";
 import { Audit } from "../../shared/audit.js";
-import { RouteContext, serveJson } from "./types.js";
+import { RouteContext, serveJson, parseJsonBody } from "./types.js";
 
 export async function handleGovernanceRoutes(
     pathname: string,
@@ -72,24 +72,25 @@ export async function handleGovernanceRoutes(
 
     if (pathname === "/api/compliance/consent" && method === "POST") {
         try {
-            let body = "";
-            req.on("data", chunk => { body += chunk.toString(); });
-            req.on("end", async () => {
-                try {
-                    const parsed = JSON.parse(body);
-                    const { recordConsent } = await import("../utils/consent.js");
-                    const record = recordConsent({
-                        subject: String(parsed.subject || "anonymous"),
-                        purpose: String(parsed.purpose || "ai-assisted-development"),
-                        granted: parsed.granted !== false,
-                        legalBasis: parsed.legalBasis,
-                        expiresAt: parsed.expiresAt,
-                        metadata: parsed.metadata,
-                    });
-                    serveJson(res, 200, { success: true, data: record });
-                } catch (err) { serveJson(res, 400, { success: false, error: (err as Error).message }); }
+            const parsed = await parseJsonBody<{
+                subject?: string;
+                purpose?: string;
+                granted?: boolean;
+                legalBasis?: "contract" | "consent" | "legitimate_interest";
+                expiresAt?: string;
+                metadata?: Record<string, string>;
+            }>(req);
+            const { recordConsent } = await import("../utils/consent.js");
+            const record = recordConsent({
+                subject: String(parsed.subject || "anonymous"),
+                purpose: String(parsed.purpose || "ai-assisted-development"),
+                granted: parsed.granted !== false,
+                legalBasis: parsed.legalBasis,
+                expiresAt: parsed.expiresAt ? String(parsed.expiresAt) : undefined,
+                metadata: parsed.metadata,
             });
-        } catch (e) { serveJson(res, 500, { success: false, error: (e as Error).message }); }
+            serveJson(res, 200, { success: true, data: record });
+        } catch (err) { serveJson(res, 400, { success: false, error: (err as Error).message }); }
         return true;
     }
 
@@ -106,17 +107,11 @@ export async function handleGovernanceRoutes(
     if (pathname === "/api/audit/erase" && method === "POST") {
         try {
             Audit.initialize();
-            let body = "";
-            req.on("data", chunk => { body += chunk.toString(); });
-            req.on("end", () => {
-                try {
-                    const parsed = JSON.parse(body);
-                    const confirmation = parsed.confirmationCode || "";
-                    const changes = Audit.clearAll(confirmation);
-                    serveJson(res, 200, { success: true, message: `${changes} records cleared under KVKK/GDPR right to erasure.` });
-                } catch (err) { serveJson(res, 400, { success: false, error: (err as Error).message }); }
-            });
-        } catch (e) { serveJson(res, 500, { success: false, error: (e as Error).message }); }
+            const parsed = await parseJsonBody<{ confirmationCode?: string }>(req);
+            const confirmation = parsed.confirmationCode || "";
+            const changes = Audit.clearAll(confirmation);
+            serveJson(res, 200, { success: true, message: `${changes} records cleared under KVKK/GDPR right to erasure.` });
+        } catch (err) { serveJson(res, 400, { success: false, error: (err as Error).message }); }
         return true;
     }
 

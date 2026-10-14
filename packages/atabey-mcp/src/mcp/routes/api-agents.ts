@@ -1,5 +1,5 @@
 import http from "http";
-import { RouteContext, serveJson } from "./types.js";
+import { RouteContext, serveJson, parseJsonBody } from "./types.js";
 import { Storage } from "../../shared/storage.js";
 
 export async function handleAgentsRoutes(
@@ -26,26 +26,18 @@ export async function handleAgentsRoutes(
     // POST Create Agent
     if (pathname === "/api/agents/create" && method === "POST") {
         try {
-            let body = "";
-            req.on("data", chunk => { body += chunk.toString(); });
-            req.on("end", async () => {
-                try {
-                    const parsed = JSON.parse(body);
-                    const { name, description, skills } = parsed;
-                    if (!name) {
-                        serveJson(res, 400, { success: false, error: "name parameter is required" });
-                        return;
-                    }
-                    const { AtabeyStorage } = await import("../../shared/storage.js");
-                    AtabeyStorage.createAgent(name, description || "", skills || "[]");
-                    broadcastWS("agent_update", AtabeyStorage.getAllAgents());
-                    serveJson(res, 200, { success: true, message: `Agent ${name} created.` });
-                } catch (err) {
-                    serveJson(res, 400, { success: false, error: (err as Error).message });
-                }
-            });
-        } catch (e) {
-            serveJson(res, 500, { success: false, error: (e as Error).message });
+            const parsed = await parseJsonBody<{ name?: string; description?: string; skills?: string }>(req);
+            const { name, description, skills } = parsed;
+            if (!name) {
+                serveJson(res, 400, { success: false, error: "name parameter is required" });
+                return true;
+            }
+            const { AtabeyStorage } = await import("../../shared/storage.js");
+            AtabeyStorage.createAgent(name, description || "", skills || "[]");
+            broadcastWS("agent_update", AtabeyStorage.getAllAgents());
+            serveJson(res, 200, { success: true, message: `Agent ${name} created.` });
+        } catch (err) {
+            serveJson(res, 400, { success: false, error: (err as Error).message });
         }
         return true;
     }
@@ -70,32 +62,30 @@ export async function handleAgentsRoutes(
     // POST Update Agent Details
     if (pathname === "/api/agents/update" && method === "POST") {
         try {
-            let body = "";
-            req.on("data", chunk => { body += chunk.toString(); });
-            req.on("end", async () => {
-                try {
-                    const parsed = JSON.parse(body);
-                    const { name, description, state, task, skills } = parsed;
-                    if (!name) {
-                        serveJson(res, 400, { success: false, error: "name parameter is required" });
-                        return;
-                    }
-                    const { AtabeyStorage } = await import("../../shared/storage.js");
-                    AtabeyStorage.updateAgentDetails(
-                        name,
-                        description || "Autonomous Specialist Agent",
-                        state || "READY",
-                        task || "Idle",
-                        typeof skills === "string" ? skills : JSON.stringify(skills || [])
-                    );
-                    broadcastWS("agent_update", AtabeyStorage.getAllAgents());
-                    serveJson(res, 200, { success: true, message: `Agent ${name} updated successfully.` });
-                } catch (err) {
-                    serveJson(res, 400, { success: false, error: (err as Error).message });
-                }
-            });
-        } catch (e) {
-            serveJson(res, 500, { success: false, error: (e as Error).message });
+            const parsed = await parseJsonBody<{
+                name?: string;
+                description?: string;
+                state?: string;
+                task?: string;
+                skills?: string | unknown[];
+            }>(req);
+            const { name, description, state, task, skills } = parsed;
+            if (!name) {
+                serveJson(res, 400, { success: false, error: "name parameter is required" });
+                return true;
+            }
+            const { AtabeyStorage } = await import("../../shared/storage.js");
+            AtabeyStorage.updateAgentDetails(
+                name,
+                description || "Autonomous Specialist Agent",
+                state || "READY",
+                task || "Idle",
+                typeof skills === "string" ? skills : JSON.stringify(skills || [])
+            );
+            broadcastWS("agent_update", AtabeyStorage.getAllAgents());
+            serveJson(res, 200, { success: true, message: `Agent ${name} updated successfully.` });
+        } catch (err) {
+            serveJson(res, 400, { success: false, error: (err as Error).message });
         }
         return true;
     }

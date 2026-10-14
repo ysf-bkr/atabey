@@ -274,6 +274,7 @@ function createUnifiedServer() {
 
     wss.on("connection", (ws) => {
         wsClients.add(ws);
+        ws.on("error", () => wsClients.delete(ws));
         ws.send(JSON.stringify({ type: "mcp_session", payload: { total: sessions.size, sessions: Array.from(sessions.keys()) } }));
         ws.on("close", () => wsClients.delete(ws));
         ws.on("message", (data) => {
@@ -296,6 +297,17 @@ function createUnifiedServer() {
         wsClients.clear();
         Storage.onMessageSaved = null;
         Storage.onMessageStatusUpdated = null;
+    });
+
+    httpServer.on("error", (err: NodeJS.ErrnoException) => {
+        if (err.code === "EADDRINUSE") {
+            process.stderr.write(`\n[atabey-mcp] FATAL: Port ${PORT} is already in use by another process.\n`);
+            process.stderr.write(`[atabey-mcp] Please terminate the existing process or start with a different port using MCP_PORT=<port>.\n\n`);
+            process.exit(1);
+        } else {
+            process.stderr.write(`[atabey-mcp] Server error: ${err.message}\n`);
+            process.exit(1);
+        }
     });
 
     // ─── Start ───────────────────────────────────────────────

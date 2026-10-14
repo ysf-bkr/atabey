@@ -1,6 +1,6 @@
 import http from "http";
 import path from "path";
-import { RouteContext, serveJson } from "./types.js";
+import { RouteContext, serveJson, parseJsonBody } from "./types.js";
 import { Storage } from "../../shared/storage.js";
 import { logger } from "../../shared/logger.js";
 
@@ -47,29 +47,21 @@ export async function handleConfigRoutes(
     // Knowledge Update
     if (pathname === "/api/knowledge/update" && req.method === "POST") {
         try {
-            let body = "";
-            req.on("data", chunk => { body += chunk.toString(); });
-            req.on("end", async () => {
-                try {
-                    const parsed = JSON.parse(body);
-                    const file = parsed.file;
-                    const content = parsed.content;
-                    if (!file || content === undefined) {
-                        serveJson(res, 400, { success: false, error: "Missing 'file' or 'content' in request body" });
-                        return;
-                    }
-                    let safeFile = path.basename(file);
-                    if (!safeFile.endsWith(".md")) {
-                        safeFile += ".md";
-                    }
-                    Storage.saveKnowledgeFile(safeFile, content);
-                    serveJson(res, 200, { success: true, message: `Knowledge document '${safeFile}' updated successfully.` });
-                } catch (err) {
-                    serveJson(res, 400, { success: false, error: (err as Error).message });
-                }
-            });
-        } catch (e) {
-            serveJson(res, 500, { success: false, error: (e as Error).message });
+            const parsed = await parseJsonBody<{ file?: string; content?: string }>(req);
+            const file = parsed.file;
+            const content = parsed.content;
+            if (!file || content === undefined) {
+                serveJson(res, 400, { success: false, error: "Missing 'file' or 'content' in request body" });
+                return true;
+            }
+            let safeFile = path.basename(file);
+            if (!safeFile.endsWith(".md")) {
+                safeFile += ".md";
+            }
+            Storage.saveKnowledgeFile(safeFile, content);
+            serveJson(res, 200, { success: true, message: `Knowledge document '${safeFile}' updated successfully.` });
+        } catch (err) {
+            serveJson(res, 400, { success: false, error: (err as Error).message });
         }
         return true;
     }
@@ -77,25 +69,17 @@ export async function handleConfigRoutes(
     // Knowledge Delete
     if (pathname === "/api/knowledge/delete" && req.method === "POST") {
         try {
-            let body = "";
-            req.on("data", chunk => { body += chunk.toString(); });
-            req.on("end", async () => {
-                try {
-                    const parsed = JSON.parse(body);
-                    const file = parsed.file;
-                    if (!file) {
-                        serveJson(res, 400, { success: false, error: "Missing 'file' in request body" });
-                        return;
-                    }
-                    const safeFile = path.basename(file);
-                    Storage.deleteKnowledgeFile(safeFile);
-                    serveJson(res, 200, { success: true, message: `Knowledge document '${safeFile}' deleted.` });
-                } catch (err) {
-                    serveJson(res, 400, { success: false, error: (err as Error).message });
-                }
-            });
-        } catch (e) {
-            serveJson(res, 500, { success: false, error: (e as Error).message });
+            const parsed = await parseJsonBody<{ file?: string }>(req);
+            const file = parsed.file;
+            if (!file) {
+                serveJson(res, 400, { success: false, error: "Missing 'file' in request body" });
+                return true;
+            }
+            const safeFile = path.basename(file);
+            Storage.deleteKnowledgeFile(safeFile);
+            serveJson(res, 200, { success: true, message: `Knowledge document '${safeFile}' deleted.` });
+        } catch (err) {
+            serveJson(res, 400, { success: false, error: (err as Error).message });
         }
         return true;
     }
@@ -113,29 +97,25 @@ export async function handleConfigRoutes(
     // Constitution Update
     if (pathname === "/api/constitution/update" && req.method === "POST") {
         try {
-            let body = "";
-            req.on("data", chunk => { body += chunk.toString(); });
-            req.on("end", async () => {
-                try {
-                    const parsed = JSON.parse(body);
-                    const { section, title, content } = parsed;
-                    if (!section || !content) {
-                        serveJson(res, 400, { success: false, error: "Missing 'section' or 'content'" });
-                        return;
-                    }
-                    const db = Storage.getDB();
-                    db.prepare(`
-                        INSERT INTO constitution (section, title, content, updated_at)
-                        VALUES (?, ?, ?, ?)
-                        ON CONFLICT(section) DO UPDATE SET
-                            title = excluded.title,
-                            content = excluded.content,
-                            updated_at = excluded.updated_at
-                    `).run(section, title || "", content, new Date().toISOString());
-                    serveJson(res, 200, { success: true, message: `Section '${section}' updated.` });
-                } catch (err) { serveJson(res, 400, { success: false, error: (err as Error).message }); }
-            });
-        } catch (e) { serveJson(res, 500, { success: false, error: (e as Error).message }); }
+            const parsed = await parseJsonBody<{ section?: string; title?: string; content?: string }>(req);
+            const { section, title, content } = parsed;
+            if (!section || !content) {
+                serveJson(res, 400, { success: false, error: "Missing 'section' or 'content'" });
+                return true;
+            }
+            const db = Storage.getDB();
+            db.prepare(`
+                INSERT INTO constitution (section, title, content, updated_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(section) DO UPDATE SET
+                    title = excluded.title,
+                    content = excluded.content,
+                    updated_at = excluded.updated_at
+            `).run(section, title || "", content, new Date().toISOString());
+            serveJson(res, 200, { success: true, message: `Section '${section}' updated.` });
+        } catch (err) {
+            serveJson(res, 400, { success: false, error: (err as Error).message });
+        }
         return true;
     }
 
@@ -162,29 +142,25 @@ export async function handleConfigRoutes(
     // Prompts Update
     if (pathname === "/api/prompts/update" && req.method === "POST") {
         try {
-            let body = "";
-            req.on("data", chunk => { body += chunk.toString(); });
-            req.on("end", async () => {
-                try {
-                    const parsed = JSON.parse(body);
-                    const { name, category, content } = parsed;
-                    if (!name || !content) {
-                        serveJson(res, 400, { success: false, error: "Missing 'name' or 'content'" });
-                        return;
-                    }
-                    const db = Storage.getDB();
-                    db.prepare(`
-                        INSERT INTO prompts (name, category, content, updated_at)
-                        VALUES (?, ?, ?, ?)
-                        ON CONFLICT(name) DO UPDATE SET
-                            category = excluded.category,
-                            content = excluded.content,
-                            updated_at = excluded.updated_at
-                    `).run(name, category || "general", content, new Date().toISOString());
-                    serveJson(res, 200, { success: true, message: `Prompt '${name}' updated.` });
-                } catch (err) { serveJson(res, 400, { success: false, error: (err as Error).message }); }
-            });
-        } catch (e) { serveJson(res, 500, { success: false, error: (e as Error).message }); }
+            const parsed = await parseJsonBody<{ name?: string; category?: string; content?: string }>(req);
+            const { name, category, content } = parsed;
+            if (!name || !content) {
+                serveJson(res, 400, { success: false, error: "Missing 'name' or 'content'" });
+                return true;
+            }
+            const db = Storage.getDB();
+            db.prepare(`
+                INSERT INTO prompts (name, category, content, updated_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(name) DO UPDATE SET
+                    category = excluded.category,
+                    content = excluded.content,
+                    updated_at = excluded.updated_at
+            `).run(name, category || "general", content, new Date().toISOString());
+            serveJson(res, 200, { success: true, message: `Prompt '${name}' updated.` });
+        } catch (err) {
+            serveJson(res, 400, { success: false, error: (err as Error).message });
+        }
         return true;
     }
 
@@ -201,29 +177,25 @@ export async function handleConfigRoutes(
     // Rules Update
     if (pathname === "/api/rules/update" && req.method === "POST") {
         try {
-            let body = "";
-            req.on("data", chunk => { body += chunk.toString(); });
-            req.on("end", async () => {
-                try {
-                    const parsed = JSON.parse(body);
-                    const { name, content, enabled } = parsed;
-                    if (!name) {
-                        serveJson(res, 400, { success: false, error: "Missing 'name'" });
-                        return;
-                    }
-                    const db = Storage.getDB();
-                    db.prepare(`
-                        INSERT INTO rules (name, content, enabled, updated_at)
-                        VALUES (?, ?, ?, ?)
-                        ON CONFLICT(name) DO UPDATE SET
-                            content = excluded.content,
-                            enabled = excluded.enabled,
-                            updated_at = excluded.updated_at
-                    `).run(name, content || "", enabled !== undefined ? (enabled ? 1 : 0) : 1, new Date().toISOString());
-                    serveJson(res, 200, { success: true, message: `Rule '${name}' updated.` });
-                } catch (err) { serveJson(res, 400, { success: false, error: (err as Error).message }); }
-            });
-        } catch (e) { serveJson(res, 500, { success: false, error: (e as Error).message }); }
+            const parsed = await parseJsonBody<{ name?: string; content?: string; enabled?: boolean }>(req);
+            const { name, content, enabled } = parsed;
+            if (!name) {
+                serveJson(res, 400, { success: false, error: "Missing 'name'" });
+                return true;
+            }
+            const db = Storage.getDB();
+            db.prepare(`
+                INSERT INTO rules (name, content, enabled, updated_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(name) DO UPDATE SET
+                    content = excluded.content,
+                    enabled = excluded.enabled,
+                    updated_at = excluded.updated_at
+            `).run(name, content || "", enabled !== undefined ? (enabled ? 1 : 0) : 1, new Date().toISOString());
+            serveJson(res, 200, { success: true, message: `Rule '${name}' updated.` });
+        } catch (err) {
+            serveJson(res, 400, { success: false, error: (err as Error).message });
+        }
         return true;
     }
 
@@ -240,29 +212,25 @@ export async function handleConfigRoutes(
     // Registry Update
     if (pathname === "/api/registry/update" && req.method === "POST") {
         try {
-            let body = "";
-            req.on("data", chunk => { body += chunk.toString(); });
-            req.on("end", async () => {
-                try {
-                    const parsed = JSON.parse(body);
-                    const { name, type, data } = parsed;
-                    if (!name) {
-                        serveJson(res, 400, { success: false, error: "Missing 'name'" });
-                        return;
-                    }
-                    const db = Storage.getDB();
-                    db.prepare(`
-                        INSERT INTO registry (name, type, data, updated_at)
-                        VALUES (?, ?, ?, ?)
-                        ON CONFLICT(name) DO UPDATE SET
-                            type = excluded.type,
-                            data = excluded.data,
-                            updated_at = excluded.updated_at
-                    `).run(name, type || "agent", data || "{}", new Date().toISOString());
-                    serveJson(res, 200, { success: true, message: `Registry '${name}' updated.` });
-                } catch (err) { serveJson(res, 400, { success: false, error: (err as Error).message }); }
-            });
-        } catch (e) { serveJson(res, 500, { success: false, error: (e as Error).message }); }
+            const parsed = await parseJsonBody<{ name?: string; type?: string; data?: string }>(req);
+            const { name, type, data } = parsed;
+            if (!name) {
+                serveJson(res, 400, { success: false, error: "Missing 'name'" });
+                return true;
+            }
+            const db = Storage.getDB();
+            db.prepare(`
+                INSERT INTO registry (name, type, data, updated_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(name) DO UPDATE SET
+                    type = excluded.type,
+                    data = excluded.data,
+                    updated_at = excluded.updated_at
+            `).run(name, type || "agent", data || "{}", new Date().toISOString());
+            serveJson(res, 200, { success: true, message: `Registry '${name}' updated.` });
+        } catch (err) {
+            serveJson(res, 400, { success: false, error: (err as Error).message });
+        }
         return true;
     }
 
@@ -304,32 +272,32 @@ export async function handleConfigRoutes(
     // POST Settings (Save)
     if (pathname === "/api/settings" && req.method === "POST") {
         try {
-            let body = "";
-            req.on("data", chunk => { body += chunk.toString(); });
-            req.on("end", async () => {
-                try {
-                    const parsed = JSON.parse(body);
-                    
-                    // Metadata storage
-                    if (parsed.projectPath !== undefined) Storage.setMetadata("projectPath", parsed.projectPath);
-                    if (parsed.activeProvider !== undefined) Storage.setMetadata("activeProvider", parsed.activeProvider);
-                    
-                    // Config file storage
-                    const { saveWebConfig } = await import("../utils/web-config.js");
-                    const configToSave: Record<string, string> = {};
-                    if (parsed.projectPath) configToSave.projectPath = parsed.projectPath;
-                    if (parsed.activeProvider) configToSave.activeProvider = parsed.activeProvider;
-                    if (parsed.geminiApiKey && parsed.geminiApiKey !== "********") configToSave.geminiApiKey = parsed.geminiApiKey;
-                    if (parsed.anthropicApiKey && parsed.anthropicApiKey !== "********") configToSave.anthropicApiKey = parsed.anthropicApiKey;
-                    if (parsed.openaiApiKey && parsed.openaiApiKey !== "********") configToSave.openaiApiKey = parsed.openaiApiKey;
+            const parsed = await parseJsonBody<{
+                projectPath?: string;
+                activeProvider?: string;
+                geminiApiKey?: string;
+                anthropicApiKey?: string;
+                openaiApiKey?: string;
+            }>(req);
 
-                    const saved = saveWebConfig(configToSave);
-                    serveJson(res, 200, { success: true, message: "Settings saved successfully", projectPath: saved.projectPath });
-                } catch (err) {
-                    serveJson(res, 400, { success: false, error: (err as Error).message });
-                }
-            });
-        } catch (e) { serveJson(res, 500, { success: false, error: (e as Error).message }); }
+            // Metadata storage
+            if (parsed.projectPath !== undefined) Storage.setMetadata("projectPath", parsed.projectPath);
+            if (parsed.activeProvider !== undefined) Storage.setMetadata("activeProvider", parsed.activeProvider);
+
+            // Config file storage
+            const { saveWebConfig } = await import("../utils/web-config.js");
+            const configToSave: Record<string, string> = {};
+            if (parsed.projectPath) configToSave.projectPath = parsed.projectPath;
+            if (parsed.activeProvider) configToSave.activeProvider = parsed.activeProvider;
+            if (parsed.geminiApiKey && parsed.geminiApiKey !== "********") configToSave.geminiApiKey = parsed.geminiApiKey;
+            if (parsed.anthropicApiKey && parsed.anthropicApiKey !== "********") configToSave.anthropicApiKey = parsed.anthropicApiKey;
+            if (parsed.openaiApiKey && parsed.openaiApiKey !== "********") configToSave.openaiApiKey = parsed.openaiApiKey;
+
+            const saved = saveWebConfig(configToSave);
+            serveJson(res, 200, { success: true, message: "Settings saved successfully", projectPath: saved.projectPath });
+        } catch (err) {
+            serveJson(res, 400, { success: false, error: (err as Error).message });
+        }
         return true;
     }
 
@@ -368,31 +336,23 @@ export async function handleConfigRoutes(
     // Adapter Skill Toggle
     if (pathname === "/api/adapters/skills/toggle" && method === "POST") {
         try {
-            let body = "";
-            req.on("data", chunk => { body += chunk.toString(); });
-            req.on("end", async () => {
-                try {
-                    const parsed = JSON.parse(body);
-                    const { adapterId, skillId } = parsed;
-                    if (!adapterId || !skillId) {
-                        serveJson(res, 400, { success: false, error: "Missing adapterId or skillId" });
-                        return;
-                    }
-                    const { ADAPTER_SKILLS } = await import("atabey/src/modules/skills/adapter-skills.js");
-                    const adapter = ADAPTER_SKILLS[adapterId as import("atabey/src/modules/providers/types.js").AdapterId];
-                    if (!adapter || !adapter.enabledSkills[skillId]) {
-                        serveJson(res, 404, { success: false, error: "Adapter or skill not found" });
-                        return;
-                    }
-                    const skill = adapter.enabledSkills[skillId];
-                    skill.disabled = !skill.disabled;
-                    serveJson(res, 200, { success: true, disabled: !!skill.disabled });
-                } catch (err) {
-                    serveJson(res, 400, { success: false, error: (err as Error).message });
-                }
-            });
-        } catch (e) {
-            serveJson(res, 500, { success: false, error: (e as Error).message });
+            const parsed = await parseJsonBody<{ adapterId?: string; skillId?: string }>(req);
+            const { adapterId, skillId } = parsed;
+            if (!adapterId || !skillId) {
+                serveJson(res, 400, { success: false, error: "Missing adapterId or skillId" });
+                return true;
+            }
+            const { ADAPTER_SKILLS } = await import("atabey/src/modules/skills/adapter-skills.js");
+            const adapter = ADAPTER_SKILLS[adapterId as import("atabey/src/modules/providers/types.js").AdapterId];
+            if (!adapter || !adapter.enabledSkills[skillId]) {
+                serveJson(res, 404, { success: false, error: "Adapter or skill not found" });
+                return true;
+            }
+            const skill = adapter.enabledSkills[skillId];
+            skill.disabled = !skill.disabled;
+            serveJson(res, 200, { success: true, disabled: !!skill.disabled });
+        } catch (err) {
+            serveJson(res, 400, { success: false, error: (err as Error).message });
         }
         return true;
     }
@@ -400,35 +360,27 @@ export async function handleConfigRoutes(
     // Auth Login
     if (pathname === "/api/auth/login" && req.method === "POST") {
         try {
-            let body = "";
-            req.on("data", chunk => { body += chunk.toString(); });
-            req.on("end", async () => {
-                try {
-                    const parsed = JSON.parse(body);
-                    const { username, token } = parsed;
-                    if (!username || !token) {
-                        serveJson(res, 400, { success: false, error: "Username and token are required" });
-                        return;
-                    }
+            const parsed = await parseJsonBody<{ username?: string; token?: string }>(req);
+            const { username, token } = parsed;
+            if (!username || !token) {
+                serveJson(res, 400, { success: false, error: "Username and token are required" });
+                return true;
+            }
 
-                    const maskedToken = token.length > 8 ? `${token.slice(0, 4)}...${token.slice(-4)}` : "***";
-                    logger.info(`[LOGIN ATTEMPT] username="${username}", token="${maskedToken}"`);
-                    const { authenticateToken } = await import("../utils/auth.js");
-                    const result = authenticateToken(token);
-                    logger.info(`[LOGIN RESULT] authenticated=${result.authenticated}, user="${result.user}"`);
+            const maskedToken = token.length > 8 ? `${token.slice(0, 4)}...${token.slice(-4)}` : "***";
+            logger.info(`[LOGIN ATTEMPT] username="${username}", token="${maskedToken}"`);
+            const { authenticateToken } = await import("../utils/auth.js");
+            const result = authenticateToken(token);
+            logger.info(`[LOGIN RESULT] authenticated=${result.authenticated}, user="${result.user}"`);
 
-                    if (result.authenticated && (result.user === username || (result.user === "admin" && username === "admin"))) {
-                        serveJson(res, 200, { success: true, user: { name: username, role: result.user === "admin" ? "admin" : "user" } });
-                    } else {
-                        serveJson(res, 401, { success: false, error: "Invalid username or token" });
-                    }
-                } catch (err) {
-                    logger.error(`[LOGIN ERROR] ${(err as Error).message}`);
-                    serveJson(res, 400, { success: false, error: (err as Error).message });
-                }
-            });
-        } catch (e) {
-            serveJson(res, 500, { success: false, error: (e as Error).message });
+            if (result.authenticated && (result.user === username || (result.user === "admin" && username === "admin"))) {
+                serveJson(res, 200, { success: true, user: { name: username, role: result.user === "admin" ? "admin" : "user" } });
+            } else {
+                serveJson(res, 401, { success: false, error: "Invalid username or token" });
+            }
+        } catch (err) {
+            logger.error(`[LOGIN ERROR] ${(err as Error).message}`);
+            serveJson(res, 400, { success: false, error: (err as Error).message });
         }
         return true;
     }
@@ -447,24 +399,16 @@ export async function handleConfigRoutes(
     // POST Create/Update Admin User
     if (pathname === "/api/admin/users/create" && req.method === "POST") {
         try {
-            let body = "";
-            req.on("data", chunk => { body += chunk.toString(); });
-            req.on("end", async () => {
-                try {
-                    const parsed = JSON.parse(body);
-                    const { name, token, role } = parsed;
-                    if (!name || !token) {
-                        serveJson(res, 400, { success: false, error: "Username and token are required" });
-                        return;
-                    }
-                    Storage.createUser(name.trim(), token.trim(), role || "user");
-                    serveJson(res, 200, { success: true, message: `User ${name} created/updated successfully.` });
-                } catch (err) {
-                    serveJson(res, 400, { success: false, error: (err as Error).message });
-                }
-            });
-        } catch (e) {
-            serveJson(res, 500, { success: false, error: (e as Error).message });
+            const parsed = await parseJsonBody<{ name?: string; token?: string; role?: string }>(req);
+            const { name, token, role } = parsed;
+            if (!name || !token) {
+                serveJson(res, 400, { success: false, error: "Username and token are required" });
+                return true;
+            }
+            Storage.createUser(name.trim(), token.trim(), role || "user");
+            serveJson(res, 200, { success: true, message: `User ${name} created/updated successfully.` });
+        } catch (err) {
+            serveJson(res, 400, { success: false, error: (err as Error).message });
         }
         return true;
     }
@@ -472,24 +416,16 @@ export async function handleConfigRoutes(
     // POST Delete Admin User
     if (pathname === "/api/admin/users/delete" && req.method === "POST") {
         try {
-            let body = "";
-            req.on("data", chunk => { body += chunk.toString(); });
-            req.on("end", async () => {
-                try {
-                    const parsed = JSON.parse(body);
-                    const { name } = parsed;
-                    if (!name) {
-                        serveJson(res, 400, { success: false, error: "Username is required" });
-                        return;
-                    }
-                    Storage.deleteUser(name);
-                    serveJson(res, 200, { success: true, message: `User ${name} deleted.` });
-                } catch (err) {
-                    serveJson(res, 400, { success: false, error: (err as Error).message });
-                }
-            });
-        } catch (e) {
-            serveJson(res, 500, { success: false, error: (e as Error).message });
+            const parsed = await parseJsonBody<{ name?: string }>(req);
+            const { name } = parsed;
+            if (!name) {
+                serveJson(res, 400, { success: false, error: "Username is required" });
+                return true;
+            }
+            Storage.deleteUser(name);
+            serveJson(res, 200, { success: true, message: `User ${name} deleted.` });
+        } catch (err) {
+            serveJson(res, 400, { success: false, error: (err as Error).message });
         }
         return true;
     }
@@ -554,20 +490,12 @@ export async function handleConfigRoutes(
     // UPDATE Token Budget Config
     if (pathname === "/api/token-budget/config/update" && method === "POST") {
         try {
-            let body = "";
-            req.on("data", chunk => { body += chunk.toString(); });
-            req.on("end", async () => {
-                try {
-                    const parsed = JSON.parse(body);
-                    const { updateTokenBudgetConfig } = await import("../utils/context-optimizer.js");
-                    updateTokenBudgetConfig(parsed);
-                    serveJson(res, 200, { success: true, message: "Token budget configuration updated successfully." });
-                } catch (err) {
-                    serveJson(res, 400, { success: false, error: (err as Error).message });
-                }
-            });
-        } catch (e) {
-            serveJson(res, 500, { success: false, error: (e as Error).message });
+            const parsed = await parseJsonBody<Record<string, number>>(req);
+            const { updateTokenBudgetConfig } = await import("../utils/context-optimizer.js");
+            updateTokenBudgetConfig(parsed);
+            serveJson(res, 200, { success: true, message: "Token budget configuration updated successfully." });
+        } catch (err) {
+            serveJson(res, 400, { success: false, error: (err as Error).message });
         }
         return true;
     }

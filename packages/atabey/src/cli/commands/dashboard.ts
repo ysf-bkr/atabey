@@ -85,6 +85,33 @@ function broadcastWS(type: string, payload: unknown) {
 }
 
 /**
+ * Safely reads and parses request JSON body up to 2MB.
+ */
+function parseJsonBody<T = Record<string, unknown>>(req: http.IncomingMessage, maxBytes = 2 * 1024 * 1024): Promise<T> {
+    return new Promise((resolve, reject) => {
+        let body = "";
+        let bytesRead = 0;
+        req.on("data", (chunk: Buffer | string) => {
+            bytesRead += typeof chunk === "string" ? Buffer.byteLength(chunk) : chunk.length;
+            if (bytesRead > maxBytes) {
+                req.destroy();
+                reject(new Error("PAYLOAD_TOO_LARGE: Request exceeds 2MB limit"));
+                return;
+            }
+            body += chunk.toString();
+        });
+        req.on("end", () => {
+            try {
+                resolve(body.trim() ? JSON.parse(body) : ({} as T));
+            } catch (err) {
+                reject(err);
+            }
+        });
+        req.on("error", (err) => reject(err));
+    });
+}
+
+/**
  * [SERVER] Hermes Visual Control Plane (Dashboard Server) — Extended
  * Serves the framework state as a JSON API and the bundled Web UI.
  */
@@ -236,20 +263,12 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
         if (pathname === "/api/audit/erase" && req.method === "POST") {
             try {
                 Audit.initialize();
-                let body = "";
-                req.on("data", chunk => { body += chunk.toString(); });
-                req.on("end", () => {
-                    try {
-                        const parsed = JSON.parse(body);
-                        const confirmation = parsed.confirmationCode || "";
-                        const changes = Audit.clearAll(confirmation);
-                        serveJson(res, 200, { success: true, message: `${changes} records cleared under GDPR Art. 17 / KVKK Art. 7 right to erasure.` });
-                    } catch (err) {
-                        serveJson(res, 400, { success: false, error: (err as Error).message });
-                    }
-                });
-            } catch (e) {
-                serveJson(res, 500, { success: false, error: (e as Error).message });
+                const parsed = await parseJsonBody<{ confirmationCode?: string }>(req);
+                const confirmation = parsed.confirmationCode || "";
+                const changes = Audit.clearAll(confirmation);
+                serveJson(res, 200, { success: true, message: `${changes} records cleared under GDPR Art. 17 / KVKK Art. 7 right to erasure.` });
+            } catch (err) {
+                serveJson(res, 400, { success: false, error: (err as Error).message });
             }
             return;
         }
@@ -692,14 +711,17 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
     const wss = new WebSocketServer({ server, path: "/ws" });
     wss.on("connection", (ws) => {
         wsClients.add(ws);
-
-        // Send full state immediately on connect
-        const agents = Storage.getAllAgents();
-        const messages = Storage.getPendingMessages();
-        broadcastWS("agent_update", agents);
-        broadcastWS("message", messages);
-
+        ws.on("error", () => wsClients.delete(ws));
         ws.on("close", () => wsClients.delete(ws));
+
+        // Send full state to this client immediately on connect
+        try {
+            const agents = Storage.getAllAgents();
+            const messages = Storage.getPendingMessages();
+            ws.send(JSON.stringify({ type: "agent_update", payload: agents }));
+            ws.send(JSON.stringify({ type: "message", payload: messages }));
+        } catch { /* ignore */ }
+
         ws.on("message", (data) => {
             try {
                 const msg = JSON.parse(data.toString());
@@ -738,6 +760,17 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
     server.on("close", () => {
         clearInterval(broadcastInterval);
         wsClients.clear();
+    });
+
+    server.on("error", (err: NodeJS.ErrnoException) => {
+        if (err.code === "EADDRINUSE") {
+            UI.error(`\n[FATAL] Port ${port} is already in use by another process.`);
+            UI.error(`Please stop the running process or pass --port <number>.\n`);
+            process.exit(1);
+        } else {
+            UI.error(`\n[FATAL] Server error: ${err.message}\n`);
+            process.exit(1);
+        }
     });
 
     server.listen(port, () => {
