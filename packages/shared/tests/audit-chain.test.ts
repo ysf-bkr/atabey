@@ -87,4 +87,47 @@ describe("audit-chain helpers", () => {
         expect(bad.valid).toBe(false);
         expect(bad.reason).toMatch(/corruption/i);
     });
+
+    it("verifies hash chain continuity when genesis row is pruned by retention", () => {
+        // Simulating rows where row 1 was deleted by KVKK retention policy
+        const p1 = buildAgentLogChainPayload({
+            prevHash: "historical-pruned-hash-999",
+            agent: "database",
+            action: "MIGRATE",
+            traceId: "T2",
+            status: "SUCCESS",
+            summary: "migrated",
+            timestamp: "2026-02-01T00:00:00.000Z",
+        });
+        const h1 = sha256Hex(p1);
+        const p2 = buildAgentLogChainPayload({
+            prevHash: h1,
+            agent: "backend",
+            action: "API_CALL",
+            traceId: "T2",
+            status: "SUCCESS",
+            summary: "called",
+            timestamp: "2026-02-01T00:00:01.000Z",
+        });
+        const h2 = sha256Hex(p2);
+
+        const retainedRows = [
+            { id: 2, prev_hash: "historical-pruned-hash-999", hash: h1, agent: "database", action: "MIGRATE", trace_id: "T2", status: "SUCCESS", summary: "migrated", timestamp: "2026-02-01T00:00:00.000Z" },
+            { id: 3, prev_hash: h1, hash: h2, agent: "backend", action: "API_CALL", trace_id: "T2", status: "SUCCESS", summary: "called", timestamp: "2026-02-01T00:00:01.000Z" },
+        ];
+
+        const result = verifyHashChain(retainedRows, (row, prev) =>
+            buildAgentLogChainPayload({
+                prevHash: prev,
+                agent: row.agent,
+                action: row.action,
+                traceId: row.trace_id,
+                status: row.status,
+                summary: row.summary,
+                timestamp: row.timestamp,
+            }),
+        );
+        expect(result.valid).toBe(true);
+        expect(result.checked).toBe(2);
+    });
 });

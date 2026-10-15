@@ -59,11 +59,19 @@ function cleanHtmlContent(html: string): string {
 
 function isPrivateOrLoopbackHost(hostname: string): boolean {
     const isTest = process.env.VITEST === "true" || process.env.NODE_ENV === "test";
-    const host = hostname.toLowerCase();
-    if (host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "0.0.0.0") {
+    let host = hostname.toLowerCase().trim();
+    if (host.startsWith("[") && host.endsWith("]")) {
+        host = host.slice(1, -1);
+    }
+    if (host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "0.0.0.0" || host === "::") {
         return !isTest;
     }
     if (host.endsWith(".local") || host.endsWith(".internal")) return true;
+
+    // IPv6 checks (unique-local fc00::/7, link-local fe80::/10, IPv4-mapped loopback)
+    if (host.startsWith("fe80:") || host.startsWith("fc") || host.startsWith("fd") || host.startsWith("::ffff:127.")) {
+        return !isTest;
+    }
 
     const ipv4Regex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
     const match = host.match(ipv4Regex);
@@ -178,10 +186,47 @@ export async function handleHttpProxyRequest(projectRoot: string, args: HttpProx
         let contentType = "text/plain";
 
         try {
-            const response = await fetch(url, fetchOptions);
-            statusCode = response.status;
-            responseText = await response.text();
-            contentType = response.headers.get("content-type") || "text/plain";
+            let currentUrl = url;
+            let response: Response | undefined;
+            let redirectCount = 0;
+            const MAX_REDIRECTS = 5;
+
+            while (true) {
+                const stepUrl = new URL(currentUrl);
+                if (stepUrl.protocol !== "http:" && stepUrl.protocol !== "https:") {
+                    throw new Error(`Protocol '${stepUrl.protocol}' not supported. Only http: and https: are allowed.`);
+                }
+                if (isPrivateOrLoopbackHost(stepUrl.hostname)) {
+                    throw new Error(`SSRF Protection: Requests to private, local, or cloud metadata endpoints (${stepUrl.hostname}) are prohibited.`);
+                }
+
+                response = await fetch(currentUrl, {
+                    ...fetchOptions,
+                    redirect: "manual",
+                });
+
+                if ([301, 302, 303, 307, 308].includes(response.status)) {
+                    redirectCount++;
+                    if (redirectCount > MAX_REDIRECTS) {
+                        throw new Error(`Too many redirects (max ${MAX_REDIRECTS}).`);
+                    }
+                    const location = response.headers.get("location");
+                    if (!location) {
+                        break;
+                    }
+                    currentUrl = new URL(location, currentUrl).toString();
+                    continue;
+                }
+                break;
+            }
+
+            statusCode = response ? response.status : 500;
+            responseText = response ? await response.text() : "";
+            contentType = response?.headers.get("content-type") || "text/plain";
+        } catch (fetchErr) {
+            const err = `Fetch failed: ${(fetchErr as Error).message}`;
+            Metrics.logError(projectRoot, "@mcp", "http_proxy_request:fetch", err);
+            return { isError: true, content: [{ type: "text", text: `[ERROR] ${err}` }] };
         } finally {
             if (proxyUrl) {
                 if (originalHttpProxy !== undefined) {

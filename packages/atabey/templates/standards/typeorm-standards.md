@@ -1,6 +1,7 @@
 # TypeORM Standards
 
-> Full-featured ORM with decorator-based entity definitions.
+> **Enterprise Alternative:** Use when existing systems require decorator-based Entity/Data Mapper patterns.
+> For greenfield TypeScript services, **Kysely** (`kysely-standards.md`) is the primary, recommended zero-runtime type-safe query builder.
 
 ## Setup
 

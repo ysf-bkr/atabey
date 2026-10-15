@@ -81,6 +81,11 @@ export function verifyCorporateCompliance(content: string, filePath: string): vo
         }
 
         // 3. No Explicit Any Policy
+        if (node.kind === ts.SyntaxKind.AnyKeyword) {
+            if (!filePath.includes("definitions.ts") && !filePath.includes("types.ts")) {
+                errors.push(`[ERROR] Corporate Compliance Breach: 'any' keyword is forbidden at line ${sourceFile.getLineAndCharacterOfPosition(node.getStart()).line + 1}.`);
+            }
+        }
         if (ts.isTypeReferenceNode(node)) {
             if (ts.isIdentifier(node.typeName) && node.typeName.text === "any") {
                 if (!filePath.includes("definitions.ts") && !filePath.includes("types.ts")) {
@@ -98,6 +103,46 @@ export function verifyCorporateCompliance(content: string, filePath: string): vo
                 if (lib) {
                     errors.push(`[ERROR] Corporate Compliance Breach: External UI library '${lib}' usage is FORBIDDEN at line ${sourceFile.getLineAndCharacterOfPosition(node.getStart()).line + 1}. Build atomic components manually instead.`);
                 }
+
+                // 5. Secure CLI Policy (No direct child_process)
+                if (moduleSpecifier.text === "child_process") {
+                    const isExempt = filePath.includes("src/cli/commands/") ||
+                                     filePath.includes("shared/fs.ts") ||
+                                     filePath.includes("shared/lock.ts") ||
+                                     filePath.includes("quality-gate.ts") ||
+                                     filePath.includes("shell/run_command.ts");
+                    if (!isExempt) {
+                        errors.push(`[ERROR] Corporate Compliance Breach: Direct 'child_process' usage is forbidden at line ${sourceFile.getLineAndCharacterOfPosition(node.getStart()).line + 1}. Use secure framework APIs.`);
+                    }
+                }
+            }
+        }
+
+        // 6. SQL Safety Policy (Kysely only)
+        if (ts.isTaggedTemplateExpression(node)) {
+            const tag = node.tag;
+            if (ts.isIdentifier(tag) && tag.text === "sql") {
+                errors.push(`[ERROR] Corporate Compliance Breach: Raw SQL tagged template detected at line ${sourceFile.getLineAndCharacterOfPosition(node.getStart()).line + 1}. Use Kysely query builder.`);
+            }
+        }
+
+        // 7. Atomic FS Policy (No raw fs mutations)
+        if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
+            const prop = node.expression;
+            if (ts.isIdentifier(prop.expression) && prop.expression.text === "fs") {
+                if (["writeFileSync", "appendFileSync"].includes(prop.name.text)) {
+                    // Lock files, core atomic fs wrapper, and mcp configs are exempt
+                    const args = node.arguments;
+                    const firstArgText = args.length > 0 ? args[0].getText(sourceFile).toLowerCase() : "";
+                    const isExemptFile = filePath.includes("shared/fs.ts") ||
+                                         filePath.includes("src/cli/commands/mcp.ts") ||
+                                         filePath.includes("utils/compliance.ts") ||
+                                         filePath.includes("utils/memory.ts") ||
+                                         filePath.includes("tools/messaging/send_message.ts");
+                    if (!firstArgText.includes("lock") && !isExemptFile) {
+                        errors.push(`[ERROR] Corporate Compliance Breach: Raw 'fs.${prop.name.text}' mutation detected at line ${sourceFile.getLineAndCharacterOfPosition(node.getStart()).line + 1}. Use atomic utilities instead.`);
+                    }
+                }
             }
         }
 
@@ -105,6 +150,24 @@ export function verifyCorporateCompliance(content: string, filePath: string): vo
     }
 
     visit(sourceFile);
+
+    // 8. Hardcoded Secrets & PII Guard
+    const piiKeywords = [
+        { regex: /API_KEY\s*=\s*['"][^'"]+['"]/i, msg: "Hardcoded API Key" },
+        { regex: /SECRET\s*=\s*['"][^'"]+['"]/i, msg: "Hardcoded Secret" },
+        { regex: /PASSWORD\s*=\s*['"][^'"]+['"]/i, msg: "Hardcoded Password" },
+        { regex: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/, msg: "PII Detected: Email Address" },
+        { regex: /\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b/, msg: "PII Detected: Credit Card Pattern" }
+    ];
+
+    for (const { regex, msg } of piiKeywords) {
+        if (regex.test(content)) {
+            if (msg.includes("Email") && (filePath.endsWith("README.md") || filePath.endsWith("package.json") || filePath.includes("CONTRIBUTING"))) {
+                continue;
+            }
+            errors.push(`[ERROR] Corporate Compliance Breach: ${msg} detected in ${filePath}`);
+        }
+    }
 
     if (errors.length > 0) {
         throw new Error(errors.join("\n"));

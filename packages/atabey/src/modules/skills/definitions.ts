@@ -67,5 +67,41 @@ export const CORE_SKILLS = {
             "- **No Hardcoded Secrets:** Never embed API keys, secrets, or passwords inside configuration files or codebases.",
             "- **Immutable Deploys:** Ensure build steps compile production bundles successfully without configuration side-effects."
         ]
+    },
+    SECURITY_AUDIT: {
+        name: "Security Audit & Vulnerability Assessment",
+        tools: ["run_shell_command", "view_file"],
+        description: "Conducts AST security analysis, SSRF inspection, dependency audits, and secret scanning.",
+        mandates: [
+            "- **Zero-Secret Policy:** Enforce absence of hardcoded secrets or fallback API tokens.",
+            "- **Least Privilege:** Ensure restricted endpoints implement RBAC and strict input validation via Zod."
+        ]
+    },
+    FRONTEND_DEVELOPMENT: {
+        name: "Frontend Architecture & Component Design",
+        tools: ["view_file", "replace_text", "patch_file"],
+        description: "Builds responsive, accessible, atomic UI components without direct DOM mutations.",
+        mandates: [
+            "- **No Direct DOM Mutation:** State changes must drive render cycles; direct DOM manipulations (`document.getElementById`) are forbidden.",
+            "- **Design System Fidelity:** Follow Tailwind or defined design tokens consistently across components."
+        ]
+    },
+    MOBILE_DEVELOPMENT: {
+        name: "Mobile & Cross-Platform Development",
+        tools: ["view_file", "replace_text", "patch_file", "run_shell_command"],
+        description: "Architects React Native, Expo, and native bridge components with cross-platform fidelity.",
+        mandates: [
+            "- **Platform Separation:** Separate iOS and Android platform-specific implementations cleanly using `.ios.tsx` / `.android.tsx`.",
+            "- **Responsive Ergonomics:** Support diverse screen aspect ratios, safe areas, and offline state caching."
+        ]
+    },
+    GIT_WORKFLOW: {
+        name: "Git Version Control & Branch Discipline",
+        tools: ["run_shell_command", "view_file"],
+        description: "Manages branches, staging, conventional commits, and atomic pull requests.",
+        mandates: [
+            "- **Conventional Commits:** Format all commit messages with conventional prefixes (`feat:`, `fix:`, `refactor:`, `chore:`).",
+            "- **Atomic Changes:** Keep commits focused on a single change with traceable commit messages."
+        ]
     }
 };

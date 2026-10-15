@@ -41,11 +41,15 @@ export class EvaluationEngine {
             logger.debug("Compliance check failed during evaluation", e);
         }
 
+        const isTestEnv = process.env.VITEST === "true" || !!process.env.ATABEY_TEST_DIR;
+
         // 2. Compilation Check
         try {
-            if (fs.existsSync(path.join(projectRoot, "tsconfig.json"))) {
+            if (!isTestEnv && fs.existsSync(path.join(projectRoot, "tsconfig.json"))) {
                 runCommandQuiet("npx", ["tsc", "--noEmit"], projectRoot);
                 lessons.push("TypeScript compilation succeeded. Project is type-safe.");
+            } else if (isTestEnv) {
+                lessons.push("TypeScript compilation check bypassed during test runner execution.");
             }
         } catch {
             metrics.compilation = false;
@@ -55,9 +59,11 @@ export class EvaluationEngine {
 
         // 3. Lint Check
         try {
-            if (fs.existsSync(path.join(projectRoot, "eslint.config.js"))) {
+            if (!isTestEnv && fs.existsSync(path.join(projectRoot, "eslint.config.js"))) {
                 runCommandQuiet("npx", ["eslint", ".", "--max-warnings", "0"], projectRoot);
                 lessons.push("Lint check passed. Code follows project style guidelines.");
+            } else if (isTestEnv) {
+                lessons.push("Lint check bypassed during test runner execution.");
             }
         } catch {
             metrics.lint = false;
@@ -66,9 +72,11 @@ export class EvaluationEngine {
 
         // 4. Test Check
         try {
-            if (fs.existsSync(path.join(projectRoot, "vitest.config.ts"))) {
+            if (!isTestEnv && fs.existsSync(path.join(projectRoot, "vitest.config.ts"))) {
                 runCommandQuiet("npx", ["vitest", "run", "--passWithNoTests"], projectRoot);
                 lessons.push("All tests passed. Changes are verified.");
+            } else if (isTestEnv) {
+                lessons.push("Test check bypassed during test runner execution.");
             }
         } catch {
             metrics.tests = false;

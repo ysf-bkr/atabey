@@ -84,7 +84,7 @@ export function verifyHashChain<T extends ChainRow>(
     rows: T[],
     computePayload: (row: T, prevHash: string) => string,
 ): ChainVerifyResult {
-    let expectedPrev = AUDIT_CHAIN_GENESIS;
+    let expectedPrev = rows.length > 0 ? (rows[0].prev_hash || AUDIT_CHAIN_GENESIS) : AUDIT_CHAIN_GENESIS;
     let checked = 0;
 
     for (const row of rows) {

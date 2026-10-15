@@ -19,8 +19,11 @@ npm install -D @types/bcrypt @types/jsonwebtoken
 ```typescript
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "change-me-in-production";
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "24h";
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error("FATAL: JWT_SECRET environment variable is mandatory and cannot be empty.");
+}
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "15m"; // Access tokens must be short-lived
 
 interface AuthPayload {
   sub: string;     // User ID

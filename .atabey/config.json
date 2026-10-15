@@ -1,6 +1,6 @@
 {
   "name": "Agent Atabey",
-  "version": "0.0.23",
+  "version": "0.0.36",
   "profile": "freelancer",
   "projectKind": "framework-monorepo",
   "agents": [
@@ -17,7 +17,8 @@
     "cursor",
     "codex",
     "local",
-    "antigravity-cli"
+    "antigravity-cli",
+    "opencode"
   ],
   "paths": {
     "backend": "packages/atabey",
@@ -28,6 +29,7 @@
   },
   "backendLanguage": "Node.js (TypeScript)",
   "frontendFramework": "Vite (React)",
+  "nativeLanguage": "Rust",
   "language": "en",
   "theme": {
     "palette": "Modern Blue",
@@ -36,30 +38,6 @@
       "secondary": "#64748b",
       "accent": "#f43f5e"
     }
-  },
-  "orchestrator": {
-    "autoStart": true,
-    "intervalMs": 1000
-  },
-  "finops": {
-    "tracking": true,
-    "enforcement": false,
-    "monthlyBudgetUsd": 0,
-    "agentMaxBudgetUsd": 0,
-    "team": "atabey-framework",
-    "alertThresholds": [
-      50,
-      80,
-      90,
-      100
-    ],
-    "costPer1kTokensUsd": 0.003
-  },
-  "compliance": {
-    "retentionEnabled": true,
-    "consentLogging": true,
-    "piiMasking": true,
-    "dataProcessingBasis": "legitimate_interest"
   },
   "governance": {
     "authorizedAgents": {
@@ -98,5 +76,22 @@
       "PRODUCTION_DEPLOY": 80,
       "FORCE_PUSH": 60
     }
+  },
+  "orchestrator": {
+    "autoStart": true,
+    "intervalMs": 1000
+  },
+  "compliance": {
+    "retentionEnabled": true,
+    "consentLogging": true,
+    "piiMasking": true,
+    "dataProcessingBasis": "legitimate_interest"
+  },
+  "sandbox": {
+    "runtime": "auto",
+    "required": false
+  },
+  "auth": {
+    "required": false
   }
 }

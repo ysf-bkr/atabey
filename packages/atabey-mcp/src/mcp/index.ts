@@ -152,7 +152,7 @@ if (isNaN(PORT) || PORT < 1 || PORT > 65535) {
 `);
     process.exit(1);
 }
-const HOST = process.env.MCP_HOST || "0.0.0.0";
+const HOST = process.env.MCP_HOST || "127.0.0.1";
 
 // ─── MCP Server ───────────────────────────────────────────────────
 

@@ -171,12 +171,27 @@ export async function handleCallToolWithGovernance(
         }
 
         // [AUTO-ROLLBACK] Prepare snapshot for write operations
-        if (toolName === "write_file" || toolName === "replace_text" || toolName === "patch_file") {
+        const writeTools = ["write_file", "replace_text", "patch_file", "batch_surgical_edit"];
+        if (writeTools.includes(toolName)) {
             try {
                 const { AutoRollbackEngine } = await import("../utils/auto-rollback.js");
-                const filePath = (rawArgs.path as string) || "";
-                if (filePath) {
-                    AutoRollbackEngine.prepareWrite(filePath, traceId);
+                const path = await import("path");
+                const targets: string[] = [];
+                if (toolName === "batch_surgical_edit") {
+                    const edits = (rawArgs.edits as Array<{ path: string }>) || [];
+                    for (const edit of edits) {
+                        if (edit?.path && !targets.includes(edit.path)) {
+                            targets.push(edit.path);
+                        }
+                    }
+                } else {
+                    const p = (rawArgs.path as string) || "";
+                    if (p) targets.push(p);
+                }
+
+                for (const target of targets) {
+                    const resolved = path.isAbsolute(target) ? target : path.resolve(PROJECT_ROOT, target);
+                    AutoRollbackEngine.prepareWrite(resolved, traceId);
                 }
             } catch (e) {
                 logger.error(`[AUTO-ROLLBACK] Prepare error: ${(e as Error).message}`);
@@ -209,30 +224,63 @@ export async function handleCallToolWithGovernance(
         const result = (await handler(PROJECT_ROOT, rawArgs)) as { isError?: boolean; content: Array<{ type: "text"; text: string }> };
 
         // [AUTO-ROLLBACK] Check write results for governance violations
-        if (toolName === "write_file" || toolName === "replace_text" || toolName === "patch_file") {
+        if (writeTools.includes(toolName) && !result.isError) {
             try {
-                const filePath = (rawArgs.path as string) || "";
-                const content = (rawArgs.content as string) || "";
-                if (filePath && content) {
-                    const { AutoRollbackEngine } = await import("../utils/auto-rollback.js");
-                    const { scanFileForViolations } = await import("../utils/rules-engine.js");
-                    const violations = scanFileForViolations(filePath, content);
-                    if (violations.length > 0) {
-                        const violationRecords = violations.map(v => ({
-                            rule: v.rule.name,
-                            severity: v.rule.priority as "CRITICAL" | "HIGH" | "MEDIUM" | "LOW",
-                            filePath,
-                            line: v.line,
-                            detail: `Line ${v.line}: ${v.match}`,
-                            regenerateInstruction: v.rule.errorMessage,
-                        }));
-                        const rolledBack = AutoRollbackEngine.validateAndRollback(filePath, content, violationRecords);
-                        if (rolledBack) {
-                            const instruction = AutoRollbackEngine.buildRegenerateInstruction(rolledBack, toolName);
-                            broadcastWS("rollback_violation", { agent: detectedAgent, tool: toolName, violations: rolledBack, timestamp: new Date().toISOString() });
-                            return { isError: true, content: [{ type: "text" as const, text: instruction }] };
+                const { AutoRollbackEngine } = await import("../utils/auto-rollback.js");
+                const { scanFileForViolations } = await import("../utils/rules-engine.js");
+                const path = await import("path");
+                const fs = await import("fs");
+
+                const targets: string[] = [];
+                if (toolName === "batch_surgical_edit") {
+                    const edits = (rawArgs.edits as Array<{ path: string }>) || [];
+                    for (const edit of edits) {
+                        if (edit?.path && !targets.includes(edit.path)) {
+                            targets.push(edit.path);
                         }
                     }
+                } else {
+                    const p = (rawArgs.path as string) || "";
+                    if (p) targets.push(p);
+                }
+
+                let anyRolledBack = false;
+                const allViolations: Array<{
+                    rule: string;
+                    severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+                    filePath: string;
+                    line: number;
+                    detail: string;
+                    regenerateInstruction: string;
+                }> = [];
+
+                for (const target of targets) {
+                    const resolved = path.isAbsolute(target) ? target : path.resolve(PROJECT_ROOT, target);
+                    if (fs.existsSync(resolved)) {
+                        const content = fs.readFileSync(resolved, "utf8");
+                        const violations = scanFileForViolations(target, content);
+                        if (violations.length > 0) {
+                            const violationRecords = violations.map(v => ({
+                                rule: v.rule.name,
+                                severity: v.rule.priority as "CRITICAL" | "HIGH" | "MEDIUM" | "LOW",
+                                filePath: target,
+                                line: v.line,
+                                detail: `Line ${v.line}: ${v.match}`,
+                                regenerateInstruction: v.rule.errorMessage,
+                            }));
+                            const rolledBack = AutoRollbackEngine.validateAndRollback(resolved, content, violationRecords);
+                            if (rolledBack) {
+                                anyRolledBack = true;
+                                allViolations.push(...rolledBack);
+                            }
+                        }
+                    }
+                }
+
+                if (anyRolledBack && allViolations.length > 0) {
+                    const instruction = AutoRollbackEngine.buildRegenerateInstruction(allViolations, toolName);
+                    broadcastWS("rollback_violation", { agent: detectedAgent, tool: toolName, violations: allViolations, timestamp: new Date().toISOString() });
+                    return { isError: true, content: [{ type: "text" as const, text: instruction }] };
                 }
             } catch (e) {
                 logger.error(`[AUTO-ROLLBACK] Validate error: ${(e as Error).message}`);

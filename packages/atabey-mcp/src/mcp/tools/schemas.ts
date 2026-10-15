@@ -43,7 +43,7 @@ export const ReplaceTextSchema = z.object({
     path: z.string().min(1, "Path is required"),
     oldText: z.string().min(1, "oldText is required"),
     newText: z.string(),
-    allowMultiple: z.boolean().optional().default(false),
+    allowMultiple: z.boolean().optional(),
 }).strict();
 
 // ─── Search & Exploration
@@ -72,7 +72,7 @@ export const BatchSurgicalEditSchema = z.object({
         path: z.string().min(1),
         oldText: z.string().min(1),
         newText: z.string(),
-        allowMultiple: z.boolean().optional().default(false),
+        allowMultiple: z.boolean().optional(),
     })),
 }).strict();
 

@@ -1,7 +1,7 @@
 # Atabey Governance Layer — Supreme Law (Summary)
 
 > This file contains the core rules that AI agents must follow.
-> **Full version:** `templates/full/ATABEY_FULL.md`
+> **Full version:** `packages/atabey/templates/full/ATABEY_FULL.md`
 
 ## [RULE 0] Language Policy
 - **All product content is English:** code, comments, agent instructions, standards, prompts, CLI output, commits, and docs (except the root `README.md`, which is bilingual EN + TR).
@@ -10,8 +10,8 @@
 
 ## [RULE 1] Always Work Inside the Project Directory
 - **NEVER write to `/tmp`, `/var/tmp`, `temp` or similar locations.** All files, logs, and state must remain inside the project directory.
-- All work is done under `apps/`, `src/`, `docs/`, `tests/`.
-- Do not touch framework files (`framework-mcp/src/`, `bin/`, `.atabey/agents/`).
+- **Consumer Projects:** All application work is done under `apps/`, `src/`, `docs/`, `tests/`. Do not modify installed framework internals (`.atabey/agents/`, framework dist).
+- **Framework Monorepo (`frameworkRepo: true`):** Framework development is strictly organized under `packages/` (`packages/shared`, `packages/atabey`, `packages/atabey-mcp`, `packages/atabey-mcp/dashboard`).
 
 ## [RULE 2] Hierarchy
 1. **ATABEY.md** — Supreme Law
@@ -35,12 +35,14 @@
 | @explorer | Recon | Codebase discovery |
 | @git | Recon | Version control |
 
+> **Profile Tailoring:** Active agents in `.atabey/agents/` depend on `--profile` (`freelancer`: 3-4 essential agents, `team`: 7 agents, `enterprise`: all 13 agents).
+
 ## [RULE 4] Prohibitions
 - `any` type is forbidden
 - `console.log` is forbidden — use `EnterpriseLogger`
 - Mock data is forbidden (except 3rd party services)
 - Writing to `/tmp` or similar is forbidden
-- Raw SQL is forbidden — use Kysely/ORM
+- Raw unparameterized SQL is forbidden — use Kysely/ORM (or parameterized prepared statements)
 - Direct DB calls in controllers are forbidden
 
 ## [RULE 5] Phase System

@@ -47,7 +47,7 @@
     "test:mcp": "npm run test -w packages/atabey-mcp",
     "test:coverage": "npm run test:coverage --workspaces --if-present",
     "prepublishOnly": "npm run build",
-    "clean": "rm -rf node_modules packages/*/node_modules packages/*/dist",
+    "clean": "node scripts/clean.mjs",
     "atabey:status": "atabey status",
     "atabey:check": "atabey check",
     "atabey:setup": "atabey init gemini --unified --profile freelancer --yes --lang en",
@@ -64,9 +64,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/node": "^25.9.1",
+    "@types/node": "^22.15.3",
     "@vitest/coverage-v8": "^5.0.0",
-    "atabey": "^0.0.33",
     "eslint": "^10.4.0",
     "globals": "^17.6.0",
     "knip": "^6.41.0",
@@ -76,10 +75,7 @@
     "vitest": "^5.0.0"
   },
   "atabey": {
-    "version": "0.0.33",
-    "initializedAt": "2026-07-02T15:20:22.742Z"
-  },
-  "dependencies": {
-    "atabey-mcp": "^0.0.33"
+    "version": "0.0.36",
+    "initializedAt": "2026-10-15T15:52:14.950Z"
   }
 }

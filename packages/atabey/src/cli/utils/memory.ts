@@ -368,6 +368,7 @@ export function syncMarkdownMemory(fDir?: string) {
 
 export function acquireMemoryLock(lockPath: string): boolean {
     try {
+        fs.mkdirSync(path.dirname(lockPath), { recursive: true });
         fs.writeFileSync(lockPath, String(Date.now()), { flag: "wx" });
         return true;
     } catch (err: unknown) {
@@ -376,11 +377,18 @@ export function acquireMemoryLock(lockPath: string): boolean {
             try {
                 const stat = fs.statSync(lockPath);
                 if (Date.now() - stat.mtimeMs > 10000) {
-                    fs.unlinkSync(lockPath);
+                    logger.warn(`[WARN] Breaking stale memory lock at ${lockPath}...`);
+                    try {
+                        const staleFile = `${lockPath}.stale.${Date.now()}.${Math.random().toString(36).slice(2, 6)}`;
+                        fs.renameSync(lockPath, staleFile);
+                        try { fs.unlinkSync(staleFile); } catch { /* ignore */ }
+                    } catch {
+                        // Another process already reclaimed or lock was released
+                    }
                     fs.writeFileSync(lockPath, String(Date.now()), { flag: "wx" });
                     return true;
                 }
-            } catch { /* ignore */
+            } catch {
                 // Ignore
             }
         }

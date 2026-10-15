@@ -251,8 +251,8 @@ gemini config set mcpServers.atabey.env "{\"MCP_TRANSPORT\": \"stdio\", \"ATABEY
 {
   "mcpServers": {
     "atabey": {
-      "command": "node",
-      "args": ["node_modules/atabey-mcp/dist/atabey-mcp/src/mcp/index.js"],
+      "command": "npx",
+      "args": ["-y", "atabey-mcp"],
       "env": {
         "MCP_TRANSPORT": "stdio",
         "ATABEY_PROJECT_ROOT": "/path/to/your/project",
@@ -262,6 +262,7 @@ gemini config set mcpServers.atabey.env "{\"MCP_TRANSPORT\": \"stdio\", \"ATABEY
   }
 }
 ```
+*(Alternative for offline local installs: `"command": "node"`, `"args": ["node_modules/atabey-mcp/dist/atabey-mcp/src/mcp/index.js"]`)*
 
 > [!IMPORTANT]
 > **MCP transport modes**
@@ -359,17 +360,17 @@ Atabey is **not a separate execution engine**. It is a context-aware governance 
 
 Atabey AL supports **7 platforms** with automatic adapter configuration:
 
-| Platform | MCP Mode | Agents Export | Tools | Skills | Shim |
-|----------|----------|---------------|-------|--------|------|
-| **Claude Code** ⭐ | `.mcp.json` + `claude_desktop_config.json` | `.claude/agents/*.md` | 20 tools | 7 skills | `CLAUDE.md` |
-| **Gemini CLI** | `.gemini/mcp.json` | `.gemini/agents/*.md` | 14 tools | 6 skills | `GEMINI.md` |
-| **Cursor IDE** | `.cursor/mcp.json` | `.cursor/rules/*.mdc` | 9 tools | 4 skills | `CURSOR.mdc` |
-| **Codex CLI (Copilot)** | `.vscode/mcp.json` + `.mcp.json` | `.agents/instructions/*.md` | 9 tools | 4 skills | `copilot-instructions.md` |
-| **Antigravity CLI** | `.agents/mcp_config.json` | `.agents/agents/*.md` + `agent.json` | 14 tools | 6 skills | `AGENTS.md` |
-| **Grok** | `.grok/mcp_config.json` | `.grok/agents/*.md` | 9 tools | 4 skills | `GROK.md` |
-| **Local LLM (Ollama)** | `.atabey/mcp_config.json` | `.atabey/agents/*.md` | 14 tools | 6 skills | `LOCAL_AI.md` |
+| Platform | MCP Transport | Agent Personas | Dynamic Skills | HITL Approval Gate | Audit Chain | Subprocess Sandbox |
+|----------|---------------|----------------|----------------|---------------------|-------------|-------------------|
+| **Claude Code** ⭐ | Stdio + SSE | Native (`.claude/agents/*.md`) | Full (11 Skills) | Webhooks + Passcode | HMAC-SHA256 Chained | Container + UID |
+| **Gemini CLI** | Stdio + SSE | Native (`.gemini/agents/*.md`) | Full (11 Skills) | Interactive CLI + Web | HMAC-SHA256 Chained | Container + UID |
+| **Cursor IDE** | Stdio | Rules (`.cursor/rules/*.mdc`) | MDC Ruleset | Dashboard Approval | HMAC-SHA256 Chained | Container + Allow-list |
+| **Codex CLI / Copilot** | Stdio | Workspace (`copilot-instructions.md`) | Injected Prompt | CLI Passcode | HMAC-SHA256 Chained | Allow-list |
+| **Antigravity CLI** | Stdio + SSE | `agent.json` + Subagents | Native Toolset | Real-time WebSocket | HMAC-SHA256 Chained | Container + UID |
+| **Grok** | Stdio + SSE | Native (`.grok/agents/*.md`) | Context Shims | Web Dashboard | HMAC-SHA256 Chained | Container + Allow-list |
+| **Local LLM / Ollama** | Stdio + SSE | Unified Hub (`.atabey/agents/*.md`) | Markdown Specs | Terminal Gate | HMAC-SHA256 Chained | Container + UID |
 
-> **Unified Mode:** `atabey init claude --unified` exports agents to **ALL platforms simultaneously**.
+> **Unified Mode:** `atabey init <platform> --unified` configures and mirrors agents across **ALL platforms simultaneously**.
 
 ---
 

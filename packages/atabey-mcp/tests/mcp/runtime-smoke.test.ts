@@ -55,9 +55,10 @@ function rpc(messages: object[]): Promise<string[]> {
             resolve(responses);
         };
 
+        const expectedResponses = messages.filter(m => "id" in (m as Record<string, unknown>)).length;
         const collectTimer = setInterval(() => {
-            if (responses.length >= messages.length) done();
-        }, 100);
+            if (responses.length >= expectedResponses) done();
+        }, 50);
 
         const hardTimer = setTimeout(() => {
             if (stderr.includes("ERR_") || stderr.includes("Error")) {

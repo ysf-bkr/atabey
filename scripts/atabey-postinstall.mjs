@@ -25,6 +25,12 @@ const configPath = join(root, ".atabey", "config.json");
 if (existsSync(configPath)) process.exit(0);
 
 try {
+    execSync("git config core.hooksPath .githooks", { stdio: "ignore", cwd: root });
+} catch {
+    /* ignore if not a git checkout */
+}
+
+try {
     console.log("[atabey] Framework repo detected — running atabey:setup...");
     execSync("npm run atabey:setup", { stdio: "inherit", cwd: root });
 } catch {

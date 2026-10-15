@@ -47,7 +47,9 @@ export function assertSafeRelativePath(userPath: string, projectRoot?: string): 
         }
         const root = path.resolve(projectRoot);
         const abs = path.resolve(trimmed);
-        if (!abs.startsWith(root + path.sep) && abs !== root) {
+        const rootCheck = process.platform === "win32" ? root.toLowerCase() : root;
+        const absCheck = process.platform === "win32" ? abs.toLowerCase() : abs;
+        if (!absCheck.startsWith(rootCheck + path.sep) && absCheck !== rootCheck) {
             throw new Error(`[SANDBOX_FS] Absolute path escapes project root: "${userPath}"`);
         }
         rel = path.relative(root, abs).replace(/\\/g, "/");

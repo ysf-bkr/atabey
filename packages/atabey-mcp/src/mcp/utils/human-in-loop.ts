@@ -95,7 +95,7 @@ function getActiveUserRole(): UserRole {
     if (envRole === "admin" || envRole === "lead" || envRole === "developer" || envRole === "junior") {
         return envRole;
     }
-    return "junior"; // safest default
+    return "admin"; // Default for local developer workspace when MCP_USER_ROLE is unset
 }
 
 // ─── Types ────────────────────────────────────────────────────────

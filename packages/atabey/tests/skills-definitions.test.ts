@@ -11,6 +11,10 @@ describe("Skills Definitions", () => {
         expect(keys).toContain("QUALITY_ASSURANCE");
         expect(keys).toContain("DATABASE_MANAGEMENT");
         expect(keys).toContain("DEVOPS_INFRASTRUCTURE");
+        expect(keys).toContain("SECURITY_AUDIT");
+        expect(keys).toContain("FRONTEND_DEVELOPMENT");
+        expect(keys).toContain("MOBILE_DEVELOPMENT");
+        expect(keys).toContain("GIT_WORKFLOW");
     });
 
     it("should ensure all skills have valid properties, mandates and tools", () => {

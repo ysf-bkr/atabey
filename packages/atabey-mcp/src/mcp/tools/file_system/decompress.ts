@@ -116,7 +116,9 @@ export function handleDecompressFiles(projectRoot: string, args: DecompressFiles
                     fs.mkdirSync(outputFilePath, { recursive: true });
                 }
 
-                const child = spawn("tar", ["-xzf", relativeArchive, "-C", relativeOutput], {
+                const isGzip = relativeArchive.endsWith(".tar.gz") || relativeArchive.endsWith(".tgz") || relativeArchive.endsWith(".gz");
+                const tarFlags = isGzip ? "-xzf" : "-xf";
+                const child = spawn("tar", [tarFlags, relativeArchive, "-C", relativeOutput], {
                     cwd: projectRoot,
                     shell: false,
                     stdio: ["ignore", "ignore", "pipe"],

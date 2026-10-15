@@ -1,0 +1,21 @@
+#!/bin/sh
+echo "🛡️  [Atabey] Running local pre-commit verification..."
+
+# 1. Type check
+echo "Checking TypeScript types (tsc --noEmit)..."
+npx tsc --noEmit
+if [ $? -ne 0 ]; then
+    echo "❌ [Atabey] Pre-commit hook failed: TypeScript errors detected. Fix types before committing."
+    exit 1
+fi
+
+# 2. Lint check
+echo "Running ESLint..."
+npm run lint
+if [ $? -ne 0 ]; then
+    echo "❌ [Atabey] Pre-commit hook failed: ESLint violations detected. Fix lint errors before committing."
+    exit 1
+fi
+
+echo "✅ [Atabey] Pre-commit checks passed successfully!"
+exit 0

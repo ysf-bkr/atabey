@@ -6,21 +6,36 @@ import { writeTextFile, appendFile } from "../utils/fs.js";
 import { ValidationError } from "../../shared/errors.js";
 
 import { HermesMessageSchema } from "./orchestrate.js";
+import { Storage } from "../../shared/storage.js";
 
 export async function approveCommand(traceId: string) {
     const frameworkDir = getFrameworkDir();
     const messagesDir = path.join(frameworkDir, "messages");
+    let found = false;
 
-    if (!fs.existsSync(messagesDir)) {
-        throw new ValidationError(
-            "No messages directory found.",
-            null,
-            "Ensure the framework is initialized and the Hermes orchestrator has been run at least once."
-        );
+    // 1. Primary SSOT: Check and approve in SQLite storage
+    try {
+        const approval = Storage.getApproval(traceId);
+        if (approval && approval.status === "PENDING") {
+            Storage.updateApprovalStatus(traceId, "APPROVED");
+            found = true;
+            UI.success(`Approved high-risk operation for trace: ${traceId} (Tool: ${approval.toolName})`);
+        }
+        const pendingMessages = Storage.getPendingMessages();
+        for (const msg of pendingMessages) {
+            if (msg.traceId === traceId && (msg.category === "ALERT" || msg.category === "ACTION") && msg.id !== undefined) {
+                Storage.updateMessageStatus(msg.id, "APPROVED");
+                found = true;
+                UI.success(`Approved message from ${msg.from} to ${msg.to} (Action: ${msg.category})`);
+            }
+        }
+    } catch {
+        // Storage may not be initialized in non-DB environments
     }
 
-    const files = fs.readdirSync(messagesDir).filter((f) => f.endsWith(".json"));
-    let found = false;
+    // 2. Secondary / Legacy: Check flat message files if present
+    if (fs.existsSync(messagesDir)) {
+        const files = fs.readdirSync(messagesDir).filter((f) => f.endsWith(".json"));
 
     for (const file of files) {
         const filePath = path.join(messagesDir, file);
@@ -53,6 +68,7 @@ export async function approveCommand(traceId: string) {
         } catch (e) {
             UI.error(`Error reading or updating message file ${file}: ${(e as Error).message}`);
         }
+    }
     }
 
     if (found) {

@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck — cross-package dynamic imports from atabey-mcp are runtime-only
 import fs from "fs";
 import http from "http";
 import path from "path";
@@ -129,7 +127,19 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
 
     const server = http.createServer(async (req, res) => {
         // CORS & Cache Headers
-        res.setHeader("Access-Control-Allow-Origin", "*");
+        const origin = req.headers.origin;
+        const isLocalOrigin = !origin ||
+            origin.startsWith("http://localhost:") ||
+            origin.startsWith("http://127.0.0.1:") ||
+            origin.startsWith("https://localhost:") ||
+            origin.startsWith("https://127.0.0.1:") ||
+            origin === "null";
+
+        if (isLocalOrigin) {
+            res.setHeader("Access-Control-Allow-Origin", origin || "*");
+        } else if (process.env.ATABEY_ALLOWED_ORIGIN && origin === process.env.ATABEY_ALLOWED_ORIGIN) {
+            res.setHeader("Access-Control-Allow-Origin", origin);
+        }
         res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
         res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
         res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
@@ -335,21 +345,52 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
                 return;
             }
             try {
-                // Approval process via storage abstraction
+                let approvedCount = 0;
+
+                // 1. Primary: Update SQLite approvals table
+                try {
+                    const approval = Storage.getApproval(traceId);
+                    if (approval && approval.status === "PENDING") {
+                        Storage.updateApprovalStatus(traceId, "APPROVED");
+                        approvedCount++;
+                    }
+                } catch { /* best effort */ }
+
+                // 2. Update SQLite pending messages
                 const pendingMessages = Storage.getPendingMessages().filter(
                     m => m.traceId === traceId && (m.category === "ALERT" || m.category === "ACTION")
                 );
-
-                if (pendingMessages.length === 0) {
-                    serveJson(res, 404, { success: false, error: "No pending approval found for this trace ID" });
-                    return;
-                }
-
                 pendingMessages.forEach((msg) => {
                     if (msg.id !== undefined) {
                         Storage.updateMessageStatus(msg.id, "APPROVED");
+                        approvedCount++;
                     }
                 });
+
+                // 3. Fallback: Update legacy file-based message queue
+                const messagesDir = path.join(frameworkDir, "messages");
+                if (fs.existsSync(messagesDir)) {
+                    const files = fs.readdirSync(messagesDir);
+                    for (const file of files) {
+                        if (file.endsWith(".json")) {
+                            const p = path.join(messagesDir, file);
+                            try {
+                                const data = JSON.parse(fs.readFileSync(p, "utf8"));
+                                if (data.traceId === traceId && (data.category === "ALERT" || data.category === "ACTION") && data.status !== "APPROVED") {
+                                    data.status = "APPROVED";
+                                    data.resolvedAt = new Date().toISOString();
+                                    fs.writeFileSync(p, JSON.stringify(data, null, 2), "utf8");
+                                    approvedCount++;
+                                }
+                            } catch { /* ignore */ }
+                        }
+                    }
+                }
+
+                if (approvedCount === 0) {
+                    serveJson(res, 404, { success: false, error: "No pending approval found for this trace ID" });
+                    return;
+                }
 
                 // Log approval to audit — atomic appendFile kullan
                 const auditPath = path.join(frameworkDir, "observability/audit_log.md");
@@ -361,7 +402,7 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
                 // Notify WS clients
                 broadcastWS("approval", { traceId, status: "APPROVED" });
 
-                serveJson(res, 200, { success: true, message: `Trace ${traceId} approved successfully`, approved: pendingMessages.length });
+                serveJson(res, 200, { success: true, message: `Trace ${traceId} approved successfully`, approved: approvedCount });
             } catch (e) {
                 serveJson(res, 500, { success: false, error: (e as Error).message });
             }
@@ -376,20 +417,52 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
                 return;
             }
             try {
+                let rejectedCount = 0;
+
+                // 1. Primary: Update SQLite approvals table
+                try {
+                    const approval = Storage.getApproval(traceId);
+                    if (approval && approval.status === "PENDING") {
+                        Storage.updateApprovalStatus(traceId, "REJECTED");
+                        rejectedCount++;
+                    }
+                } catch { /* best effort */ }
+
+                // 2. Update SQLite pending messages
                 const pendingMessages = Storage.getPendingMessages().filter(
                     m => m.traceId === traceId && (m.category === "ALERT" || m.category === "ACTION")
                 );
-
-                if (pendingMessages.length === 0) {
-                    serveJson(res, 404, { success: false, error: "No pending approval found for this trace ID" });
-                    return;
-                }
-
                 pendingMessages.forEach((msg) => {
                     if (msg.id !== undefined) {
                         Storage.updateMessageStatus(msg.id, "REJECTED");
+                        rejectedCount++;
                     }
                 });
+
+                // 3. Fallback: Update legacy file-based message queue
+                const messagesDir = path.join(frameworkDir, "messages");
+                if (fs.existsSync(messagesDir)) {
+                    const files = fs.readdirSync(messagesDir);
+                    for (const file of files) {
+                        if (file.endsWith(".json")) {
+                            const p = path.join(messagesDir, file);
+                            try {
+                                const data = JSON.parse(fs.readFileSync(p, "utf8"));
+                                if (data.traceId === traceId && (data.category === "ALERT" || data.category === "ACTION") && data.status !== "REJECTED") {
+                                    data.status = "REJECTED";
+                                    data.resolvedAt = new Date().toISOString();
+                                    fs.writeFileSync(p, JSON.stringify(data, null, 2), "utf8");
+                                    rejectedCount++;
+                                }
+                            } catch { /* ignore */ }
+                        }
+                    }
+                }
+
+                if (rejectedCount === 0) {
+                    serveJson(res, 404, { success: false, error: "No pending approval found for this trace ID" });
+                    return;
+                }
 
                 // Log rejection to audit
                 const auditPath = path.join(frameworkDir, "observability/audit_log.md");
@@ -401,7 +474,7 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
                 // Notify WS clients
                 broadcastWS("approval", { traceId, status: "REJECTED" });
 
-                serveJson(res, 200, { success: true, message: `Trace ${traceId} rejected successfully`, rejected: pendingMessages.length });
+                serveJson(res, 200, { success: true, message: `Trace ${traceId} rejected successfully`, rejected: rejectedCount });
             } catch (e) {
                 serveJson(res, 500, { success: false, error: (e as Error).message });
             }
@@ -773,11 +846,12 @@ export async function dashboardCommand(port: number = FRAMEWORK.DASHBOARD_PORT) 
         }
     });
 
-    server.listen(port, () => {
+    const host = process.env.ATABEY_DASHBOARD_HOST || "127.0.0.1";
+    server.listen(port, host, () => {
         UI.success("\n[START] Hermes Visual Control Plane is running!");
-        UI.success(`[INFO] Web UI:    http://localhost:${port}`);
-        UI.success(`[DATA] API Base:  http://localhost:${port}/api`);
-        UI.success(`[WS]   WebSocket: ws://localhost:${port}/ws`);
+        UI.success(`[INFO] Web UI:    http://${host}:${port}`);
+        UI.success(`[DATA] API Base:  http://${host}:${port}/api`);
+        UI.success(`[WS]   WebSocket: ws://${host}:${port}/ws`);
         UI.success("[ENDPOINTS]");
         UI.success("  GET  /api/health         → System health check");
         UI.success("  GET  /api/status         → Agent statuses");

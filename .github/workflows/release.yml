@@ -1,0 +1,61 @@
+name: Release & Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  id-token: write   # Required for npm provenance
+
+jobs:
+  release:
+    name: Build, Verify, SBOM & Publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm ci --prefix packages/atabey-mcp/dashboard
+
+      - name: Build monorepo
+        run: npm run build
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Lint check
+        run: npm run lint
+
+      - name: Run test suite
+        run: npm run test
+
+      - name: Generate CycloneDX SBOM
+        run: |
+          npx --yes @cyclonedx/cyclonedx-npm --output-file sbom.json
+        continue-on-error: true
+
+      - name: Publish Packages to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm publish -w packages/shared --access public --provenance || true
+          npm publish -w packages/atabey-mcp --access public --provenance || true
+          npm publish -w packages/atabey --access public --provenance || true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: sbom.json
+          generate_release_notes: true
