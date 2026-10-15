@@ -1,6 +1,6 @@
 {
   "name": "atabey-monorepo",
-  "version": "0.0.36",
+  "version": "0.0.37",
   "description": "Atabey — AI Governance & Multi-Agent Platform / Orchestrator — Monorepo",
   "author": "Yusuf BEKAR",
   "license": "AGPL-3.0",
@@ -75,7 +75,7 @@
     "vitest": "^5.0.0"
   },
   "atabey": {
-    "version": "0.0.36",
+    "version": "0.0.37",
     "initializedAt": "2026-10-15T15:52:14.950Z"
   }
 }
