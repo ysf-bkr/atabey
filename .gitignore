@@ -1,0 +1,130 @@
+# Dependency Directories
+node_modules/
+jspm_packages/
+web_modules/
+
+# Build Directories
+dist/
+build/
+out/
+.docusaurus/
+
+# Logs and Lock Files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Environment Variables
+.env
+.env.local
+.env.development
+.env.staging
+.env.production
+.env*.local
+
+# Editor / OS System Files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Temporary & Scratch Files
+cleanup.js
+cleanup.cjs
+*.tmp
+*.temp
+.cache/
+tests/.temp*/
+packages/atabey/tests/.temp/
+packages/atabey-mcp/tests/.temp/
+
+# Generated npm tarballs
+*.tgz
+atabey-*.tgz
+
+# Coverage artifacts
+coverage/
+coverage-clean.json
+coverage-summary.json
+
+# Test artifacts
+/test-init/
+tests/test-init/
+
+# Compiled artifacts in source directories (should be in dist/)
+packages/atabey/src/**/*.js
+packages/atabey/src/**/*.d.ts
+packages/atabey/src/**/*.js.map
+packages/atabey-mcp/src/**/*.js
+packages/atabey-mcp/src/**/*.d.ts
+packages/atabey-mcp/src/**/*.js.map
+packages/shared/src/**/*.js
+packages/shared/src/**/*.d.ts
+packages/shared/src/**/*.js.map
+
+# ─── ATABEY RUNTIME ARTIFACTS (Ignore DBs, keys, locks, logs) ───
+# Recursive (`**/`) so package-level .atabey runtime state is ignored too,
+# not just the repository-root .atabey/.
+**/.atabey/*.db
+**/.atabey/*.db-shm
+**/.atabey/*.db-wal
+**/.atabey/*.lock
+**/.atabey/*.key
+**/.atabey/*.anchor.json
+**/.atabey/logs/
+**/.atabey/memory/
+**/.atabey/queue/
+**/.atabey/messages/
+**/.atabey/monitoring/
+**/.atabey/rollbacks/
+**/.atabey/hitl/
+**/.atabey/telemetry/
+**/pending-events.jsonl
+
+# ─── EXPLICITLY TRACK KNOWLEDGE, GOVERNANCE & STANDARDS ──────────────
+!.atabey/knowledge/
+!.atabey/knowledge/**
+!.atabey/prompts/
+!.atabey/prompts/**
+!.atabey/rules/
+!.atabey/rules/**
+!.atabey/registry/
+!.atabey/registry/**
+!.atabey/router/
+!.atabey/router/**
+!.atabey/observability/
+!.atabey/observability/audit_log.md
+!.atabey/ATABEY.md
+!.atabey/STATUS.md
+!.atabey/config.json
+!.atabey/cli-commands.json
+!.atabey/mcp_config.json
+
+# Legacy Adapter Ephemeral Ignores
+.gemini/logs/*.json
+.gemini/*.lock
+.gemini/memory/
+.claude/logs/*.json
+.claude/*.lock
+.claude/memory/
+.grok/logs/*.json
+.grok/*.lock
+.grok/memory/
+.agent/logs/*.json
+.agent/*.lock
+.agent/memory/
+
+# IDE Agent configs (do not overwrite user configs)
+.agents/
+.claude/
+.cursor/
+.gemini/
+.grok/
+.opencode/

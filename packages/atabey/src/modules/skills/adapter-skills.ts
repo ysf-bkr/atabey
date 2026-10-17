@@ -1,0 +1,503 @@
+/**
+ * Adapter-Skill Mapping System
+ *
+ * Determines which skills each adapter has based on its unique tool capabilities.
+ * This way:
+ * - Claude Code uses a different skill set
+ * - Gemini CLI uses a different skill set
+ * - Cursor uses a different skill set
+ * - Codex (Copilot) uses a different skill set
+ *
+ * Bridges each adapter's tool mapping (CLAUDE_TOOL_VALUES, GEMINI_TOOL_VALUES, etc.)
+ * with skill definitions.
+ */
+
+import type { AdapterId } from "../providers/types.js";
+
+/**
+ * Adapter-specific skill configuration
+ */
+export interface AdapterSkillConfig {
+    /** Adapter ID */
+    adapterId: AdapterId;
+    /** Skills supported by this adapter and which tools they cover */
+    enabledSkills: Record<string, {
+        /** Skill name for this adapter */
+        name: string;
+        /** Internal tools covered by this skill */
+        tools: string[];
+        /** Skill description */
+        description: string;
+        /** Special rules for this skill in this adapter */
+        mandates: string[];
+        /** Whether the skill is disabled */
+        disabled?: boolean;
+    }>;
+    /** Adapter's native tool mapping (internal → platform) */
+    toolMapping: Record<string, string>;
+}
+
+/**
+ * Skill configurations for all adapters
+ * Each adapter defines its skill set based on platform capabilities.
+ */
+export const ADAPTER_SKILLS: Record<AdapterId, AdapterSkillConfig> = {
+    // ─── Claude Code ────────────────────────────────────────────────
+    "claude": {
+        adapterId: "claude",
+        enabledSkills: {
+            file_system: {
+                name: "File System Mastery",
+                tools: ["read_file", "write_file", "list_dir"],
+                description: "Read, write, and list files in the workspace.",
+                mandates: [
+                    "Use Read for file reading with line range support",
+                    "Use Write for creating new files",
+                    "Use LS for directory listing"
+                ]
+            },
+            editing: {
+                name: "Surgical Code Modification",
+                tools: ["replace_text", "batch_surgical_edit", "patch_file"],
+                description: "Precise code edits without full file rewrites.",
+                mandates: [
+                    "Use Edit for single replacements",
+                    "Use MultiEdit for batch operations across files"
+                ]
+            },
+            orchestration: {
+                name: "Hermes Orchestration & Messaging",
+                tools: ["orchestrate_loop", "send_agent_message", "get_framework_status", "log_agent_action"],
+                description: "Inter-agent communication and task delegation.",
+                mandates: [
+                    "Use Task for agent-to-agent messages",
+                    "Always include traceId in all messages"
+                ]
+            },
+            governance: {
+                name: "Control Plane Governance",
+                tools: ["acquire_lock", "release_lock", "register_agent", "update_contract_hash"],
+                description: "Resource locking and agent registration.",
+                mandates: [
+                    "Acquire lock before editing shared resources",
+                    "Release lock immediately after write"
+                ]
+            },
+            quality: {
+                name: "Quality Assurance",
+                tools: ["run_shell_command", "run_tests", "check_lint"],
+                description: "Testing and code quality enforcement.",
+                mandates: [
+                    "Use Bash for running tests and linting",
+                    "Zero-error policy for all quality gates"
+                ]
+            },
+            search: {
+                name: "Codebase Search & Exploration",
+                tools: ["grep_search", "get_project_map", "get_project_gaps"],
+                description: "Search and map the project structure.",
+                mandates: [
+                    "Use Grep for regex search across codebase",
+                    "Use Bash for project map generation"
+                ]
+            },
+            memory: {
+                name: "Project Memory Management",
+                tools: ["read_project_memory", "update_project_memory", "get_memory_insights",
+                    "store_knowledge", "search_knowledge", "delete_knowledge"],
+                description: "Centralized project memory and knowledge base.",
+                mandates: [
+                    "Read PROJECT_MEMORY.md at session start",
+                    "Update memory after every significant change"
+                ]
+            }
+        },
+        toolMapping: {
+            read_file: "Read", write_file: "Write", replace_text: "Edit",
+            batch_surgical_edit: "MultiEdit", patch_file: "Edit",
+            list_dir: "LS", grep_search: "Grep",
+            run_shell_command: "Bash", run_tests: "Bash",
+            send_agent_message: "Task", orchestrate_loop: "Task",
+            log_agent_action: "Write", ask_human: "Task",
+            acquire_lock: "Write", release_lock: "Write",
+            register_agent: "Write", update_contract_hash: "Write",
+            store_knowledge: "Write", search_knowledge: "Read",
+            delete_knowledge: "Write", check_lint: "Bash"
+        }
+    },
+
+    // ─── Gemini CLI ─────────────────────────────────────────────────
+    "gemini": {
+        adapterId: "gemini",
+        enabledSkills: {
+            file_system: {
+                name: "File System Mastery",
+                tools: ["read_file", "write_file", "list_dir"],
+                description: "Read, write, and list files in the workspace.",
+                mandates: [
+                    "Use read_file with line range for large files",
+                    "Use write_file for creating new files"
+                ]
+            },
+            editing: {
+                name: "Surgical Code Modification",
+                tools: ["replace_text", "patch_file"],
+                description: "Precise code edits.",
+                mandates: [
+                    "Use replace for surgical text replacements",
+                    "Prefer surgical edits over full rewrites"
+                ]
+            },
+            orchestration: {
+                name: "Agent Orchestration",
+                tools: ["orchestrate_loop", "send_agent_message", "get_framework_status"],
+                description: "Inter-agent communication.",
+                mandates: [
+                    "Use run_shell_command for agent messages",
+                    "Always include traceId in communications"
+                ]
+            },
+            governance: {
+                name: "Control Plane Governance",
+                tools: ["acquire_lock", "release_lock", "register_agent"],
+                description: "Resource locking and agent registration.",
+                mandates: [
+                    "Acquire lock before editing shared resources"
+                ]
+            },
+            quality: {
+                name: "Quality Assurance",
+                tools: ["run_shell_command", "check_lint"],
+                description: "Code quality enforcement.",
+                mandates: [
+                    "Use run_shell_command for linting and testing"
+                ]
+            },
+            search: {
+                name: "Codebase Search",
+                tools: ["grep_search", "get_project_map"],
+                description: "Search the project structure.",
+                mandates: [
+                    "Use grep_search for regex search"
+                ]
+            }
+        },
+        toolMapping: {
+            read_file: "read_file", write_file: "write_file",
+            replace_text: "replace", patch_file: "replace",
+            list_dir: "list_directory", grep_search: "grep_search",
+            run_shell_command: "run_shell_command",
+            send_agent_message: "run_shell_command",
+            orchestrate_loop: "run_shell_command",
+            log_agent_action: "write_file", ask_human: "run_shell_command",
+            acquire_lock: "write_file", release_lock: "write_file",
+            register_agent: "write_file", check_lint: "run_shell_command"
+        }
+    },
+
+    // ─── Grok (Gemini-compatible) ───────────────────────────────────
+    "grok": {
+        adapterId: "grok",
+        enabledSkills: {
+            file_system: {
+                name: "File System Mastery",
+                tools: ["read_file", "write_file", "list_dir"],
+                description: "Read, write, and list files.",
+                mandates: ["Use read_file with line range for large files"]
+            },
+            editing: {
+                name: "Code Modification",
+                tools: ["replace_text", "patch_file"],
+                description: "Precise code edits.",
+                mandates: ["Prefer surgical edits over full rewrites"]
+            },
+            search: {
+                name: "Codebase Search",
+                tools: ["grep_search", "get_project_map"],
+                description: "Search the project structure.",
+                mandates: ["Use grep_search for regex search"]
+            },
+            quality: {
+                name: "Quality Assurance",
+                tools: ["run_shell_command", "check_lint"],
+                description: "Code quality enforcement.",
+                mandates: ["Use run_shell_command for linting"]
+            }
+        },
+        toolMapping: {
+            read_file: "read_file", write_file: "write_file",
+            replace_text: "replace", patch_file: "replace",
+            list_dir: "list_directory", grep_search: "grep_search",
+            run_shell_command: "run_shell_command",
+            check_lint: "run_shell_command"
+        }
+    },
+
+    // ─── Cursor IDE ─────────────────────────────────────────────────
+    "cursor": {
+        adapterId: "cursor",
+        enabledSkills: {
+            file_system: {
+                name: "File System Mastery",
+                tools: ["read_file", "write_file", "list_dir"],
+                description: "Read, write, and list files.",
+                mandates: ["Use read_file with line range for large files"]
+            },
+            editing: {
+                name: "Code Modification",
+                tools: ["replace_text", "patch_file"],
+                description: "Precise code edits.",
+                mandates: ["Prefer surgical edits over full rewrites"]
+            },
+            search: {
+                name: "Codebase Search",
+                tools: ["grep_search", "get_project_map"],
+                description: "Search the project structure.",
+                mandates: ["Use grep_search for regex search"]
+            },
+            quality: {
+                name: "Quality Assurance",
+                tools: ["run_shell_command", "check_lint"],
+                description: "Code quality enforcement.",
+                mandates: ["Use run_shell_command for linting"]
+            }
+        },
+        toolMapping: {
+            read_file: "read_file", write_file: "write_file",
+            replace_text: "replace", patch_file: "replace",
+            list_dir: "list_directory", grep_search: "grep_search",
+            run_shell_command: "run_shell_command",
+            check_lint: "run_shell_command"
+        }
+    },
+
+    // ─── Codex (GitHub Copilot) ─────────────────────────────────────
+    "codex": {
+        adapterId: "codex",
+        enabledSkills: {
+            file_system: {
+                name: "File System Mastery",
+                tools: ["read_file", "write_file", "list_dir"],
+                description: "Read, write, and list files.",
+                mandates: ["Use read category tools for file reading"]
+            },
+            editing: {
+                name: "Code Modification",
+                tools: ["replace_text", "patch_file", "batch_surgical_edit"],
+                description: "Precise code edits.",
+                mandates: ["Use write category tools for edits"]
+            },
+            search: {
+                name: "Codebase Search",
+                tools: ["grep_search", "get_project_map"],
+                description: "Search the project structure.",
+                mandates: ["Use read category tools for search"]
+            },
+            quality: {
+                name: "Quality Assurance",
+                tools: ["run_shell_command", "check_lint"],
+                description: "Code quality enforcement.",
+                mandates: ["Use shell category tools for linting"]
+            }
+        },
+        toolMapping: {
+            read_file: "read", write_file: "write",
+            replace_text: "write", patch_file: "write",
+            batch_surgical_edit: "write",
+            list_dir: "read", grep_search: "read",
+            run_shell_command: "shell", check_lint: "shell"
+        }
+    },
+
+    // ─── Local LLM ──────────────────────────────────────────────────
+    "local": {
+        adapterId: "local",
+        enabledSkills: {
+            file_system: {
+                name: "File System Mastery",
+                tools: ["read_file", "write_file", "list_dir"],
+                description: "Read, write, and list files.",
+                mandates: ["Use read_file with line range for large files"]
+            },
+            editing: {
+                name: "Code Modification",
+                tools: ["replace_text", "patch_file"],
+                description: "Precise code edits.",
+                mandates: ["Prefer surgical edits over full rewrites"]
+            },
+            orchestration: {
+                name: "Agent Orchestration",
+                tools: ["orchestrate_loop", "send_agent_message", "get_framework_status"],
+                description: "Inter-agent communication.",
+                mandates: ["Always include traceId in communications"]
+            },
+            governance: {
+                name: "Control Plane Governance",
+                tools: ["acquire_lock", "release_lock", "register_agent"],
+                description: "Resource locking.",
+                mandates: ["Acquire lock before editing shared resources"]
+            },
+            quality: {
+                name: "Quality Assurance",
+                tools: ["run_shell_command", "check_lint"],
+                description: "Code quality enforcement.",
+                mandates: ["Use run_shell_command for linting"]
+            },
+            search: {
+                name: "Codebase Search",
+                tools: ["grep_search", "get_project_map"],
+                description: "Search the project structure.",
+                mandates: ["Use grep_search for regex search"]
+            }
+        },
+        toolMapping: {
+            read_file: "read_file", write_file: "write_file",
+            replace_text: "replace", patch_file: "replace",
+            list_dir: "list_directory", grep_search: "grep_search",
+            run_shell_command: "run_shell_command",
+            send_agent_message: "run_shell_command",
+            orchestrate_loop: "run_shell_command",
+            log_agent_action: "write_file", ask_human: "run_shell_command",
+            acquire_lock: "write_file", release_lock: "write_file",
+            register_agent: "write_file", check_lint: "run_shell_command"
+        }
+    },
+
+    // ─── Antigravity CLI ────────────────────────────────────────────
+    "antigravity-cli": {
+        adapterId: "antigravity-cli",
+        enabledSkills: {
+            file_system: {
+                name: "File System Mastery",
+                tools: ["read_file", "write_file", "list_dir"],
+                description: "Read, write, and list files.",
+                mandates: ["Use read_file with line range for large files"]
+            },
+            editing: {
+                name: "Code Modification",
+                tools: ["replace_text", "patch_file", "batch_surgical_edit"],
+                description: "Precise code edits.",
+                mandates: ["Prefer surgical edits over full rewrites"]
+            },
+            orchestration: {
+                name: "Agent Orchestration",
+                tools: ["orchestrate_loop", "send_agent_message", "get_framework_status"],
+                description: "Inter-agent communication.",
+                mandates: ["Always include traceId in communications"]
+            },
+            governance: {
+                name: "Control Plane Governance",
+                tools: ["acquire_lock", "release_lock", "register_agent"],
+                description: "Resource locking.",
+                mandates: ["Acquire lock before editing shared resources"]
+            },
+            quality: {
+                name: "Quality Assurance",
+                tools: ["run_shell_command", "check_lint"],
+                description: "Code quality enforcement.",
+                mandates: ["Use run_shell_command for linting"]
+            },
+            search: {
+                name: "Codebase Search",
+                tools: ["grep_search", "get_project_map"],
+                description: "Search the project structure.",
+                mandates: ["Use grep_search for regex search"]
+            }
+        },
+        toolMapping: {
+            read_file: "read_file", write_file: "write_file",
+            replace_text: "replace", patch_file: "replace",
+            batch_surgical_edit: "replace",
+            list_dir: "list_directory", grep_search: "grep_search",
+            run_shell_command: "run_shell_command",
+            send_agent_message: "run_shell_command",
+            orchestrate_loop: "run_shell_command",
+            log_agent_action: "write_file", ask_human: "run_shell_command",
+            acquire_lock: "write_file", release_lock: "write_file",
+            register_agent: "write_file", check_lint: "run_shell_command"
+        }
+    },
+
+    // ─── OpenCode (opencode.ai) ─────────────────────────────────────
+    "opencode": {
+        adapterId: "opencode",
+        enabledSkills: {
+            file_system: {
+                name: "File System Operations",
+                tools: ["read_file", "write_file", "list_dir"],
+                description: "Read, write, and list project files via OpenCode workspace.",
+                mandates: [
+                    "Read file contents before modification",
+                    "List directory when resolving paths"
+                ]
+            },
+            editing: {
+                name: "Surgical Code Editing",
+                tools: ["replace_text", "batch_surgical_edit", "patch_file"],
+                description: "Precise code modification without rewriting whole files.",
+                mandates: [
+                    "Perform contiguous, surgical text replacements",
+                    "Never destroy unchanged code or comments"
+                ]
+            },
+            orchestration: {
+                name: "Hermes Task Orchestration",
+                tools: ["orchestrate_loop", "send_agent_message", "get_framework_status", "log_agent_action"],
+                description: "Multi-agent task delegation and state sync.",
+                mandates: [
+                    "Include active Trace ID in all dispatched tasks",
+                    "Follow role boundaries when delegating to specialist subagents"
+                ]
+            },
+            governance: {
+                name: "Policy & Resource Governance",
+                tools: ["acquire_lock", "release_lock", "register_agent", "update_contract_hash"],
+                description: "Lock acquisition and agent identity verification.",
+                mandates: [
+                    "Acquire locks before mutating shared schemas or configurations",
+                    "Release lock promptly after task execution"
+                ]
+            },
+            quality: {
+                name: "Quality Assurance & Verification",
+                tools: ["run_shell_command", "run_tests", "check_lint"],
+                description: "Continuous testing, linting, and quality verification.",
+                mandates: [
+                    "Run test suites after structural modifications",
+                    "Zero-tolerance policy for lint and build errors"
+                ]
+            },
+            search: {
+                name: "Codebase Exploration",
+                tools: ["grep_search", "get_project_map", "get_project_gaps"],
+                description: "Structural code search and architectural gap analysis.",
+                mandates: [
+                    "Explore codebase structure before proposing architectural changes"
+                ]
+            }
+        },
+        toolMapping: {
+            read_file: "read",
+            write_file: "write",
+            replace_text: "edit",
+            batch_surgical_edit: "multiedit",
+            patch_file: "patch",
+            list_dir: "ls",
+            run_shell_command: "bash",
+            run_tests: "test",
+            check_lint: "lint",
+            grep_search: "grep",
+            get_project_map: "map",
+            get_project_gaps: "gaps",
+            send_agent_message: "task",
+            get_framework_status: "status",
+            log_agent_action: "log",
+            acquire_lock: "lock",
+            release_lock: "unlock",
+            register_agent: "register",
+            update_contract_hash: "hash",
+            orchestrate_loop: "loop"
+        }
+    }
+};
+

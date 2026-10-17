@@ -1,0 +1,93 @@
+{
+  "name": "atabey-shared",
+  "version": "0.0.38",
+  "description": "Shared utility modules for Atabey — AI Governance & Multi-Agent Platform / Orchestrator",
+  "author": "Yusuf BEKAR",
+  "license": "AGPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ysf-bkr/atabey.git",
+    "directory": "packages/shared"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ai-agents",
+    "claude-code",
+    "cursor-ide",
+    "gemini-cli",
+    "governance",
+    "orchestration",
+    "typescript"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./audit.js": "./dist/audit.js",
+    "./audit-chain.js": "./dist/audit-chain.js",
+    "./constants.js": "./dist/constants.js",
+    "./database.js": "./dist/database.js",
+    "./errors.js": "./dist/errors.js",
+    "./fs.js": "./dist/fs.js",
+    "./lock.js": "./dist/lock.js",
+    "./logger.js": "./dist/logger.js",
+    "./pii.js": "./dist/pii.js",
+    "./retention.js": "./dist/retention.js",
+    "./string.js": "./dist/string.js",
+    "./types.js": "./dist/types.js",
+    "./job-queue.js": "./dist/job-queue.js",
+    "./worker-pool.js": "./dist/worker-pool.js",
+    "./worker-thread.js": "./dist/worker-thread.js",
+    "./file-lock.js": "./dist/file-lock.js",
+    "./sandbox.js": "./dist/sandbox.js",
+    "./sandbox-runtime.js": "./dist/sandbox-runtime.js",
+    "./sandbox-fs.js": "./dist/sandbox-fs.js",
+    "./resilience.js": "./dist/resilience.js",
+    "./policy-gate.js": "./dist/policy-gate.js",
+    "./storage.js": "./dist/storage.js",
+    "./time.js": "./dist/time.js",
+    "./secrets.js": "./dist/secrets.js",
+    "./tokenizer.js": "./dist/tokenizer.js",
+    "./migrations.js": "./dist/migrations.js",
+    "./tls.js": "./dist/tls.js",
+    "./outbound-http.js": "./dist/outbound-http.js",
+    "./api-catalog.js": "./dist/api-catalog.js",
+    "./agent-identity.js": "./dist/agent-identity.js",
+    "./memory-prune.js": "./dist/memory-prune.js",
+    "./otel.js": "./dist/otel.js",
+    "./oidc.js": "./dist/oidc.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "peerDependencies": {
+    "better-sqlite3": "^13.0.2",
+    "chalk": "^5.6.2",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^25.9.1",
+    "@vitest/coverage-v8": "^5.0.0",
+    "tsx": "^4.22.3",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.0"
+  },
+  "dependencies": {
+    "js-tiktoken": "^1.0.21"
+  }
+}

@@ -1,0 +1,33 @@
+# Atabey — self-host control plane (unified MCP + dashboard + Hermes WSS Bus)
+#
+#   export MCP_AUTH_TOKEN="$(openssl rand -hex 32)"
+#   docker compose up -d --build
+#
+services:
+  atabey:
+    build: .
+    image: atabey:latest
+    container_name: atabey
+    ports:
+      - "5858:5858"
+    environment:
+      MCP_TRANSPORT: unified
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: "5858"
+      ATABEY_PROJECT_ROOT: /workspace
+      ATABEY_AUTO_START_ORCHESTRATOR: "true"
+      # Security — required for non-loopback exposure
+      MCP_AUTH_REQUIRED: "true"
+      MCP_AUTH_TOKEN: "${MCP_AUTH_TOKEN:-changeme}"
+      # Bus secret (comment out to disable bus auth)
+      # ATABEY_BUS_TOKEN: "${ATABEY_BUS_TOKEN:-}"
+      # Sandbox every agent turn (recommended)
+      # ATABEY_SANDBOX_REQUIRED: "true"
+      # ATABEY_SANDBOX_RUNTIME: container
+    volumes:
+      - ./:/workspace
+      - atabey-state:/workspace/.atabey
+    restart: unless-stopped
+
+volumes:
+  atabey-state:

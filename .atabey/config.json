@@ -1,0 +1,97 @@
+{
+  "name": "Atabey",
+  "version": "0.0.38",
+  "profile": "freelancer",
+  "projectKind": "framework-monorepo",
+  "agents": [
+    "manager",
+    "backend",
+    "frontend",
+    "quality"
+  ],
+  "unified": true,
+  "adapters": [
+    "gemini",
+    "claude",
+    "grok",
+    "cursor",
+    "codex",
+    "local",
+    "antigravity-cli",
+    "opencode"
+  ],
+  "paths": {
+    "backend": "packages/atabey",
+    "frontend": "packages/atabey-mcp/dashboard",
+    "mobile": "apps/mobile",
+    "docs": "docs",
+    "tests": "packages"
+  },
+  "backendLanguage": "Node.js (TypeScript)",
+  "frontendFramework": "Vite (React)",
+  "nativeLanguage": "Rust",
+  "language": "en",
+  "theme": {
+    "palette": "Modern Blue",
+    "colors": {
+      "primary": "#0ea5e9",
+      "secondary": "#64748b",
+      "accent": "#f43f5e"
+    }
+  },
+  "governance": {
+    "authorizedAgents": {
+      "SCHEMA_CHANGE": [
+        "@manager"
+      ],
+      "BULK_DELETE": [
+        "@manager"
+      ],
+      "ROLE_CHANGE": [
+        "@manager"
+      ],
+      "BILLING_CHANGE": [
+        "@manager"
+      ],
+      "PII_EXPORT": [
+        "@manager"
+      ],
+      "ENV_CHANGE": [
+        "@manager"
+      ],
+      "PRODUCTION_DEPLOY": [
+        "@manager"
+      ],
+      "FORCE_PUSH": [
+        "@manager"
+      ]
+    },
+    "operationRisk": {
+      "SCHEMA_CHANGE": 70,
+      "BULK_DELETE": 90,
+      "ROLE_CHANGE": 80,
+      "BILLING_CHANGE": 85,
+      "PII_EXPORT": 95,
+      "ENV_CHANGE": 75,
+      "PRODUCTION_DEPLOY": 80,
+      "FORCE_PUSH": 60
+    }
+  },
+  "orchestrator": {
+    "autoStart": true,
+    "intervalMs": 1000
+  },
+  "compliance": {
+    "retentionEnabled": true,
+    "consentLogging": true,
+    "piiMasking": true,
+    "dataProcessingBasis": "legitimate_interest"
+  },
+  "sandbox": {
+    "runtime": "auto",
+    "required": false
+  },
+  "auth": {
+    "required": false
+  }
+}

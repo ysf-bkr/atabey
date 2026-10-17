@@ -1,0 +1,74 @@
+{
+  "name": "atabey-mcp",
+  "version": "0.0.38",
+  "description": "Atabey — AI Governance & Multi-Agent Platform / Orchestrator — MCP Server",
+  "author": "Yusuf BEKAR",
+  "license": "AGPL-3.0",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ai-agents",
+    "claude-code",
+    "cursor-ide",
+    "gemini-cli",
+    "governance",
+    "orchestration",
+    "typescript"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ysf-bkr/atabey.git",
+    "directory": "packages/atabey-mcp"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "atabey-mcp": "bin/cli.js"
+  },
+  "main": "./dist/atabey-mcp/src/mcp/index.js",
+  "types": "./dist/atabey-mcp/src/mcp/index.d.ts",
+  "exports": {
+    ".": "./dist/atabey-mcp/src/mcp/index.js",
+    "./utils/*": "./dist/atabey-mcp/src/mcp/utils/*",
+    "./shared/*": "./dist/atabey-mcp/src/shared/*"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "dashboard/dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src tests --ext .ts",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "atabey": "^0.0.38",
+    "atabey-shared": "^0.0.38",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "better-sqlite3": "^13.0.2",
+    "chalk": "^5.6.2",
+    "typescript": "^5.9.3",
+    "ws": "^8.21.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^25.9.1",
+    "@types/ws": "^8.18.1",
+    "@vitest/coverage-v8": "^5.0.0",
+    "tsx": "^4.22.3",
+    "vitest": "^5.0.0"
+  }
+}

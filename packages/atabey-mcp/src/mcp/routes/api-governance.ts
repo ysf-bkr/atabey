@@ -1,0 +1,237 @@
+import http from "http";
+import path from "path";
+import { Audit } from "../../shared/audit.js";
+import { RouteContext, serveJson, parseJsonBody } from "./types.js";
+
+export async function handleGovernanceRoutes(
+    pathname: string,
+    params: Record<string, string>,
+    method: string,
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+    context: RouteContext
+): Promise<boolean> {
+    const { PROJECT_ROOT } = context;
+
+    // Audit (GDPR/KVKK)
+    if (pathname === "/api/audit") {
+        try {
+            Audit.initialize();
+            const stats = Audit.getStats();
+            const entries = Audit.query({ limit: 100 });
+            serveJson(res, 200, { success: true, data: { stats, entries } });
+        } catch (e) { serveJson(res, 500, { success: false, error: (e as Error).message }); }
+        return true;
+    }
+
+    // Signed audit export (HMAC-SHA256 tamper-evident bundle)
+    if (pathname === "/api/audit/export" && method === "GET") {
+        try {
+            const { buildAuditExport } = await import("atabey/src/modules/audit/export.js");
+            const data = buildAuditExport({ limit: 1000 });
+            serveJson(res, 200, { success: true, data });
+        } catch (e) {
+            serveJson(res, 500, { success: false, error: (e as Error).message });
+        }
+        return true;
+    }
+
+    // Phase 2.1 — auth status (safe subset; no tokens)
+    if (pathname === "/api/auth/status" && method === "GET") {
+        try {
+            const { getAuthStatus } = await import("../utils/auth.js");
+            serveJson(res, 200, { success: true, data: getAuthStatus() });
+        } catch (e) {
+            serveJson(res, 500, { success: false, error: (e as Error).message });
+        }
+        return true;
+    }
+
+    // Phase 1.4 — tamper-evident audit hash chain integrity
+    if (pathname === "/api/audit/integrity" && method === "GET") {
+        try {
+            Audit.initialize();
+            const { Storage } = await import("../../shared/storage.js");
+            const structured = Audit.verifyIntegrity();
+            const agentLogs = Storage.verifyLogIntegrity();
+            const valid = structured.valid && agentLogs.valid;
+            serveJson(res, valid ? 200 : 409, {
+                success: valid,
+                data: {
+                    valid,
+                    structuredAudit: structured,
+                    agentExecutionLogs: agentLogs,
+                    checkedAt: new Date().toISOString(),
+                },
+            });
+        } catch (e) {
+            serveJson(res, 500, { success: false, error: (e as Error).message });
+        }
+        return true;
+    }
+
+    // Consent log (KVKK Art. 5 / GDPR Art. 7)
+    if (pathname === "/api/compliance/consent" && method === "GET") {
+        try {
+            const { listConsentRecords, getConsentStats } = await import("../utils/consent.js");
+            serveJson(res, 200, {
+                success: true,
+                data: { records: listConsentRecords(100), stats: getConsentStats() },
+            });
+        } catch (e) { serveJson(res, 500, { success: false, error: (e as Error).message }); }
+        return true;
+    }
+
+    if (pathname === "/api/compliance/consent" && method === "POST") {
+        try {
+            const parsed = await parseJsonBody<{
+                subject?: string;
+                purpose?: string;
+                granted?: boolean;
+                legalBasis?: "contract" | "consent" | "legitimate_interest";
+                expiresAt?: string;
+                metadata?: Record<string, string>;
+            }>(req);
+            const { recordConsent } = await import("../utils/consent.js");
+            const record = recordConsent({
+                subject: String(parsed.subject || "anonymous"),
+                purpose: String(parsed.purpose || "ai-assisted-development"),
+                granted: parsed.granted !== false,
+                legalBasis: parsed.legalBasis,
+                expiresAt: parsed.expiresAt ? String(parsed.expiresAt) : undefined,
+                metadata: parsed.metadata,
+            });
+            serveJson(res, 200, { success: true, data: record });
+        } catch (err) { serveJson(res, 400, { success: false, error: (err as Error).message }); }
+        return true;
+    }
+
+    // Retention stats (KVKK/GDPR)
+    if (pathname === "/api/compliance/retention" && method === "GET") {
+        try {
+            const { DataRetention } = await import("../../shared/retention.js");
+            serveJson(res, 200, { success: true, data: DataRetention.getStats() });
+        } catch (e) { serveJson(res, 500, { success: false, error: (e as Error).message }); }
+        return true;
+    }
+
+    // Audit Erase (GDPR/KVKK Right to Erasure)
+    if (pathname === "/api/audit/erase" && method === "POST") {
+        try {
+            const { isAdminRequest } = await import("../utils/auth.js");
+            if (!isAdminRequest(req)) {
+                serveJson(res, 403, { success: false, error: "Admin role required for audit erasure." });
+                return true;
+            }
+            Audit.initialize();
+            const parsed = await parseJsonBody<{ confirmationCode?: string }>(req);
+            const confirmation = parsed.confirmationCode || "";
+            const changes = Audit.clearAll(confirmation);
+            serveJson(res, 200, { success: true, message: `${changes} records cleared under KVKK/GDPR right to erasure.` });
+        } catch (err) { serveJson(res, 400, { success: false, error: (err as Error).message }); }
+        return true;
+    }
+
+    // Compliance
+    if (pathname === "/api/compliance") {
+        try {
+            const { scanProjectCompliance } = await import("atabey/src/cli/utils/compliance.js");
+            const targetPath = params.path || "src";
+            const scanPath = path.join(PROJECT_ROOT, targetPath);
+            const rawIssues = scanProjectCompliance(scanPath);
+            const violations = rawIssues.map(issue => {
+                const ruleLower = issue.rule.toLowerCase();
+                const type = ruleLower.includes("any") ? "any-type" : ruleLower.includes("console") ? "console-log" : "other";
+                return { file: path.relative(PROJECT_ROOT, issue.file), line: issue.line, type, message: issue.rule.replace(/^\[ERROR\]\s*Corporate\s*Compliance\s*Breach:\s*/i, "") };
+            });
+            const violatingFiles = new Set(violations.map(v => v.file));
+            serveJson(res, 200, {
+                success: true, data: {
+                    summary: { totalFiles: violatingFiles.size, totalViolations: violations.length, byType: { "any-type": violations.filter(v => v.type === "any-type").length, "console-log": violations.filter(v => v.type === "console-log").length } },
+                    violations
+                }
+            });
+        } catch (e) { serveJson(res, 500, { success: false, error: (e as Error).message }); }
+        return true;
+    }
+
+    // Quality
+    if (pathname === "/api/quality") {
+        try {
+            const { analyzePathQuality } = await import("atabey/src/cli/utils/quality.js");
+            const targetPath = params.path || "src";
+            const result = analyzePathQuality(PROJECT_ROOT, targetPath);
+            serveJson(res, 200, {
+                success: true, data: {
+                    totalFiles: result.totalFiles, totalIssues: result.totalIssues,
+                    longFunctions: result.longFunctions, deepNesting: result.deepNesting,
+                    anyTypes: result.anyTypes, issues: result.issues.slice(0, 50),
+                }
+            });
+        } catch (e) { serveJson(res, 500, { success: false, error: (e as Error).message }); }
+        return true;
+    }
+
+    // Auto-Rollback Stats
+    if (pathname === "/api/rollback") {
+        try {
+            const { AutoRollbackEngine } = await import("../utils/auto-rollback.js");
+            const stats = AutoRollbackEngine.getSnapshotStats();
+            serveJson(res, 200, { success: true, data: stats });
+        } catch (e) { serveJson(res, 500, { success: false, error: (e as Error).message }); }
+        return true;
+    }
+
+    // All Governance Stats (combined endpoint)
+    if (pathname === "/api/governance") {
+        try {
+            const { getAllLoopStats } = await import("../utils/loop-detector.js");
+            const { AutoRollbackEngine } = await import("../utils/auto-rollback.js");
+
+            serveJson(res, 200, {
+                success: true, data: {
+                    loopDetection: getAllLoopStats(),
+                    rollback: AutoRollbackEngine.getSnapshotStats(),
+                    telemetry: (await import("../utils/telemetry-streamer.js")).telemetryStreamer.getStatus(),
+                }
+            });
+        } catch (e) { serveJson(res, 500, { success: false, error: (e as Error).message }); }
+        return true;
+    }
+
+    // Discipline Stats
+    if (pathname === "/api/discipline") {
+        try {
+            const { getAllDisciplineStats } = await import("../utils/discipline.js");
+            const stats = getAllDisciplineStats();
+            serveJson(res, 200, { success: true, data: stats });
+        } catch (e) { serveJson(res, 500, { success: false, error: (e as Error).message }); }
+        return true;
+    }
+
+    // Loop Detection Stats
+    if (pathname === "/api/loop-detector") {
+        try {
+            const { getAllLoopStats } = await import("../utils/loop-detector.js");
+            const agent = params.agent;
+            const stats = agent
+                ? (await import("../utils/loop-detector.js")).getLoopStats(agent)
+                : getAllLoopStats();
+            serveJson(res, 200, { success: true, data: stats });
+        } catch (e) { serveJson(res, 500, { success: false, error: (e as Error).message }); }
+        return true;
+    }
+
+    // Clear Loop Cooldown
+    if (pathname.startsWith("/api/loop-detector/clear/") && method === "POST") {
+        const agent = decodeURIComponent(pathname.replace("/api/loop-detector/clear/", ""));
+        try {
+            const { clearCooldown } = await import("../utils/loop-detector.js");
+            const cleared = clearCooldown(agent);
+            serveJson(res, 200, { success: true, data: { agent, cleared } });
+        } catch (e) { serveJson(res, 500, { success: false, error: (e as Error).message }); }
+        return true;
+    }
+
+    return false;
+}
