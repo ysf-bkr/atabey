@@ -1,0 +1,76 @@
+{
+  "name": "atabey",
+  "version": "0.1.5",
+  "description": "Atabey — Local AI Control Plane & Discipline Layer — Core Engine",
+  "author": "Yusuf BEKAR",
+  "license": "AGPL-3.0",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ai-agents",
+    "claude-code",
+    "cursor-ide",
+    "gemini-cli",
+    "governance",
+    "orchestration",
+    "typescript"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ysf-bkr/atabey.git",
+    "directory": "packages/atabey"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "atabey": "bin/cli.js"
+  },
+  "main": "./dist/atabey/src/cli/index.js",
+  "types": "./dist/atabey/src/cli/index.d.ts",
+  "exports": {
+    ".": "./dist/atabey/src/cli/index.js",
+    "./src/*": "./dist/atabey/src/*"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "templates",
+    "README.md",
+    "LICENSE",
+    "ATABEY.md",
+    "PRIVACY.md"
+  ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src tests --ext .ts",
+    "prepublishOnly": "node ../../scripts/build-readmes.mjs && npm run build"
+  },
+  "dependencies": {
+    "atabey-shared": "^0.1.5",
+    "better-sqlite3": "^13.0.2",
+    "chalk": "^5.6.2",
+    "js-yaml": "^4.2.0",
+    "typescript": "^5.9.3",
+    "zod": "^3.24.2"
+  },
+  "optionalDependencies": {
+    "atabey-mcp": "^0.1.5"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.15.3",
+    "@vitest/coverage-v8": "^5.0.0",
+    "tsx": "^4.22.3",
+    "vitest": "^5.0.0"
+  }
+}

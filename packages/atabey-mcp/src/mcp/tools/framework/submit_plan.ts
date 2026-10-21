@@ -1,0 +1,29 @@
+import { safeExec } from "atabey-mcp/utils/cli.js";
+import { ToolResult } from "../types.js";
+import { TaskID, AgentID } from "atabey-mcp/utils/types.js";
+
+export interface SubmitPlanArgs {
+    tasks: {
+        id: TaskID;
+        agent: AgentID;
+        task: string;
+        dependencies?: TaskID[];
+        /** [C4] Verifiable completion conditions — required for every task. */
+        acceptanceCriteria: string[];
+    }[];
+}
+
+export function handleSubmitPlan(projectRoot: string, args: SubmitPlanArgs): ToolResult {
+    if (!args.tasks || !Array.isArray(args.tasks)) {
+        return {
+            isError: true,
+            content: [{ type: "text", text: "[ERROR] Error: 'tasks' array is required for submit_plan." }]
+        };
+    }
+
+    const planJson = JSON.stringify(args.tasks);
+    // Escape for shell if necessary, but safeExec handles arguments as an array
+    const output = safeExec("npx", ["atabey", "plan:submit", planJson], projectRoot);
+    
+    return { content: [{ type: "text", text: output }] };
+}

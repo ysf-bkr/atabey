@@ -1,0 +1,90 @@
+# Atabey — Known Limitations & System Boundaries (LIMITATIONS.md)
+
+**Version:** v0.1.5  
+**Last Updated:** 2026-10-19  
+**Status:** Active Living Document
+
+This document transparently presents the actual architecture, operational boundaries, and unresolved or deliberately out-of-scope aspects of Atabey. Atabey is not a magic wand; it is a deterministic **control plane** for AI coding assistants.
+
+---
+
+## 1. Core Boundaries & Scope Charter
+
+### 1.1 In-Scope
+- **Policy & Authorization Enforcement:** Deny-by-default file RBAC matrix, protected paths (`.env`, `.git/`, `.atabey/*`), tiered agent hierarchy (Supreme / Core / Recon).
+- **Risk Engine & Gates:** Static analysis, AST risk scoring, destructive shell command blocking, and mandatory Human-in-the-Loop (HITL) approvals.
+- **Token Economics:** Model token tracking, per-provider token/rate limits, step/iteration caps, and hard execution timeouts.
+- **Audit Trail:** Local HMAC-SHA256 signed audit trails, tamper-evident hash-chained logs, and W3C OTel-compliant spans.
+- **Human Approval (HITL):** Explicit human clearance via CLI (`atabey hitl answer` / `atabey approve`) or MCP for operations exceeding defined risk thresholds.
+
+### 1.2 Out-of-Scope
+- **Custom Model Runtime:** Atabey does not host an LLM model, API inference gateway, or independent LLM runtime (unlike LangGraph or CrewAI).
+- **ML-Based Threat Analysis:** No neural anomaly detection or heuristic ML classifiers; Atabey relies on deterministic AST, regex patterns, and rule engines.
+- **Legal Compliance Certification:** PII and KVKK/GDPR sanitization tools are technical enablers, not formal legal compliance guarantees.
+- **Multi-Node Distributed Orchestration:** Not a distributed Kubernetes or multi-machine cluster orchestrator; tailored for local developer environments or single-host runners.
+
+### 1.3 Autonomy Definition & Red Lines
+- **Autonomous Agent:** A host CLI process (e.g., Claude Code, Gemini CLI) spawned, bounded, and monitored by Atabey.
+- **Target Autonomy Level:** Constrained within sandbox + step limits, outputting pull requests (PR / git diff) on isolated branches. Unsupervised production access is strictly out-of-scope.
+- **Operations That Will NEVER Be Autonomous:**
+  1. Production deployments or release pipeline execution,
+  2. Destructive database migrations, drops, or truncations,
+  3. Secret, API key, vault, or `.env` credential management,
+  4. Force pushing or directly committing/merging into protected branches (`main`/`master`),
+  5. Financial or payment gateway API transactions,
+  6. Modifying Atabey's own governance constitution, policy, or permission matrix files (`.atabey/*`).
+
+---
+
+## 2. Agent Reality: "13 Role Profiles", Not "13 Independent Agents"
+
+Atabey does not run 13 concurrent independent LLM processes or backend model servers.
+- **Actual Architecture:** Your single connected host AI assistant (Claude Code, Gemini CLI, Cursor, etc.) executes operations sequentially.
+- **Role Profile Mechanism:** On `@agent` invocations, Atabey dynamically injects tailored system role definitions, context constraints, and task blueprints into the host session.
+- **Limitation:** The host LLM assumes the profile persona but can hallucinate or suffer prompt leakage. Consequently, Atabey deterministically enforces boundaries and permission matrices at the MCP tool layer.
+
+---
+
+## 3. Host Native Tool Bypass Risk (Out-of-Band Execution)
+
+A fundamental architectural boundary:
+- Modern AI assistants (Claude Code, Cursor, Codex) possess native, built-in tools (e.g., `Bash`, `Edit`, `Write`, `Grep`).
+- If the host AI decides to invoke its native shell instead of calling Atabey MCP tools (`run_shell_command`, `write_file`), MCP-level permission matrices and risk gates are bypassed during execution.
+- **Atabey Mitigations & Residual Risk:**
+  1. Atabey maintains SHA-256 digests of all read/written files (`scanUnauditedWorkspaceEdits`). On any subsequent MCP tool invocation, out-of-band workspace modifications violating constitutional rules trigger a hard stop.
+  2. For full enforcement, host CLI configurations (`settings.json`, tool allow-lists, hooks) should disable native editing/shell tools in favor of Atabey MCP tools.
+  3. OS-level containment (Docker sandbox, seccomp, seatbelt) is mandatory for absolute boundary guarantees.
+
+---
+
+## 4. Permission Matrix & Sandbox Realities
+
+- **Deny-by-Default:** No write or read operation is permitted unless explicitly granted in `permission-matrix.json` for that agent profile.
+- **Protected Paths:** Sensitive files (`.env*`, `.ssh/*`, `.git/*`, `.atabey/*`, private keys) are globally immutable across all tiers (even Supreme `@manager`).
+- **Sandbox Requirement:** When `sandbox.mode: "none"` (standard local development), shell commands inherit the host user's privileges. Production or automated runner environments must enforce containerized execution (`sandbox.mode: "docker"`).
+
+---
+
+## 5. Risk & Rule Engine Limitations
+
+- Certain safety filters rely on regular expressions.
+- Sophisticated shell chaining (`sh -c "$(base64 -d ...)"`, `eval`, process substitution) can circumvent regex filters.
+- Shell AST parsers and SQL query AST analyzers provide stronger guarantees and represent the ongoing migration path.
+
+---
+
+## 6. Storage, Queue, and Memory
+
+- Atabey utilizes local SQLite (`better-sqlite3`).
+- To prevent database deadlocks during multi-agent concurrency, Atabey enforces explicit file locking (`withLock`) and TTL reclaim mechanisms.
+- Hermes messaging bus operates with in-memory / SQLite backings; SQLite databases require periodic compaction and vacuum strategies.
+- Specialty memory should remain structured and summarized rather than acting as an unbounded append-only markdown log.
+
+---
+
+## 7. Best Practice Operational Recommendations
+
+1. **Worktree / Branch Isolation:** Always run autonomous tasks inside isolated git worktrees or dedicated feature branches. Never point agents directly at `main`.
+2. **Preserve Human-in-the-Loop:** Retain human approval gates on high-risk shell commands and destructive operations.
+3. **Isolate Credentials:** Store API keys in system vaults or Atabey Vault rather than leaving plaintext `.env` files in the workspace.
+4. **Emergency Kill Switch:** In case of runaway loops or unexpected actions, use the terminal kill command (`Ctrl+C`) or the `atabey` process supervisor to stop the agent immediately.

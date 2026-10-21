@@ -1,0 +1,105 @@
+{
+  "name": "atabey-shared",
+  "version": "0.1.5",
+  "description": "Shared utility modules for Atabey — Local AI Control Plane & Discipline Layer",
+  "author": "Yusuf BEKAR",
+  "license": "AGPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ysf-bkr/atabey.git",
+    "directory": "packages/shared"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ai-agents",
+    "claude-code",
+    "cursor-ide",
+    "gemini-cli",
+    "governance",
+    "orchestration",
+    "typescript"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./index.js": "./dist/index.js",
+    "./package.json": "./package.json",
+    "./modules/*": "./dist/modules/*",
+    "./storage/*": "./dist/modules/storage/*",
+    "./security/*": "./dist/modules/security/*",
+    "./concurrency/*": "./dist/modules/concurrency/*",
+    "./sandbox/*": "./dist/modules/sandbox/*",
+    "./observability/*": "./dist/modules/observability/*",
+    "./agent/*": "./dist/modules/agent/*",
+    "./primitives/*": "./dist/modules/primitives/*",
+    "./database.js": "./dist/modules/storage/database.js",
+    "./storage.js": "./dist/modules/storage/storage.js",
+    "./migrations.js": "./dist/modules/storage/migrations.js",
+    "./memory-prune.js": "./dist/modules/storage/memory-prune.js",
+    "./policy-gate.js": "./dist/modules/security/policy-gate.js",
+    "./pii.js": "./dist/modules/security/pii.js",
+    "./secrets.js": "./dist/modules/security/secrets.js",
+    "./tls.js": "./dist/modules/security/tls.js",
+    "./retention.js": "./dist/modules/security/retention.js",
+    "./lock.js": "./dist/modules/concurrency/lock.js",
+    "./file-lock.js": "./dist/modules/concurrency/file-lock.js",
+    "./job-queue.js": "./dist/modules/concurrency/job-queue.js",
+    "./worker-pool.js": "./dist/modules/concurrency/worker-pool.js",
+    "./worker-thread.js": "./dist/modules/concurrency/worker-thread.js",
+    "./resilience.js": "./dist/modules/concurrency/resilience.js",
+    "./sandbox.js": "./dist/modules/sandbox/sandbox.js",
+    "./sandbox-runtime.js": "./dist/modules/sandbox/sandbox-runtime.js",
+    "./sandbox-fs.js": "./dist/modules/sandbox/sandbox-fs.js",
+    "./logger.js": "./dist/modules/observability/logger.js",
+    "./audit.js": "./dist/modules/observability/audit.js",
+    "./audit-chain.js": "./dist/modules/observability/audit-chain.js",
+    "./otel.js": "./dist/modules/observability/otel.js",
+    "./agent-identity.js": "./dist/modules/agent/agent-identity.js",
+    "./api-catalog.js": "./dist/modules/agent/api-catalog.js",
+    "./tokenizer.js": "./dist/modules/agent/tokenizer.js",
+    "./constants.js": "./dist/modules/primitives/constants.js",
+    "./errors.js": "./dist/modules/primitives/errors.js",
+    "./fs.js": "./dist/modules/primitives/fs.js",
+    "./string.js": "./dist/modules/primitives/string.js",
+    "./time.js": "./dist/modules/primitives/time.js",
+    "./types.js": "./dist/modules/primitives/types.js",
+    "./task-lifecycle.js": "./dist/modules/lifecycle/task-lifecycle.js",
+    "./lifecycle/*": "./dist/modules/lifecycle/*",
+    "./outbound-http.js": "./dist/modules/primitives/outbound-http.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "prepublishOnly": "node ../../scripts/build-readmes.mjs && npm run build"
+  },
+  "peerDependencies": {
+    "better-sqlite3": "^13.0.2",
+    "chalk": "^5.6.2"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.15.3",
+    "@vitest/coverage-v8": "^5.0.0",
+    "tsx": "^4.22.3",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.0"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.2",
+    "js-tiktoken": "^1.0.21"
+  }
+}

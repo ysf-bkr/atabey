@@ -1,0 +1,82 @@
+import fs from "fs";
+import path from "path";
+import { CoreMemory } from "../../modules/memory/core.js";
+import { UI } from "../utils/ui.js";
+
+/**
+ * Iteratively reads all relevant codebase files and indexes them into Vector Memory.
+ */
+export async function indexCodebaseCommand(dirPath: string = process.cwd()) {
+    UI.intent("Codebase RAG", `Indexing workspace at ${dirPath} into Vector Memory...`);
+
+    const ignoreDirs = ["node_modules", "dist", ".git", ".atabey", "packages", "framework-mcp", "coverage"];
+    const validExtensions = [".ts", ".js", ".tsx", ".jsx", ".md", ".json"];
+
+    const filesToIndex: string[] = [];
+
+    function traverse(currentPath: string) {
+        const entries = fs.readdirSync(currentPath, { withFileTypes: true });
+        for (const entry of entries) {
+            if (ignoreDirs.includes(entry.name)) continue;
+
+            const fullPath = path.join(currentPath, entry.name);
+            if (entry.isDirectory()) {
+                traverse(fullPath);
+            } else if (entry.isFile() && validExtensions.includes(path.extname(entry.name))) {
+                filesToIndex.push(fullPath);
+            }
+        }
+    }
+
+    // Also explicitly include .atabey/knowledge standards
+    const knowledgeDir = path.join(dirPath, ".atabey", "knowledge");
+    if (fs.existsSync(knowledgeDir)) {
+        const kFiles = fs.readdirSync(knowledgeDir);
+        for (const kf of kFiles) {
+            if (kf.endsWith(".md")) {
+                filesToIndex.push(path.join(knowledgeDir, kf));
+            }
+        }
+    }
+
+    try {
+        traverse(dirPath);
+        UI.success(`Found ${filesToIndex.length} files to index.`);
+        
+        await CoreMemory.init();
+
+        let count = 0;
+        for (const file of filesToIndex) {
+            const relativePath = path.relative(process.cwd(), file);
+            const content = fs.readFileSync(file, "utf8");
+
+            // Skip huge files
+            if (content.length > 50000) continue; 
+
+            const isRule = file.includes(".atabey/knowledge");
+            await CoreMemory.remember({
+                content,
+                category: isRule ? "RULE" : "CODE_SNIPPET",
+                filePath: relativePath,
+                tags: isRule ? ["knowledge", "standard"] : ["codebase", path.extname(file).replace(".", "")]
+            });
+            count++;
+        }
+
+        UI.success(`Successfully indexed ${count} files into Core Memory (RAG).`);
+    } catch (err) {
+        UI.error(`Indexing failed: ${(err as Error).message}`);
+    }
+
+    // Incremental symbol/file/import graph (CodeGraph) — the substrate for
+    // "assemble context without re-scanning the whole codebase".
+    try {
+        const { CodeGraph } = await import("../../modules/memory/code-graph.js");
+        const g = CodeGraph.index(dirPath);
+        UI.success(
+            `Symbol graph: ${g.files} files, ${g.symbols} symbols, ${g.imports} imports (updated: ${g.updated}, removed: ${g.removed}).`,
+        );
+    } catch (err) {
+        UI.warning(`Code graph indexing skipped: ${(err as Error).message}`);
+    }
+}

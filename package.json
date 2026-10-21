@@ -1,0 +1,86 @@
+{
+  "name": "atabey-monorepo",
+  "version": "0.1.5",
+  "description": "Atabey — Local AI Control Plane & Discipline Layer",
+  "author": "Yusuf BEKAR",
+  "license": "AGPL-3.0",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ai-agents",
+    "claude-code",
+    "cursor-ide",
+    "gemini-cli",
+    "governance",
+    "orchestration",
+    "typescript"
+  ],
+  "readme": "README.md",
+  "type": "module",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ysf-bkr/atabey.git"
+  },
+  "homepage": "https://github.com/ysf-bkr/atabey#readme",
+  "bugs": {
+    "url": "https://github.com/ysf-bkr/atabey/issues"
+  },
+  "workspaces": [
+    "packages/shared",
+    "packages/atabey-mcp",
+    "packages/atabey"
+  ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "build:atabey": "npm run build -w packages/atabey",
+    "build:mcp": "npm run build -w packages/atabey-mcp",
+    "lint": "eslint packages/",
+    "knip": "knip",
+    "readme:build": "node scripts/build-readmes.mjs",
+    "readme:check": "node scripts/build-readmes.mjs --check",
+    "benchmark": "node scripts/benchmark.mjs",
+    "test": "npm run test --workspaces --if-present",
+    "test:atabey": "npm run test -w packages/atabey",
+    "test:mcp": "npm run test -w packages/atabey-mcp",
+    "test:coverage": "npm run test:coverage --workspaces --if-present",
+    "prepublishOnly": "npm run build",
+    "publish:all": "npm run build && npm publish -w packages/shared --access public && npm publish -w packages/atabey --access public && npm publish -w packages/atabey-mcp --access public",
+    "clean:legacy": "node scripts/clean-legacy-packages.mjs",
+    "clean": "node scripts/clean.mjs",
+    "atabey:status": "atabey status",
+    "atabey:check": "atabey check",
+    "atabey:setup": "atabey init gemini --unified --profile freelancer --yes --lang en",
+    "atabey:orchestrate": "atabey orchestrate",
+    "atabey:test": "vitest run",
+    "atabey:build": "npm run build --workspaces",
+    "atabey:trace": "atabey trace new",
+    "atabey:verify": "atabey contract",
+    "atabey:test:watch": "vitest",
+    "postinstall": "node scripts/atabey-postinstall.mjs"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.15.3",
+    "@vitest/coverage-v8": "^5.0.0",
+    "eslint": "^10.4.0",
+    "globals": "^17.6.0",
+    "knip": "^6.41.0",
+    "tsx": "^4.22.3",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^5.0.0"
+  },
+  "frameworkRepo": true,
+  "atabey": {
+    "version": "0.1.5",
+    "frameworkRepo": true,
+    "initializedAt": "2026-10-15T15:52:14.950Z"
+  }
+}

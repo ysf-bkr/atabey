@@ -1,0 +1,99 @@
+import { beforeEach, describe, expect, it } from "vitest";
+import { countTokens } from "atabey-shared/tokenizer.js";
+import {
+    checkTokenBudget,
+    detectProvider,
+    estimateTokens,
+    getTokenBudgetStats,
+    resetTokenBudgets,
+    smartTruncateFile
+} from "../../../src/mcp/utils/context-optimizer.js";
+
+describe("Context Optimizer", () => {
+    beforeEach(() => {
+        resetTokenBudgets();
+    });
+
+    describe("estimateTokens", () => {
+        it("delegates to the shared tokenizer (single source of truth)", () => {
+            expect(estimateTokens("hello world")).toBe(countTokens("hello world"));
+            expect(estimateTokens("hello world")).toBeGreaterThan(0);
+        });
+
+        it("should return 0 for empty text", () => {
+            expect(estimateTokens("")).toBe(0);
+        });
+
+        it("should return 0 for null/undefined", () => {
+            expect(estimateTokens(null as unknown as string)).toBe(0);
+        });
+    });
+
+    describe("checkTokenBudget", () => {
+        it("should allow responses within token budget", () => {
+            const result = checkTokenBudget("test-agent", "read_file", "small response");
+            expect(result).toBeNull();
+        });
+
+        it("should block responses exceeding MAX_TOKENS_PER_CALL", () => {
+            const largeText = Array(5000).fill("lorem ipsum dolor sit amet").join(" "); // ~30k tokens
+            const result = checkTokenBudget("test-agent", "read_file", largeText);
+            expect(result).toContain("TOKEN BUDGET");
+            expect(result).toContain("exceeds");
+        });
+
+        it("should track token usage per agent", () => {
+            checkTokenBudget("agent-1", "read_file", "small");
+            checkTokenBudget("agent-2", "write_file", "tiny");
+
+            const stats1 = getTokenBudgetStats("agent-1");
+            const stats2 = getTokenBudgetStats("agent-2");
+
+            expect(stats1.callCount).toBe(1);
+            expect(stats2.callCount).toBe(1);
+        });
+    });
+
+    describe("smartTruncateFile", () => {
+        it("should not truncate small content", () => {
+            const content = "import { test } from 'test';\nconst x = 1;\nexport default x;";
+            const result = smartTruncateFile(content, "test.ts", "default");
+            expect(result).toBe(content);
+        });
+
+        it("should truncate large content with header note", () => {
+            const lines = Array.from({ length: 1500 }, (_, i) => `const line${i} = ${i};`);
+            const content = lines.join("\n");
+            const result = smartTruncateFile(content, "large.ts", "default");
+
+            expect(result).toContain("SMART TRUNCATED");
+            expect(result).toContain("large.ts");
+        });
+    });
+
+    describe("getTokenBudgetStats", () => {
+        it("should return zero stats for unknown agent", () => {
+            const stats = getTokenBudgetStats("unknown-agent");
+            expect(stats.totalTokens).toBe(0);
+            expect(stats.callCount).toBe(0);
+            expect(stats.blocked).toBe(false);
+        });
+    });
+
+    describe("detectProvider", () => {
+        it("should detect all supported clients correctly", () => {
+            expect(detectProvider("Claude-Code/1.0")).toBe("claude");
+            expect(detectProvider("Cursor-IDE")).toBe("cursor");
+            expect(detectProvider("OpenCode-Client")).toBe("opencode");
+            expect(detectProvider("Antigravity-CLI")).toBe("antigravity");
+            expect(detectProvider("agy-agent")).toBe("antigravity");
+            expect(detectProvider("Grok-Assistant")).toBe("grok");
+            expect(detectProvider("xAI-CLI")).toBe("grok");
+            expect(detectProvider("Codex-Client")).toBe("codex");
+            expect(detectProvider("GitHub-Copilot")).toBe("copilot");
+            expect(detectProvider("Ollama-Llama3")).toBe("local");
+            expect(detectProvider("LMStudio-Mistral")).toBe("local");
+            expect(detectProvider("UnknownClient")).toBe("default");
+        });
+    });
+});
