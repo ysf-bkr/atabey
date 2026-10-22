@@ -38,12 +38,10 @@ const COMMANDS: Record<string, { run: (args: string[]) => Promise<void>; descrip
     // Core
     init: {
         run: async (args) => {
-            const profile = args.find((a): a is "freelancer" | "team" | "enterprise" => ["freelancer", "team", "enterprise"].includes(a));
-
             // Adapter = first positional arg, skipping values consumed by flags
             // (e.g. `--focus backend` must not treat "backend" as the adapter).
             const VALUE_FLAGS = new Set([
-                "--profile", "-p", "--focus", "--type", "-t", "--lang", "-l",
+                "--focus", "--type", "-t", "--lang", "-l",
                 "--backend", "-b", "--frontend", "-f", "--native", "--mobile",
                 "--backend-language", "--frontend-framework", "--native-language", "--mobile-framework",
             ]);
@@ -58,7 +56,7 @@ const COMMANDS: Record<string, { run: (args: string[]) => Promise<void>; descrip
                 adapterArg = a;
                 break;
             }
-            const adapter = adapterArg || "gemini";
+            const adapter = adapterArg || "claude";
 
             const typeIndex = args.findIndex(a => a === "--type" || a === "--focus" || a === "-t");
             const focus = (typeIndex !== -1 && args[typeIndex + 1]) ? args[typeIndex + 1] : undefined;
@@ -83,9 +81,7 @@ const COMMANDS: Record<string, { run: (args: string[]) => Promise<void>; descrip
 
             await initCommand(adapter, {
                 dryRun: args.includes("--dry-run"),
-                unified: !args.includes("--single"),
                 yes: args.includes("--yes") || args.includes("-y"),
-                profile,
                 focus,
                 language,
                 backend,
@@ -93,9 +89,10 @@ const COMMANDS: Record<string, { run: (args: string[]) => Promise<void>; descrip
                 native,
                 mobile,
                 global: args.includes("--global"),
+                importDocs: args.includes("--import-docs"),
             });
         },
-        description: "Initialize Atabey (--profile freelancer|team|enterprise [--focus fullstack|backend|frontend|mobile] [--backend node|go|java|python|dotnet|rust] [--frontend vite|next|vanilla] [--mobile react-native|flutter] [--native rust|go] [--lang en] [--global])",
+        description: "Initialize Atabey for one AI platform (claude|cursor|codex|grok|local|antigravity-cli|opencode) or all of them (all) [--focus fullstack|backend|frontend|mobile] [--backend node|go|java|python|dotnet|rust] [--frontend vite|next|vanilla] [--mobile react-native|flutter] [--native rust|go] [--import-docs] [--global]",
     },
     mcp: {
         run: async (args) => { await mcpCommand(args); },
@@ -428,9 +425,11 @@ Usage:
   atabey "natural language"    (auto-routed to @manager)
 
 Core Commands:
-  init [adapter] [--profile freelancer|team|enterprise]      Initialize project
-  init [adapter] [--backend go --frontend next --native rust]  Choose stack (--yes)
-  init [adapter] [--global]                              Also register MCP in user-level AI configs
+  init [ai]                                              Initialize for one AI (claude default)
+  init all                                               Initialize for ALL supported AIs
+  init [ai] [--backend go --frontend next --native rust]  Choose stack (--yes)
+  init [ai] [--import-docs]                              Import root .md docs into Atabey knowledge
+  init [ai] [--global]                                   Also register MCP in user-level AI configs
   mcp start|install|status                               MCP server management
   orchestrate                                            Start orchestration loop
   check                                                  System health check
@@ -458,18 +457,19 @@ Core Commands:
   coverage                                               Test coverage reports
   quickstart                                             Example project
 
-Profiles:
-  freelancer    Solo dev (5 agents: manager, backend, frontend, quality, security)
-  team          5-15 people (9 agents: manager, architect, analyst, backend, frontend, quality, database, security, devops)
-  enterprise    15+ people (all 13 agents + full governance)
+Setup:
+  One canonical setup — all 13 specialists + full governance (sandbox fail-closed).
+  Choose the AI platform, not the team size: claude | cursor | codex | grok |
+  local | antigravity-cli | opencode | all
 
 MCP Integration (Primary Use):
-  1. atabey init gemini --profile freelancer
-  2. Configure mcp.json for your AI (Claude/Gemini/Cursor)
+  1. atabey init claude            (or: atabey init all)
+  2. Open your AI assistant — MCP auto-starts the orchestrator
   3. Use @agent commands in AI chat
 
 Examples:
-  atabey init gemini --profile freelancer --yes
+  atabey init claude --yes
+  atabey init all --yes
   atabey @backend "Create login API"
   atabey "Audit my project"
   atabey mcp start

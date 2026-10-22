@@ -4,9 +4,6 @@ import { isAdapterShimFile, resolveAdapter } from "../../../src/cli/platforms/in
 describe("Adapters", () => {
     describe("resolveAdapter", () => {
         it("should resolve known adapters", () => {
-            const gemini = resolveAdapter("gemini");
-            expect(gemini.id).toBe("gemini");
-
             const claude = resolveAdapter("claude");
             expect(claude.id).toBe("claude");
 
@@ -16,7 +13,7 @@ describe("Adapters", () => {
 
         it("should resolve fallbacks", () => {
             const unknown = resolveAdapter("unknown-adapter");
-            expect(unknown.id).toBe("gemini");
+            expect(unknown.id).toBe("claude");
         });
 
         it("should handle alias names", () => {
@@ -33,10 +30,12 @@ describe("Adapters", () => {
 
     describe("isAdapterShimFile", () => {
         it("should identify valid shim files", () => {
-            expect(isAdapterShimFile("GEMINI.md")).toBe(true);
             expect(isAdapterShimFile("CLAUDE.md")).toBe(true);
             expect(isAdapterShimFile("OPENCODE.md")).toBe(true);
+            expect(isAdapterShimFile("GROK.md")).toBe(true);
             expect(isAdapterShimFile("non-existent.md")).toBe(false);
+            // Gemini is no longer a supported platform: its shim is not recognized.
+            expect(isAdapterShimFile("GEMINI.md")).toBe(false);
         });
     });
 });

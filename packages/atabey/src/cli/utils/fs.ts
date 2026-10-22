@@ -54,10 +54,10 @@ export function copyDir(
     dest: string,
     skipSet = new Set<string>(),
     nonDestructive = false,
-    frameworkDir = ".gemini",
+    frameworkDir = ".claude",
     targetScope = "",
     sanitizeJson: SanitizeJsonFunction,
-    adapterId: AdapterId = "gemini",
+    adapterId: AdapterId = "claude",
     dryRun = false,
 ): void {
     const DEFAULT_SKIP = new Set(["node_modules", ".git", ".DS_Store", "package-lock.json"]);

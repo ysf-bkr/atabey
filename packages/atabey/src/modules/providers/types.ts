@@ -1,4 +1,4 @@
-export const ADAPTER_IDS = ["gemini", "claude", "grok", "cursor", "codex", "local", "antigravity-cli", "opencode"] as const;
+export const ADAPTER_IDS = ["claude", "grok", "cursor", "codex", "local", "antigravity-cli", "opencode"] as const;
 export type AdapterId = (typeof ADAPTER_IDS)[number];
 
 export interface AdapterConfig {

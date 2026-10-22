@@ -46,8 +46,20 @@ describe("Adapter Initialization & Scaffolding - Granular Verification", () => {
                 // 2. Post-Init
                 runAdapterPostInit(adapter, tempDir);
 
-                // Verification: mcp.json should exist
-                expect(fs.existsSync(path.join(tempDir, "mcp.json"))).toBe(true);
+                // Verification: exactly ONE native MCP config per platform.
+                // Claude + Codex share the root .mcp.json; others own their file.
+                const nativeMcpConfigs: Record<string, string> = {
+                    claude: ".mcp.json",
+                    codex: ".mcp.json",
+                    cursor: ".cursor/mcp.json",
+                    grok: ".grok/mcp_config.json",
+                    local: ".atabey/mcp_config.json",
+                    "antigravity-cli": ".agents/mcp_config.json",
+                    opencode: "opencode.json",
+                };
+                expect(fs.existsSync(path.join(tempDir, nativeMcpConfigs[adapterId]))).toBe(true);
+                // The legacy root `mcp.json` must never be written anymore.
+                expect(fs.existsSync(path.join(tempDir, "mcp.json"))).toBe(false);
             });
         });
     });

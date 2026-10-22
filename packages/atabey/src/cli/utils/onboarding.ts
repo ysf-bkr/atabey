@@ -1,0 +1,196 @@
+import fs from "fs";
+import path from "path";
+import { UI } from "./ui.js";
+import { ensureDir, writeJsonFile, writeTextFile } from "./fs.js";
+import { AtabeyStorage } from "atabey-shared";
+import { syncMarkdownMemory } from "./memory.js";
+
+/**
+ * Checks whether the projectRoot already contains an existing application codebase
+ * (brownfield project) rather than a completely empty directory.
+ */
+export function isExistingProject(projectRoot: string): boolean {
+    const pkgPath = path.join(projectRoot, "package.json");
+    if (fs.existsSync(pkgPath)) {
+        try {
+            const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+            if (
+                (pkg.dependencies && Object.keys(pkg.dependencies).length > 0) ||
+                (pkg.devDependencies && Object.keys(pkg.devDependencies).some((k: string) => k !== "atabey" && k !== "atabey-mcp")) ||
+                (pkg.scripts && Object.keys(pkg.scripts).some((s: string) => !s.startsWith("atabey:"))) ||
+                (pkg.workspaces && Array.isArray(pkg.workspaces) && pkg.workspaces.length > 0)
+            ) {
+                return true;
+            }
+        } catch {
+            return true;
+        }
+    }
+
+    const markers = ["src", "apps", "packages", "go.mod", "Cargo.toml", "pyproject.toml", "pom.xml", "build.gradle"];
+    for (const marker of markers) {
+        if (fs.existsSync(path.join(projectRoot, marker))) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Scans for existing AI instructions or rules previously written by the user (.cursorrules, CLAUDE.md, etc.),
+ * saves their contents into Atabey memory/knowledge store, and cleans up the scattered legacy files.
+ */
+export function ingestLegacyAiFiles(projectRoot: string, coreDir: string, dryRun: boolean): string[] {
+    const ingestedFiles: string[] = [];
+    const memoryDir = path.join(projectRoot, coreDir, "memory");
+    const ingestedRulesPath = path.join(memoryDir, "ingested-user-rules.md");
+
+    // Potential user-written AI instruction files to discover and absorb
+    const candidateFiles = [
+        "CLAUDE.md",
+        ".cursorrules",
+        "CONVENTIONS.md",
+        "RULES.md",
+        "PROMPT.md",
+        "AI.md",
+        "GEMINI.md",
+        "GROK.md",
+        "OPENCODE.md",
+        path.join(".github", "copilot-instructions.md"),
+    ];
+
+    let combinedRules = "";
+
+    for (const relPath of candidateFiles) {
+        const fullPath = path.join(projectRoot, relPath);
+        if (!fs.existsSync(fullPath)) continue;
+
+        try {
+            const stat = fs.statSync(fullPath);
+            if (!stat.isFile()) continue;
+
+            const content = fs.readFileSync(fullPath, "utf8");
+            // If it's already an Atabey generated shim or points to Atabey, we still absorb any custom notes
+            const isAtabeyManaged = content.includes("[ATABEY]") || content.includes("@atabey");
+
+            if (!isAtabeyManaged && content.trim().length > 0) {
+                combinedRules += `\n\n### Ingested from \`${relPath}\`\n\n${content.trim()}\n\n---`;
+                ingestedFiles.push(relPath);
+
+                if (!dryRun) {
+                    try {
+                        AtabeyStorage.saveKnowledgeFile(`legacy-${path.basename(relPath)}`, content);
+                    } catch {
+                        /* best effort for storage engine */
+                    }
+                }
+            }
+
+            // Clean up obsolete platform shims or legacy instruction files
+            if (!dryRun) {
+                try {
+                    fs.unlinkSync(fullPath);
+                } catch {
+                    /* ignore if read-only or in use */
+                }
+            }
+        } catch {
+            /* ignore individual file read errors */
+        }
+    }
+
+    // Also remove obsolete legacy adapter directories if present (e.g. .gemini, .grok, .opencode)
+    const legacyDirsToClean = [".gemini", ".grok", ".opencode"];
+    for (const dir of legacyDirsToClean) {
+        const fullDirPath = path.join(projectRoot, dir);
+        if (fs.existsSync(fullDirPath) && !dryRun) {
+            try {
+                fs.rmSync(fullDirPath, { recursive: true, force: true });
+                ingestedFiles.push(dir + "/");
+            } catch {
+                /* best effort */
+            }
+        }
+    }
+
+    if (combinedRules && !dryRun) {
+        ensureDir(memoryDir);
+        const header = `# [ATABEY MEMORY] Ingested User AI Guidelines & Context\n> Automatically captured and preserved from previous AI configuration files.\n`;
+        writeTextFile(ingestedRulesPath, header + combinedRules);
+        UI.success(`  [MEMORY] Ingested ${ingestedFiles.length} legacy AI file(s) into Atabey memory & cleaned up workspace.`);
+    }
+
+    return ingestedFiles;
+}
+
+/**
+ * Indexes the existing codebase architecture into Atabey's memory document store and markdown graph.
+ */
+export function indexCodebaseMemory(projectRoot: string, coreDir: string, dryRun: boolean): void {
+    if (dryRun) return;
+
+    const memoryDir = path.join(projectRoot, coreDir, "memory");
+    ensureDir(memoryDir);
+
+    const statePath = path.join(memoryDir, "state.json");
+    let existingState: Record<string, unknown> = {};
+
+    if (fs.existsSync(statePath)) {
+        try {
+            existingState = JSON.parse(fs.readFileSync(statePath, "utf8"));
+        } catch {
+            existingState = {};
+        }
+    }
+
+    // Inspect project
+    const pkgPath = path.join(projectRoot, "package.json");
+    let pkgInfo: Record<string, unknown> = {};
+    if (fs.existsSync(pkgPath)) {
+        try {
+            pkgInfo = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+        } catch {
+            // Malformed package.json — fall back to an empty metadata object.
+        }
+    }
+
+    // Discover top-level directories
+    const topLevelDirs: string[] = [];
+    try {
+        const entries = fs.readdirSync(projectRoot, { withFileTypes: true });
+        for (const entry of entries) {
+            if (entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "node_modules" && entry.name !== "dist" && entry.name !== "build") {
+                topLevelDirs.push(entry.name);
+            }
+        }
+    } catch {
+        // Unreadable directory (permissions / race) — treat as no top-level dirs.
+    }
+
+    const projectMetadata = {
+        name: pkgInfo.name || path.basename(projectRoot),
+        version: pkgInfo.version || "0.1.0",
+        type: pkgInfo.type || "commonjs",
+        workspaces: pkgInfo.workspaces || [],
+        keyDirectories: topLevelDirs,
+        onboardedAt: new Date().toISOString(),
+    };
+
+    const newState = {
+        ...existingState,
+        phase: existingState.phase || "PHASE_1_ONBOARDED",
+        project: projectMetadata,
+        managerState: existingState.managerState || "ACTIVE",
+    };
+
+    writeJsonFile(statePath, newState);
+
+    try {
+        syncMarkdownMemory(path.join(projectRoot, coreDir));
+    } catch {
+        /* best-effort markdown sync */
+    }
+
+    UI.success(`  [MEMORY] Codebase architecture indexed: ${topLevelDirs.join(", ") || "root"} into Atabey memory.`);
+}

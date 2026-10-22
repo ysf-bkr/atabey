@@ -2,19 +2,19 @@
 
 > **Language / Dil:** [English](#atabey--local-ai-control-plane--discipline-layer) · [Türkçe](#turkce)
 
-*v0.1.5 · Lightweight Local Control Plane · 100% strict TypeScript · Cross-platform (macOS, Linux, Windows)*
+*v0.1.6 · Lightweight Local Control Plane · 100% strict TypeScript · Cross-platform (macOS, Linux, Windows)*
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![npm](https://img.shields.io/npm/v/atabey)](https://www.npmjs.com/package/atabey)
 [![MCP](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io)
 
-**Atabey** is a **rule-based governance, safety boundaries, and role discipline layer for AI coding assistants** (Local AI Control Plane & Discipline Layer). Running directly on your local machine, it sits between your codebase and your local AI coding tools (Claude Code, Gemini CLI, Cursor, Codex, Local LLMs) to **discipline, bound, and coordinate** them via MCP (Model Context Protocol).
+**Atabey** is a **rule-based governance, safety boundaries, and role discipline layer for AI coding assistants** (Local AI Control Plane & Discipline Layer). Running directly on your local machine, it sits between your codebase and your local AI coding tools (Claude Code, Cursor, Codex, Grok, Local LLMs) to **discipline, bound, and coordinate** them via MCP (Model Context Protocol).
 
 It is not an oversized enterprise SaaS or distributed cloud platform. Its core purpose is simple: **bring order to local AI coding chaos**.
 
 | Layer | Role |
 |-------|------|
-| **Your AI IDE/CLI** | Writes code, reasons, and executes commands (Claude, Gemini, Cursor) |
+| **Your AI IDE/CLI** | Writes code, reasons, and executes commands (Claude, Cursor, Codex) |
 | **Atabey Local MCP** | Intercepts operations · enforces boundaries · prevents infinite loops · manages memory |
 | **13 Role Profiles** | Dynamic prompt personas (@backend, @architect, @quality, @security...) |
 | **`.atabey/` Project Hub** | Local SQLite memory, policy matrix, audit trail, and rollback snapshots |
@@ -55,7 +55,7 @@ You (@backend): "Create a user login service with JWT authentication"
 ## 🧠 How Atabey Relates to Your AI
 
 > [!IMPORTANT]
-> **Atabey does not write code.** The code is written by the AI assistant you are connected to (such as Claude Code, Gemini CLI, or Cursor).
+> **Atabey does not write code.** The code is written by the AI assistant you are connected to (such as Claude Code, Cursor, or Codex).
 > Atabey wraps your AI assistant with a powerful, deterministic software engineering discipline and governance layer:
 >
 > 1. **Routing:** Directs instructions to the correct specialized virtual agent profile (`@backend`, `@security`, etc.).
@@ -77,7 +77,7 @@ You (@backend): "Create a user login service with JWT authentication"
 - [How Atabey Plugs Into Your AI](#how-atabey-plugs-into-your-ai)
 - [Supported Platforms](#supported-platforms)
 - [Installation](#installation)
-- [Profile-Based Setup](#profile-based-setup)
+- [Per-AI Setup (Single Canonical Setup)](#per-ai-setup-single-canonical-setup)
 - [13 Specialized Role Profiles](#13-specialized-role-profiles)
 - [Multi-Agent Workflow Scenarios & Code Examples](#multi-agent-workflow-scenarios--code-examples)
 - [40 MCP Tools](#40-mcp-tools)
@@ -93,6 +93,8 @@ You (@backend): "Create a user login service with JWT authentication"
 - [KVKK/GDPR Compliance](#kvkkgdpr-compliance)
 - [EU AI Act Alignment](#eu-ai-act-alignment)
 - [Token Efficiency](#token-efficiency)
+- [Testing](#testing)
+- [Troubleshooting](#troubleshooting)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
 
@@ -109,8 +111,8 @@ You (@backend): "Create a user login service with JWT authentication"
         ┌───────────────────────┼───────────────────────┐
         ▼                       ▼                       ▼
 ┌───────────────┐      ┌───────────────┐      ┌───────────────┐
-│ Claude Code   │      │ Gemini CLI    │      │ Cursor IDE    │
-│ .claude/      │      │ .gemini/      │      │ .cursor/      │
+│ Claude Code   │      │ Codex CLI     │      │ Cursor IDE    │
+│ .claude/      │      │ .agents/      │      │ .cursor/      │
 └───────┬───────┘      └───────┬───────┘      └───────┬───────┘
         │                      │                      │
         └──────────────────────┼──────────────────────┘
@@ -125,7 +127,7 @@ You (@backend): "Create a user login service with JWT authentication"
                                 ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  .atabey/  Brain & Memory (SSOT)     │  .agents/  Unified Agent Hub    │
-│  ATABEY.md · memory/ · knowledge/     │  8 platform mirrors + skills    │
+│  ATABEY.md · memory/ · knowledge/     │  7 platform mirrors + skills    │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -169,7 +171,7 @@ sequenceDiagram
     MCP-->>AI: APPROVED / REJECTED
 ```
 
-**Orchestrator auto-start (default):** When your IDE connects to the MCP server (`mcp.json`), Atabey automatically boots the headless **AgentLoop** orchestrator in the background. No separate terminal is required for daily multi-agent work.
+**Orchestrator auto-start (default):** When your IDE connects to the MCP server (`.mcp.json`), Atabey automatically boots the headless **AgentLoop** orchestrator in the background. No separate terminal is required for daily multi-agent work.
 
 ```bash
 # Optional — interactive TUI orchestration loop
@@ -179,7 +181,7 @@ npx atabey orchestrate
 MCP_TRANSPORT=unified MCP_PORT=5858 npx atabey-mcp
 ```
 
-Disable auto-start: set `"orchestrator": { "autoStart": false }` in `.atabey/config.json` or `ATABEY_AUTO_START_ORCHESTRATOR=false` in `mcp.json`.
+Disable auto-start: set `"orchestrator": { "autoStart": false }` in `.atabey/config.json` or `ATABEY_AUTO_START_ORCHESTRATOR=false` in the MCP config env block.
 
 ### Project kinds
 
@@ -198,16 +200,28 @@ Disable auto-start: set `"orchestrator": { "autoStart": false }` in `.atabey/con
 > The **Atabey framework monorepo** itself does not contain `apps/*` — those paths apply only to your own application repositories.
 
 ```bash
-# Single platform (your app repo)
-npx atabey init gemini --profile freelancer --yes
+# One AI platform (your app repo) — claude is the default
+npx atabey init claude --yes
 
-# All 8 platforms (recommended for teams)
-npx atabey init gemini --unified --profile team --yes
+# ALL 7 supported AI platforms (recommended for teams)
+npx atabey init all --yes
 
 # Framework monorepo maintainers only (this repository)
 npm install          # postinstall runs atabey:setup if .atabey/ is missing
 npm run atabey:setup # or run manually
 ```
+
+> **One canonical setup.** There are no freelancer/team/enterprise profiles anymore:
+> `atabey init` always scaffolds **all 13 specialists** with the strictest
+> governance posture (fail-closed sandbox, required auth). You only choose
+> **which AI** to compile for: `claude` (default), `cursor`, `codex`, `grok`,
+> `local`, `antigravity-cli`, `opencode` — or `all`.
+>
+> Installing into an **existing project**? Init detects root-level project docs
+> (ARCHITECTURE.md, BACKLOG.md, …) and asks whether to import them into
+> `.atabey/knowledge/imported/` (the root copies are then removed, so all
+> project context lives under Atabey control). Non-interactive equivalent:
+> `atabey init claude --yes --import-docs`.
 
 ### 2. Verify MCP & Platform Health
 
@@ -218,9 +232,15 @@ npx atabey status    # Phase, trace, agent states
 
 ### 3. Connect to Your AI Interface (MCP auto-starts)
 
-`atabey init` generates `mcp.json` with **`MCP_TRANSPORT=stdio`** and **`ATABEY_AUTO_START_ORCHESTRATOR=true`**. Your IDE spawns the MCP server automatically — orchestrator included. Point your AI assistant to it:
+`atabey init` writes a **single native MCP config per platform** — root
+`.mcp.json` for Claude Code / Codex / VS Code, `.cursor/mcp.json` for Cursor,
+`opencode.json` for OpenCode, and so on. Every generated entry uses
+**`MCP_TRANSPORT=stdio`**, **`ATABEY_AUTO_START_ORCHESTRATOR=true`** and the
+portable **`npx -y atabey-mcp`** launcher. Your IDE spawns the MCP server
+automatically — orchestrator included.
 
-**Claude Code:**
+**Root `.mcp.json`** (Claude Code / Codex / VS Code — auto-generated by init):
+
 ```json
 {
   "mcpServers": {
@@ -235,13 +255,6 @@ npx atabey status    # Phase, trace, agent states
     }
   }
 }
-```
-
-**Gemini CLI:**
-```bash
-gemini config set mcpServers.atabey.command "npx"
-gemini config set mcpServers.atabey.args "[\"-y\", \"atabey-mcp\"]"
-gemini config set mcpServers.atabey.env "{\"MCP_TRANSPORT\": \"stdio\", \"ATABEY_PROJECT_ROOT\": \"/path/to/your/project\"}"
 ```
 
 **Cursor** (`.cursor/mcp.json` — auto-generated by init):
@@ -261,11 +274,18 @@ gemini config set mcpServers.atabey.env "{\"MCP_TRANSPORT\": \"stdio\", \"ATABEY
   }
 }
 ```
-*(Alternative for offline local installs: `"command": "node"`, `"args": ["node_modules/atabey-mcp/dist/atabey-mcp/src/mcp/index.js"]`)*
+
+> **Why `npx -y atabey-mcp`?** The launcher is immune to relative-path
+> resolution errors (IDEs may start with a different working directory) and to
+> missing local installs: if `atabey-mcp` is present in `node_modules`, npx runs
+> the local binary with zero network overhead; otherwise it fetches it on
+> demand. The old `"command": "node", "args": ["node_modules/atabey-mcp/dist/..."]`
+> entries crashed with `MODULE_NOT_FOUND` whenever the dependency was not
+> installed locally — `atabey init` no longer emits them.
 
 > [!IMPORTANT]
 > **MCP transport modes**
-> - **`stdio`** (default) — Claude, Cursor, Gemini, Codex, Grok. Set by `atabey init` and `atabey mcp install`. In-process stdin/stdout, no network exposure.
+> - **`stdio`** (default) — Claude, Cursor, Codex, Grok. Set by `atabey init` and `atabey mcp install`. In-process stdin/stdout, no network exposure.
 > - **`unified`** — HTTP/SSE server on port 5858 for network and remote MCP clients: `MCP_TRANSPORT=unified MCP_PORT=5858 atabey-mcp`
 > - **Encryption:** for `unified`/network use, configure TLS 1.3 (+ optional mTLS) via `ATABEY_TLS_CERT_FILE` / `ATABEY_TLS_KEY_FILE` / `ATABEY_MTLS_REQUIRED`. `ATABEY_TLS_REQUIRED=true` refuses plaintext. See [Transport Security](#transport-security-tls-13--mtls).
 >
@@ -277,9 +297,9 @@ gemini config set mcpServers.atabey.env "{\"MCP_TRANSPORT\": \"stdio\", \"ATABEY
 
 | Step | Command | Result |
 |------|---------|--------|
-| Init | `atabey init gemini --unified --yes` | Agents + 8 adapter MCP configs + shims |
-| Repair | `atabey mcp install` | Refreshes root `mcp.json` (stdio + auto-orchestrator) |
-| IDE connect | Open Claude / Cursor / Gemini | MCP + orchestrator start automatically |
+| Init | `atabey init all --yes` | Agents + 7 adapter MCP configs + shims |
+| Repair | `atabey mcp install` | Refreshes root `.mcp.json` (stdio + auto-orchestrator) |
+| IDE connect | Open Claude / Cursor / Codex | MCP + orchestrator start automatically |
 | Debug | `atabey mcp start` | Manual stdio MCP for troubleshooting |
 | Health | `atabey check` | Validates `MCP_TRANSPORT`, unified layout, AL registry |
 
@@ -288,7 +308,6 @@ gemini config set mcpServers.atabey.env "{\"MCP_TRANSPORT\": \"stdio\", \"ATABEY
 | Platform | Orchestration | Best role |
 |----------|---------------|-----------|
 | Claude Code | Full | Primary orchestrator |
-| Gemini CLI | Strong | Commander / strategist |
 | Local LLM | Strong | Offline / private |
 | Antigravity CLI | Strong | Custom agent JSON |
 | Cursor / Grok / Codex | Limited | Implementer / editor |
@@ -326,7 +345,7 @@ Atabey is built on **5 core capabilities** that work together seamlessly:
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │                   YOUR AI INTERFACE                                │
-│   Claude Code · Gemini CLI · Cursor · Codex CLI · Local LLM      │
+│   Claude Code · Cursor · Codex CLI · Grok · Local LLM            │
 │   You type: @backend Create login service                         │
 ├──────────────────────────────────────────────────────────────────┤
 │                    MCP PROTOCOL (stdio/SSE)                        │
@@ -355,12 +374,11 @@ Atabey is **not a separate execution engine**. It is a context-aware governance 
 
 ## Supported Platforms
 
-Atabey AL supports **8 platforms** with automatic adapter configuration:
+Atabey AL supports **7 platforms** with automatic adapter configuration:
 
 | Platform | MCP Transport | Agent Personas | Dynamic Skills | Governance Enforcement | HITL Approval Gate | Audit Chain | Sandbox (env-configured) |
 |----------|---------------|----------------|----------------|------------------------|---------------------|-------------|-------------------|
 | **Claude Code** ⭐ | Stdio + SSE | Native (`.claude/agents/*.md`) | Full (15 Skills) | **Full** — PreToolUse hook blocks built-in Edit/Write/Bash writes and forces Atabey MCP tools | Webhooks + Passcode | HMAC-SHA256 Chained | none / uid / seatbelt |
-| **Gemini CLI** | Stdio + SSE | Native (`.gemini/agents/*.md`) | Full (15 Skills) | **Strong** — governed tools + rules engine (no built-in tool hook API) | Interactive CLI + Web | HMAC-SHA256 Chained | none / uid / seatbelt |
 | **Cursor IDE** | Stdio | Rules (`.cursor/rules/*.mdc`) | MDC Ruleset | **Partial** — governed tools via MCP; built-in editor tools rely on rules compliance | Interactive CLI + passcode | HMAC-SHA256 Chained | none / uid / seatbelt |
 | **Codex CLI / Copilot** | Stdio | Workspace (`copilot-instructions.md`) | Injected Prompt | **Partial** — governed tools via MCP | CLI Passcode | HMAC-SHA256 Chained | none / uid / seatbelt |
 | **Antigravity CLI** | Stdio + SSE | `agent.json` + Subagents | Native Toolset | **Strong** — native tool gating | Real-time WebSocket | HMAC-SHA256 Chained | none / uid / seatbelt |
@@ -372,7 +390,7 @@ Atabey AL supports **8 platforms** with automatic adapter configuration:
 
 > **Sandboxing is global and env-driven** (`ATABEY_SANDBOX_RUNTIME=none|uid|seatbelt|auto`), not per-platform. On macOS, `seatbelt` uses `/usr/bin/sandbox-exec`; on Linux, POSIX `uid` drop is used. Set `ATABEY_SANDBOX_REQUIRED=true` to deny execution when isolation is unavailable.
 
-> **Unified Mode:** `atabey init <platform> --unified` configures and mirrors agents across **ALL platforms simultaneously**.
+> **All-AIs Mode:** `atabey init all` compiles and mirrors agents across **ALL supported platforms simultaneously** (this replaces the old `--unified` flag).
 
 ---
 
@@ -384,7 +402,7 @@ Atabey AL supports **8 platforms** with automatic adapter configuration:
 |------------|---------|
 | **Node.js** | >= 22.0.0 |
 | **npm** | >= 9.0.0 |
-| **AI Interface** | Claude Code, Gemini CLI, Cursor, Codex CLI, Grok, Antigravity, Local LLM |
+| **AI Interface** | Claude Code, Cursor, Codex CLI, Grok, Antigravity, Local LLM, OpenCode |
 
 ### Quick Install
 
@@ -392,8 +410,11 @@ Atabey AL supports **8 platforms** with automatic adapter configuration:
 # Install globally (recommended)
 npm install -g atabey
 
-# Initialize with your preferred platform and profile
-npx atabey init gemini --profile freelancer --yes
+# Initialize for your AI platform (claude is the default)
+npx atabey init claude --yes
+
+# …or for every supported AI at once
+npx atabey init all --yes
 
 # Verify installation
 npx atabey status
@@ -417,51 +438,41 @@ If you encounter installation or test run issues (especially in restricted sandb
 
 ---
 
-## Profile-Based Setup
+## Per-AI Setup (Single Canonical Setup)
 
-Choose the profile that matches your team size. You can also customize your setup using **`--focus`** and **`--lang`** options.
+There is **one setup** — no freelancer/team/enterprise profiles. `atabey init`
+always scaffolds the full specialist set with the strictest governance posture.
+What you choose is **which AI platform** to compile the agent set for.
 
-### `--profile freelancer` (1-3 people)
+### `atabey init <ai>` — one platform
 
 ```bash
-npx atabey init gemini --profile freelancer
+npx atabey init claude    # Claude Code (default) — full deterministic governance
+npx atabey init cursor    # Cursor IDE — .cursor/rules/*.mdc + .cursor/mcp.json
+npx atabey init codex     # Codex CLI / GitHub Copilot — root .mcp.json
+npx atabey init grok      # Grok — .grok/agents + .grok/mcp_config.json
+npx atabey init local     # Local LLM / Ollama — fully offline
+npx atabey init antigravity-cli   # Antigravity — .agents/agents/*/agent.json
+npx atabey init opencode  # OpenCode — opencode.json
 ```
+
+### `atabey init all` — every supported AI
+
+```bash
+npx atabey init all --yes
+```
+
+Compiles the agent set into every platform's native format under the unified
+`.agents/` hub and writes each platform's native MCP config (7 adapters).
 
 | Feature | What You Get |
 |---------|-------------|
-| **Agents** | `@manager`, `@backend`, `@frontend`, `@quality`, `@security` (focus-adjusted: backend/frontend/mobile variants keep the security specialist) |
-| **Setup Time** | ~10 seconds |
-| **Daily Workflow** | Chat with AI using specialist agents |
-| **Governance** | Quality gate + risk engine |
-| **Best For** | Solo developers, minimal overhead |
-
-### `--profile team` (5-15 people)
-
-```bash
-npx atabey init gemini --profile team --unified
-```
-
-| Feature | What You Get |
-|---------|-------------|
-| **Agents** | 8-10 focus-specific agents (manager, architect, analyst, backend, frontend, quality, database, security, devops) |
-| **Setup Time** | ~30 seconds |
-| **Observability** | Headless control plane (MCP SSE + Hermes WSS Bus), HMAC-signed audit trail, and token accounting & limits |
-| **Governance** | Quality gate + risk engine + contract validation |
-| **Best For** | Small-medium teams with governance needs |
-
-### `--profile enterprise` (15+ people)
-
-```bash
-npx atabey init gemini --profile enterprise
-```
-
-| Feature | What You Get |
-|---------|-------------|
-| **Agents** | All 13 agents (Supreme + Core + Recon) |
-| **Setup Time** | ~1 minute |
-| **Security** | Human-in-the-Loop, KVKK PII masking, audit log |
-| **Governance** | Full governance with circuit breakers |
-| **Best For** | Enterprise with compliance requirements |
+| **Agents** | All 13 specialists (Supreme + Core + Recon) — always |
+| **Governance** | Quality gate + risk engine + contract validation + fail-closed sandbox posture |
+| **MCP config** | Exactly ONE native config file per platform (no duplicates) |
+| **Skills** | `skills/<slug>/SKILL.md` directory format with YAML frontmatter (auto-discoverable) |
+| **Memory** | Bootstrap trace **T-001** opened automatically (active task from the first minute) |
+| **Existing docs** | Root-level project docs are offered for import into `.atabey/knowledge/imported/` |
 
 ### Stack-Based Application Scaffolding
 
@@ -469,7 +480,7 @@ npx atabey init gemini --profile enterprise
 
 ```bash
 # Go backend + Next.js frontend, Rust native tier (mobile)
-npx atabey init gemini --profile team --yes --focus mobile-fullstack --backend go --frontend next --native rust
+npx atabey init claude --yes --focus mobile-fullstack --backend go --frontend next --native rust
 ```
 
 | Selection | Generated under `apps/` | Key files |
@@ -495,7 +506,7 @@ npx atabey init gemini --profile team --yes --focus mobile-fullstack --backend g
 ## 13 Specialized Role Profiles
 
 > [!NOTE]
-> **Execution Model:** Atabey's specialized agents are virtual profiles powered by dynamically injected system role definitions and context templates. They do not run as 13 parallel, independent LLM API instances. Instead, your single host AI assistant (e.g., Claude Code, Gemini CLI) takes on these roles sequentially, routed by the TF-IDF engine, while Atabey enforces boundaries, state machine constraints, and quality checks during role switches.
+> **Execution Model:** Atabey's specialized agents are virtual profiles powered by dynamically injected system role definitions and context templates. They do not run as 13 parallel, independent LLM API instances. Instead, your single host AI assistant (e.g., Claude Code, Cursor) takes on these roles sequentially, routed by the TF-IDF engine, while Atabey enforces boundaries, state machine constraints, and quality checks during role switches.
 
 | Role Profile | Tier | Domain | Scope / Responsibility | Freelancer | Team | Enterprise |
 |--------------|------|--------|------------------------|:----------:|:----:|:----------:|
@@ -535,7 +546,7 @@ Atabey enables structured, governed collaboration across role profiles. Here are
 
 ### Scenario 1: Interactive Feature Delivery (Planner → Coder → Verifier)
 
-In your AI chat (Claude Code, Gemini CLI, Cursor), you kick off a brownfield task. The host LLM assumes role profiles sequentially, guided by Atabey's state machine and quality gates:
+In your AI chat (Claude Code, Cursor, Codex), you kick off a brownfield task. The host LLM assumes role profiles sequentially, guided by Atabey's state machine and quality gates:
 
 ```bash
 # 1. @manager breaks down the requirement and creates an approved DAG plan
@@ -700,7 +711,7 @@ npx atabey audit export --verify
 | **DUAL_AXIS_REVIEW** | read_file, grep_search, run_shell_command | Code quality & specification-fidelity review |
 | **SCIENTIFIC_DIAGNOSTICS** | read_file, replace_text, patch_file, run_shell_command | Hypothesis-driven bug diagnostics |
 
-Each skill adapts to the target platform (Claude → native tool names, Gemini → YAML, Codex → categories).
+Each skill adapts to the target platform (Claude → native tool names, Grok → YAML, Codex → categories).
 
 ---
 
@@ -815,7 +826,7 @@ npx atabey mcp start  # Starts headless MCP control plane
 
 | Service | Protocol / Transport | Purpose |
 |---------|---------------------|---------|
-| 🤖 **MCP Stdio** | Stdio (JSON-RPC) | Direct binding to local AI host (Claude Code, Gemini CLI, Cursor) |
+| 🤖 **MCP Stdio** | Stdio (JSON-RPC) | Direct binding to local AI host (Claude Code, Cursor, Codex) |
 | 🌐 **MCP SSE** | HTTP/SSE (`/mcp/sse`) | Network transport for containerized or remote agents |
 | 🛡️ **Governance Gate** | Pre-Tool Interceptor | Permission matrix enforcement, PII scanning, prompt injection defense |
 | 🧠 **Memory Store** | SQLite (`atabey.db`) | Cross-session context, task tracking, vector storage |
@@ -826,7 +837,7 @@ npx atabey mcp start  # Starts headless MCP control plane
 ## CLI Reference
 
 ```bash
-atabey init [adapter]           Initialize Atabey (--profile freelancer|team|enterprise)
+atabey init [ai]                Initialize Atabey for one AI (claude default) or all
 atabey mcp start|install        MCP server management
 atabey orchestrate              Start orchestration loop
 atabey check                    System health check
@@ -864,20 +875,19 @@ atabey quickstart               Generate example task file
 
 | Option | Values | Description |
 |--------|--------|-------------|
-| `[adapter]` | `gemini`, `claude`, `cursor`, `grok`, `codex`, `local`, `antigravity-cli`, `opencode` | Target AI platform |
-| `--profile` | `freelancer`, `team`, `enterprise` | Preset agent group layout |
+| `[ai]` | `claude` (default), `cursor`, `codex`, `grok`, `local`, `antigravity-cli`, `opencode`, `all` | Target AI platform; `all` compiles for every supported AI |
 | `--focus` | `fullstack`, `backend`, `frontend`, `mobile`, `mobile-fullstack` | Project type optimization |
 | `--backend` | `node`, `go`, `java`, `python`, `dotnet`, `rust` | Backend application-tier language (aliases accepted, e.g. `golang`, `fastapi`) |
 | `--frontend` | `vite`, `next`, `vanilla` | Frontend framework (aliases: `react`, `nextjs`, `html`) |
 | `--native` | `rust`, `go` | Native/platform-tier language (TypeScript is forbidden for this tier) |
 | `--lang` | `tr`, `en` | Deprecated no-op (kept for backward compatibility) — all generated content is English-only |
-| `--unified` | Flag | Multi-platform export |
+| `--import-docs` | Flag | Non-interactive: import root-level project docs into `.atabey/knowledge/imported/` and remove the root copies |
 | `--global` | Flag | Also register MCP in user-level configs (`~/.claude.json`, `~/.gemini/antigravity-cli/`). Off by default — project files only. |
 | `--yes` | Flag | Non-interactive mode |
 
 > **Language selection:** In interactive mode you are prompted for backend, frontend, and native languages. With `--yes`, pass them explicitly, e.g.:
 > ```bash
-> atabey init gemini --profile team --yes --backend go --frontend next --native rust
+> atabey init claude --yes --backend go --frontend next --native rust
 > ```
 > The native/platform tier must be **Rust or Go**. Selections are stored in `.atabey/config.json` and drive the `run_tests` / lint commands the agents use.
 
@@ -888,7 +898,7 @@ atabey quickstart               Generate example task file
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │                      AI Chat Interface                            │
-│    @backend Create login service (in Claude/Gemini/Cursor)      │
+│    @backend Create login service (in Claude/Cursor/Codex)       │
 ├──────────────────────────────────────────────────────────────────┤
 │                    MCP Server (atabey-mcp/)                       │
 │                    40 Tools · Multi-Layer Governance                │
@@ -1023,6 +1033,56 @@ Inspect usage: `atabey status`
 
 ---
 
+## Troubleshooting
+
+### `Cannot find module '.../node_modules/atabey-mcp/dist/.../index.js'` (MCP server exits with code 1)
+
+Older Atabey versions wrote `"command": "node", "args": ["node_modules/atabey-mcp/dist/..."]`
+into MCP configs. That path only exists when `atabey-mcp` is installed in the
+project's `node_modules` — if it isn't (or the IDE starts from a different
+working directory), every MCP client crashes with `MODULE_NOT_FOUND`.
+
+**Fix:** regenerate the configs and let the portable launcher take over:
+
+```bash
+npx atabey mcp install     # rewrites root .mcp.json (npx -y atabey-mcp)
+npx atabey init <ai>       # full re-init also cleans legacy duplicate configs
+```
+
+`npx -y atabey-mcp` uses the local install when present (zero network) and
+fetches the package on demand otherwise. You can also simply edit the config by
+hand and replace the `node` entry with `npx -y atabey-mcp`.
+
+### `FATAL: Port 5858 is already in use` / `EADDRINUSE`
+
+The unified HTTP/SSE hub defaults to port 5858. Since v0.1.6 the server
+**automatically falls back to the next free port** (5858 → 5878 range) when the
+preferred one is busy — multiple IDE windows or a stuck background process no
+longer crash the server. The actually bound port is printed in the startup
+banner. To disable the fallback (CI, strict environments):
+`ATABEY_PORT_STRICT=true`.
+
+### Agents don't show up in my AI tool's agent list
+
+Two requirements must hold:
+
+1. **Directory layout:** agents must live in the tool's native path
+   (`.claude/agents/*.md`, `.agents/agents/{name}/agent.md`, …). Run
+   `atabey init <ai>` (or `init all`) to (re)compile them from the single
+   TypeScript source of truth.
+2. **YAML frontmatter:** every generated agent `.md` starts with a
+   `name:` / `description:` frontmatter block — discovery UIs ignore files
+   without it. Regenerating with v0.1.6+ adds it automatically.
+
+### Skills are not discovered
+
+Skills must use the directory format `skills/<skill-slug>/SKILL.md` with YAML
+frontmatter (`name`, `description`, `tools`). Older layouts wrote flat
+`skills/<name>.md` files — re-running `atabey init` migrates them (the flat
+files are removed, the directory format is written).
+
+---
+
 ## Testing
 
 ```bash
@@ -1105,13 +1165,13 @@ Business inquiries: **ybekar@msn.com**
 
 ## Atabey nedir?
 
-**Atabey**, **AI kodlama asistanları için kural tabanlı yönetişim, güvenlik sınırları ve rol disiplini katmanıdır** (Local AI Control Plane & Discipline Layer). Doğrudan kendi yerel geliştirme makinenizde çalışarak Claude Code, Gemini CLI, Cursor, Codex, Grok, Antigravity veya yerel LLM gibi araçlarınızın üzerine MCP (Model Context Protocol) ile bağlanır.
+**Atabey**, **AI kodlama asistanları için kural tabanlı yönetişim, güvenlik sınırları ve rol disiplini katmanıdır** (Local AI Control Plane & Discipline Layer). Doğrudan kendi yerel geliştirme makinenizde çalışarak Claude Code, Cursor, Codex, Grok, Antigravity veya yerel LLM gibi araçlarınızın üzerine MCP (Model Context Protocol) ile bağlanır.
 
 Büyük, hantal ve karmaşık bir bulut SaaS platformu değildir. Temel görevi nettir: **Lokal bilgisayarınızdaki AI kodlama kaosunu disipline etmek ve kontrol altında tutmak.**
 
 | Katman | Rol |
 |--------|-----|
-| **AI IDE/CLI’niz** | Kod yazar, akıl yürütür, komutları yürütür (Claude, Gemini, Cursor) |
+| **AI IDE/CLI’niz** | Kod yazar, akıl yürütür, komutları yürütür (Claude, Cursor, Codex) |
 | **Atabey Yerel MCP** | Eylemleri denetler · tehlikeli komutları engeller · döngüleri durdurur · bellek tutar |
 | **13 Rol Profili** | İhtiyaca göre devreye giren sistem şablonları (@backend, @architect, @quality, @security...) |
 | **`.atabey/` Proje Merkezi** | Yerel SQLite belleği, dosya izin matrisi, denetim izi ve otomatik geri alma yedekleri |
@@ -1128,7 +1188,7 @@ Büyük, hantal ve karmaşık bir bulut SaaS platformu değildir. Temel görevi 
 > **Atabey’in Sınırları ve Kapsamı:**
 > - **Kapsam İçi:** Politika ve yetki matrisi, risk analizi, token kotası, HMAC imzalı denetim izi, görev ve ajan yaşam döngüsü, insan onayı (HITL).
 > - **Kapsam Dışı:** Kendi model çağrı katmanı, ML tabanlı tehdit analizi, hukuki uyumluluk sertifikası, çok makineli dağıtık orkestrasyon.
-> - **Otonom Ajan:** Atabey’in başlattığı, sınırladığı ve izlediği host CLI sürecidir (Claude Code, Gemini CLI).
+> - **Otonom Ajan:** Atabey’in başlattığı, sınırladığı ve izlediği host CLI sürecidir (Claude Code, Cursor).
 > - **Hedef Otonomi:** Sandbox + adım limiti içinde çalışan ve çıktısını izole dalda PR/diff olarak veren seviyedir. Gözetimsiz ve prod erişimli otonomi kapsam dışıdır.
 > - **Asla Otonom Olmayacaklar:** Prod deploy, yıkıcı DB işlemleri, secret/anahtar yönetimi, force push veya main’e doğrudan merge, ödeme işlemleri, kendi politika ve izin dosyalarını değiştirme.
 
@@ -1142,7 +1202,7 @@ Atabey, AI arayüzünüze **MCP tool sunucusu** olarak bağlanır. Kök dizindek
 Siz (@backend): "JWT kimlik doğrulamalı kullanıcı login servisi yaz"
      │
      ▼
-  AI Asistanınız (Claude Code / Gemini CLI / Cursor)
+  AI Asistanınız (Claude Code / Cursor / Codex)
      │  IDE talimatı (CLAUDE.md / AGENTS.md) ile uzman rolünü yükler
      │  İşlemleri Atabey MCP araçlarıyla (write_file, run_shell_command) yürütür
      ▼
@@ -1158,7 +1218,7 @@ Siz (@backend): "JWT kimlik doğrulamalı kullanıcı login servisi yaz"
 
 Günlük kullanımda ayrı bir terminal gerekmez. AI sohbetinde `@agent` sözdizimi yeterlidir.
 
-**Önemli:** Atabey kod yazmaz. Kodu Claude Code / Gemini / Cursor gibi bağlı asistan yazar. Atabey:
+**Önemli:** Atabey kod yazmaz. Kodu Claude Code / Cursor / Codex gibi bağlı asistan yazar. Atabey:
 
 1. **Routing** — doğru uzman profile (`@backend`, `@security`, …)
 2. **Risk Engine** — tehlikeli işlemleri skorlar, gerekirse insan onayı ister
@@ -1171,7 +1231,7 @@ Günlük kullanımda ayrı bir terminal gerekmez. AI sohbetinde `@agent` sözdiz
 
 ```
 Kullanıcı / Geliştirici
-  → Claude Code / Gemini CLI / Cursor IDE
+  → Claude Code / Cursor IDE / Codex CLI
   → MCP (stdio)
   → Atabey MCP Server
        Yönetişim · Hermes kuyruk · Orchestrator · Vector Memory
@@ -1192,11 +1252,11 @@ Kullanıcı / Geliştirici
 ## Hızlı başlangıç
 
 ```bash
-# Tek platform
-npx atabey init gemini --profile freelancer --yes
+# Tek AI platformu (varsayılan: claude)
+npx atabey init claude --yes
 
-# 8 platform (ekip için önerilir)
-npx atabey init gemini --unified --profile team --yes
+# Tüm 7 desteklenen AI platformu (ekip için önerilir)
+npx atabey init all --yes
 
 # Sağlık kontrolü
 npx atabey check
@@ -1240,7 +1300,7 @@ Sohbette:
 | 🛠️ | **40 MCP Tool** | Dosya sistemi, arama, mesajlaşma, yönetişim, bellek, kalite, ağ, orkestrasyon |
 | 🧠 | **3 katmanlı bellek** | Vector (TF-IDF/OpenAI), Project Memory, Specialty Memory |
 | 🤖 | **13 uzman rol profili** | Supreme / Core / Recon hiyerarşisi |
-| 🎯 | **15 core skill** | 8 AI platformuna uyarlanan skill setleri |
+| 🎯 | **15 core skill** | 7 AI platformuna uyarlanan skill setleri |
 | 📚 | **30+ knowledge standard** | Yönetişim, güvenlik, mimari, test, deployment |
 
 ---
@@ -1249,18 +1309,19 @@ Sohbette:
 
 | Platform | MCP | Not |
 |----------|-----|-----|
-| Claude Code | `.mcp.json` + Hook | En güçlü orkestrasyon & Hard Governance (PreToolUse Hook) |
-| Gemini CLI | `.gemini/mcp.json` | Güçlü komutan / stratejist |
+| Claude Code ⭐ | `.mcp.json` + Hook | En güçlü orkestrasyon & Hard Governance (PreToolUse Hook) — varsayılan |
 | Cursor | `.cursor/mcp.json` | Implementer / editör |
-| Codex / Copilot | `.vscode/mcp.json` | Sınırlı skill seti |
+| Codex / Copilot | `.mcp.json` | VS Code / Copilot standart kök config'i |
 | Antigravity | `.agents/mcp_config.json` | Custom agent JSON |
 | Grok | `.grok/mcp_config.json` | Sınırlı skill seti |
 | Local LLM | `.atabey/mcp_config.json` | Offline / private |
 | OpenCode | `opencode.json` | Stdio MCP |
 
 ```bash
-npx atabey init claude --unified   # tüm platformlara export
+npx atabey init all --yes   # tüm platformlara derle
 ```
+
+> Gemini CLI artık desteklenmiyor: `atabey init gemini` uyarı verip claude'a düşer.
 
 ---
 
@@ -1270,11 +1331,11 @@ npx atabey init claude --unified   # tüm platformlara export
 |------------|--------|
 | Node.js | >= 22 |
 | npm | >= 9 |
-| AI arayüzü | Claude, Gemini, Cursor, Codex, Grok, Antigravity veya local LLM |
+| AI arayüzü | Claude, Cursor, Codex, Grok, Antigravity veya local LLM |
 
 ```bash
 npm install -g atabey
-npx atabey init gemini --profile freelancer --yes
+npx atabey init claude --yes
 npx atabey status
 npx atabey mcp start   # MCP sunucusunu başlat
 ```
@@ -1283,13 +1344,26 @@ npx atabey mcp start   # MCP sunucusunu başlat
 
 ---
 
-## Profiller
+## Kurulum (AI bazlı — tek standart kurulum)
 
-| Profil | Kim için | Ne gelir |
-|--------|----------|----------|
-| `--profile freelancer` | 1–3 kişi | Az profil, düşük sürtünme |
-| `--profile team` | 5–15 kişi | 5–8 odak profili, unified önerilir |
-| `--profile enterprise` | 15+ | Tam 13 rol profili, sıkı yönetişim |
+Profil sistemi (freelancer/team/enterprise) kalktı: **tek kurulum** her zaman
+13 uzman ajanı ve en sıkı yönetişim duruşunu kurar. Sadece **hangi AI** için
+derleyeceğinizi seçersiniz:
+
+```bash
+npx atabey init claude    # varsayılan — tam deterministik yönetişim
+npx atabey init cursor    # Cursor IDE
+npx atabey init codex     # Codex CLI / GitHub Copilot
+npx atabey init grok      # Grok
+npx atabey init local     # Yerel LLM / Ollama (offline)
+npx atabey init antigravity-cli   # Antigravity
+npx atabey init opencode  # OpenCode
+npx atabey init all --yes # TÜM platformlar
+```
+
+Hazır projeye kurulumda kök dizindeki proje dokümanları (ARCHITECTURE.md,
+BACKLOG.md, …) `.atabey/knowledge/imported/` altına alınmak üzere sorulur;
+onaylanınca kök kopyaları silinir — tüm proje bağlamı Atabey'in kontrolüne geçer.
 
 Odak: `--focus fullstack|backend|frontend|mobile`
 
@@ -1316,7 +1390,7 @@ Atabey rol profilleri arasında yönetişimli ve doğrulanabilir işbirliği sa�
 
 ### Senaryo 1: İnteraktif Geliştirme Döngüsü (Planlayıcı → Kodlayıcı → Doğrulayıcı)
 
-AI arayüzünüzde (Claude Code, Gemini CLI, Cursor) bir geliştirme başlattığınızda roller sıralı olarak devreye girer:
+AI arayüzünüzde (Claude Code, Cursor, Codex) bir geliştirme başlattığınızda roller sıralı olarak devreye girer:
 
 ```bash
 # 1. @manager gereksinimi alt görevlere (DAG) böler ve onaylar
@@ -1458,6 +1532,19 @@ MCP_TRANSPORT=unified MCP_PORT=5858 npx atabey-mcp
 ## Token verimliliği
 
 Her tool çağrısı gerçek `cl100k_base` BPE tokenizer ile ölçülür; sağlayıcı bazlı token/dakika/saat limitleri ve akıllı dosya kırpma ile tasarruf edilir. **Para/bütçe katmanı yoktur** (`ATABEY_TOKEN_BUDGET_ENFORCE=true` ile sert blok opsiyoneldir).
+
+---
+
+## Sorun giderme (özet)
+
+| Belirti | Çözüm |
+|---------|-------|
+| MCP `MODULE_NOT_FOUND` (`node_modules/atabey-mcp/...`) | `npx atabey mcp install` → config'ler artık taşınabilir `npx -y atabey-mcp` başlatıcısını yazar; yerel kurulum yoksa indirir |
+| `EADDRINUSE: 5858` | Sunucu artık otomatik olarak bir sonraki boş porta geçer (5858→5878). Sıkı mod: `ATABEY_PORT_STRICT=true` |
+| Ajanlar arayüzde görünmüyor | `atabey init <ai>` ile yeniden derleyin — agent `.md` dosyaları artık YAML frontmatter ile üretilir |
+| Skill'ler keşfedilmiyor | `atabey init` çalıştırın — skills artık `skills/<slug>/SKILL.md` klasör formatında |
+
+Detaylı İngilizce bölüm: [Troubleshooting](#troubleshooting)
 
 ---
 

@@ -1,6 +1,6 @@
 # Atabey — Local AI Control Plane & Discipline Layer (Core Engine)
 
-[![Version](https://img.shields.io/badge/Version-v0.1.5-blue.svg)](https://github.com/ysf-bkr/atabey)
+[![Version](https://img.shields.io/badge/Version-v0.1.6-blue.svg)](https://github.com/ysf-bkr/atabey)
 [![npm](https://img.shields.io/npm/v/atabey)](https://www.npmjs.com/package/atabey)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
@@ -26,8 +26,8 @@ through the Model Context Protocol (MCP).
 | **Agents** | 13 specialized agent definitions with a 3-tier hierarchy (Supreme / Core / Recon) |
 | **Runtime** | Headless CLI adapters, DAG dispatcher, git-worktree isolation, signed evidence bundles |
 | **Memory** | 3-layer memory: vector (TF-IDF/OpenAI), project, specialty |
-| **Skills** | 15 core skills mapped across 8 platform adapters |
-| **Providers** | 8 platform adapters: Claude, Gemini, Cursor, Codex, Antigravity, Grok, Local LLM, OpenCode |
+| **Skills** | 15 core skills in `skills/<slug>/SKILL.md` format, mapped across 7 platform adapters |
+| **Providers** | 7 platform adapters: Claude (default), Cursor, Codex, Antigravity, Grok, Local LLM, OpenCode |
 | **Contracts** | Zod-schema task contracts and API contracts |
 | **Standards** | 33 governance standard templates |
 
@@ -42,8 +42,11 @@ npm install -g atabey
 ## Quick Start
 
 ```bash
-# Initialize Atabey inside your project
-npx atabey init gemini --profile freelancer --yes
+# Initialize Atabey for one AI platform (claude is the default)
+npx atabey init claude --yes
+
+# …or for every supported AI at once
+npx atabey init all --yes
 
 # Verify
 npx atabey status
@@ -133,8 +136,7 @@ All 15 core skills are scaffolded for every platform; the delivery format differ
 
 | Platform | Skill format |
 |----------|--------------|
-| **Claude Code** ⭐ | Native skills (`.claude/skills/*.md`) |
-| **Gemini CLI** | Markdown skills |
+| **Claude Code** ⭐ | Native skills (`skills/<slug>/SKILL.md`) |
 | **Cursor IDE** | MDC ruleset |
 | **Codex CLI** | Injected prompt |
 | **Antigravity CLI** | Native toolset |
@@ -160,20 +162,22 @@ All 15 core skills are scaffolded for every platform; the delivery format differ
 | **Data** | typeorm-standards |
 | **Reporting** | reporting-standards, enterprise-systems-standards |
 
-## 8 Platform Adapters
+## 7 Platform Adapters
 
-| Platform | Framework Dir | Agents Dir | Shim File |
-|----------|---------------|------------|-----------|
-| **Claude Code** | `.claude` | `.claude/agents/*.md` | `CLAUDE.md` |
-| **Gemini CLI** | `.gemini` | `.gemini/agents/*.md` | `GEMINI.md` |
-| **Cursor IDE** | `.cursor` | `.cursor/rules/*.mdc` | `CURSOR.md` |
-| **Codex CLI / Copilot** | `.agents` | `.agents/instructions/*.md` | `copilot-instructions.md` |
-| **Antigravity CLI** | `.agents` | `.agents/agents/{name}/agent.json` | `AGENTS.md` |
-| **Grok** | `.grok` | `.grok/agents/*.md` | `GROK.md` |
-| **Local LLM / Ollama** | `.atabey` | `.atabey/agents/*.md` | `LOCAL_AI.md` |
-| **OpenCode** | `.opencode` | `.opencode/agents/*.md` | `OPENCODE.md` |
+| Platform | Framework Dir | Agents Dir | Shim File | Native MCP Config |
+|----------|---------------|------------|-----------|-------------------|
+| **Claude Code** ⭐ (default) | `.claude` | `.claude/agents/*.md` | `CLAUDE.md` | `.mcp.json` |
+| **Cursor IDE** | `.cursor` | `.cursor/rules/*.mdc` | `CURSOR.md` | `.cursor/mcp.json` |
+| **Codex CLI / Copilot** | `.agents` | `.agents/instructions/*.md` | `copilot-instructions.md` | `.mcp.json` |
+| **Antigravity CLI** | `.agents` | `.agents/agents/{name}/agent.json` | `AGENTS.md` | `.agents/mcp_config.json` |
+| **Grok** | `.grok` | `.grok/agents/*.md` | `GROK.md` | `.grok/mcp_config.json` |
+| **Local LLM / Ollama** | `.atabey` | `.atabey/agents/*.md` | `LOCAL_AI.md` | `.atabey/mcp_config.json` |
+| **OpenCode** | `.opencode` | `.opencode/agents/*.md` | `OPENCODE.md` | `opencode.json` |
 
-> `atabey init <platform> --unified` configures and mirrors agents across **all platforms simultaneously**.
+> `atabey init all` compiles and mirrors agents across **all platforms simultaneously** (one canonical setup — all 13 specialists, every time). Each platform gets **exactly one** native MCP config; generated entries use the portable `npx -y atabey-mcp` launcher.
+>
+> Skills are scaffolded in the discoverable `skills/<slug>/SKILL.md` directory format with YAML frontmatter.
+> Gemini CLI is **no longer supported** — `atabey init gemini` warns and falls back to Claude.
 
 
 ---
@@ -181,7 +185,7 @@ All 15 core skills are scaffolded for every platform; the delivery format differ
 ## 📋 CLI Reference
 
 ```bash
-atabey init [adapter]        Initialize Atabey (--profile freelancer|team|enterprise)
+atabey init [ai]             Initialize Atabey for one AI (claude default) or all
 atabey mcp start|install     MCP server management
 atabey status                Show agent statuses and token usage
 atabey check                 Full health and compliance check
@@ -214,13 +218,14 @@ atabey quickstart            Generate an example task file
 
 | Option | Values | Description |
 |--------|--------|-------------|
-| `[adapter]` | `gemini`, `claude`, `cursor`, `grok`, `codex`, `local`, `antigravity-cli`, `opencode` | Target AI platform |
-| `--profile` | `freelancer`, `team`, `enterprise` | Preset agent group layout |
+| `[ai]` | `claude` (default), `cursor`, `codex`, `grok`, `local`, `antigravity-cli`, `opencode`, `all` | Target AI platform; `all` compiles for every supported AI |
 | `--focus` | `fullstack`, `backend`, `frontend`, `mobile`, `mobile-fullstack` | Project type optimization |
 | `--backend` / `--frontend` / `--native` | `node|go|java|python|dotnet|rust` / `vite|next|vanilla` / `rust|go` | Application-tier scaffolding |
 | `--lang` | `tr`, `en` | Deprecated no-op (kept for backward compatibility) — all generated content is English-only |
-| `--unified` | Flag | Multi-platform export |
+| `--import-docs` | Flag | Non-interactive: import root-level project docs into `.atabey/knowledge/imported/` |
 | `--yes` | Flag | Non-interactive mode |
+
+> One canonical setup: all 13 specialists, strictest governance posture — no freelancer/team/enterprise profiles.
 
 ---
 
@@ -231,7 +236,7 @@ packages/atabey/
 ├── src/
 │   ├── cli/
 │   │   ├── commands/    # 27 CLI commands
-│   │   ├── platforms/   # 8 platform adapters
+│   │   ├── platforms/   # 7 platform adapters
 │   │   └── utils/       # CLI utilities (compliance, memory, pkg, config)
 │   ├── modules/
 │   │   ├── agents/      # 13 agent definitions + registry
@@ -239,7 +244,7 @@ packages/atabey/
 │   │   ├── contracts/   # Task/API contracts (Zod)
 │   │   ├── engines/     # 9 governance/orchestration engines
 │   │   ├── memory/      # Vector, project, specialty memory
-│   │   ├── providers/   # 8 platform provider adapters
+│   │   ├── providers/   # 7 platform provider adapters
 │   │   ├── runtime/     # Headless CLI runtime, DAG dispatcher, worktrees
 │   │   └── skills/      # 15 core skills
 │   ├── schema/          # JSON schemas

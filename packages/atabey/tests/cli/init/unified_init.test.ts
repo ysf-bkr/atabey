@@ -12,7 +12,7 @@ import {
 import { AtabeyStorage } from "../../../src/shared/storage.js";
 import { createTestDir } from "../../helpers/temp-dir.js";
 
-describe("Unified Init (default all adapters)", () => {
+describe("Unified Init (`init all` — every supported AI)", () => {
     let tempDir: string;
     let prevAntigravityDir: string | undefined;
 
@@ -40,7 +40,7 @@ describe("Unified Init (default all adapters)", () => {
     });
 
     it("should scaffold all adapters under .agents with native mirrors", async () => {
-        await initCommand("gemini", { dryRun: false, yes: true, unified: true });
+        await initCommand("all", { dryRun: false, yes: true });
 
         expect(fs.existsSync(path.join(tempDir, FRAMEWORK.CORE_DIR, FRAMEWORK_SUBDIRS.MEMORY, MEMORY_FILES.STATE))).toBe(true);
         expect(fs.existsSync(path.join(tempDir, FRAMEWORK.CORE_DIR, FRAMEWORK_SUBDIRS.MESSAGES))).toBe(true);
@@ -55,33 +55,55 @@ describe("Unified Init (default all adapters)", () => {
         }
 
         expect(fs.existsSync(path.join(tempDir, FRAMEWORK.UNIFIED_HUB_DIR, FRAMEWORK_SUBDIRS.SKILLS))).toBe(true);
-        expect(fs.existsSync(path.join(tempDir, "GEMINI.md"))).toBe(true);
+        expect(fs.existsSync(path.join(tempDir, "AGENTS.md"))).toBe(true);
         expect(fs.existsSync(path.join(tempDir, "CLAUDE.md"))).toBe(true);
         expect(fs.existsSync(path.join(tempDir, "GROK.md"))).toBe(true);
-        expect(fs.existsSync(path.join(tempDir, "mcp.json"))).toBe(true);
-        const mcpCfg = JSON.parse(fs.readFileSync(path.join(tempDir, "mcp.json"), "utf8"));
+        // Gemini is no longer a supported platform: its shim must not be generated.
+        expect(fs.existsSync(path.join(tempDir, "GEMINI.md"))).toBe(false);
+
+        // Root .mcp.json is the single root-level MCP config (VS Code / Claude / Codex standard).
+        expect(fs.existsSync(path.join(tempDir, ".mcp.json"))).toBe(true);
+        const mcpCfg = JSON.parse(fs.readFileSync(path.join(tempDir, ".mcp.json"), "utf8"));
         expect(mcpCfg.mcpServers.atabey.env.MCP_TRANSPORT).toBe("stdio");
         expect(mcpCfg.mcpServers.atabey.env.ATABEY_PROJECT_ROOT).toBe(tempDir);
+        expect(mcpCfg.mcpServers.atabey.command).toBe("npx");
+        // Legacy duplicate MCP configs must NOT exist.
+        expect(fs.existsSync(path.join(tempDir, "mcp.json"))).toBe(false);
+        expect(fs.existsSync(path.join(tempDir, ".claude", "mcp_config.json"))).toBe(false);
+        expect(fs.existsSync(path.join(tempDir, ".vscode", "mcp.json"))).toBe(false);
+        expect(fs.existsSync(path.join(tempDir, ".opencode", "mcp_config.json"))).toBe(false);
 
-        // Unified init must register MCP for every adapter, not only the primary one
-        expect(fs.existsSync(path.join(tempDir, ".gemini", "mcp.json"))).toBe(true);
-        expect(fs.existsSync(path.join(tempDir, ".claude", "mcp_config.json"))).toBe(true);
+        // Platform-native MCP configs: exactly one file per platform.
         expect(fs.existsSync(path.join(tempDir, ".grok", "mcp_config.json"))).toBe(true);
         expect(fs.existsSync(path.join(tempDir, ".cursor", "mcp.json"))).toBe(true);
-        expect(fs.existsSync(path.join(tempDir, ".agents", "mcp_config.json"))).toBe(true);
-        expect(fs.existsSync(path.join(tempDir, ".atabey", "mcp_config.json"))).toBe(true);
+        expect(fs.existsSync(path.join(tempDir, ".agents", "mcp_config.json"))).toBe(true); // Antigravity
+        expect(fs.existsSync(path.join(tempDir, ".atabey", "mcp_config.json"))).toBe(true); // Local LLM
+        expect(fs.existsSync(path.join(tempDir, "opencode.json"))).toBe(true); // OpenCode
 
         const config = JSON.parse(fs.readFileSync(path.join(tempDir, FRAMEWORK.CORE_DIR, "config.json"), "utf8"));
         expect(config.unified).toBe(true);
         expect(config.adapters).toEqual(expect.arrayContaining([...ADAPTER_IDS]));
+        expect(config.setup).toBe("standard");
 
-        expect(fs.existsSync(path.join(tempDir, NATIVE_AGENT_PATHS.gemini, "manager.md"))).toBe(true);
+        expect(fs.existsSync(path.join(tempDir, NATIVE_AGENT_PATHS.claude, "manager.md"))).toBe(true);
         expect(fs.existsSync(path.join(tempDir, NATIVE_AGENT_PATHS.cursor, "manager.mdc"))).toBe(true);
 
-        // --yes uses team profile (7 agents)
-        const geminiAgents = fs.readdirSync(
-            path.join(tempDir, FRAMEWORK.UNIFIED_HUB_DIR, UNIFIED_ADAPTER_SLUG.gemini, "agents"),
+        // Canonical setup scaffolds every specialist (13 agents) per adapter.
+        const claudeAgents = fs.readdirSync(
+            path.join(tempDir, FRAMEWORK.UNIFIED_HUB_DIR, UNIFIED_ADAPTER_SLUG.claude, "agents"),
         ).filter(f => f.endsWith(".md"));
-        expect(geminiAgents.length).toBeGreaterThanOrEqual(7);
+        expect(claudeAgents.length).toBe(13);
+
+        // Skills use the discoverable skills/<slug>/SKILL.md directory format.
+        const skillsDir = path.join(tempDir, FRAMEWORK.UNIFIED_HUB_DIR, FRAMEWORK_SUBDIRS.SKILLS);
+        const fileSystemSkill = path.join(skillsDir, "file-system", "SKILL.md");
+        expect(fs.existsSync(fileSystemSkill)).toBe(true);
+        const skillContent = fs.readFileSync(fileSystemSkill, "utf8");
+        expect(skillContent.startsWith("---\n")).toBe(true);
+        expect(skillContent).toContain("name: File System");
+
+        // Bootstrap trace T-001 opens the first active task in project memory.
+        const tasks = AtabeyStorage.getTasks();
+        expect(tasks.some(t => t.traceId === "T-001")).toBe(true);
     }, 60000);
 });

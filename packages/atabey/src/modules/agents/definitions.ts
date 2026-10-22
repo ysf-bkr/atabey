@@ -637,7 +637,7 @@ export function toOpenCodeMd(ag: AgentDefinition, baseKnowledgeDir?: string, pat
 //  Batch export
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type ExportTarget = "claude-code" | "gemini-cli" | "antigravity" | "codex-cli" | "cursor" | "opencode";
+export type ExportTarget = "claude-code" | "grok" | "antigravity" | "codex-cli" | "cursor" | "opencode";
 
 export interface ExportedFile {
   path: string;
@@ -649,8 +649,8 @@ export function exportAllAgents(target: ExportTarget, paths?: Record<string, str
         switch (target) {
             case "claude-code":
                 return { path: `.claude/agents/${ag.name}.md`,         content: toClaudeCodeMd(ag, undefined, paths, backendLanguage) };
-            case "gemini-cli":
-                return { path: `.gemini/agents/${ag.name}.md`,         content: toGeminiCliMd(ag, undefined, paths, backendLanguage) };
+            case "grok":
+                return { path: `.grok/agents/${ag.name}.md`,           content: toGeminiCliMd(ag, undefined, paths, backendLanguage) };
             case "antigravity":
                 return { path: `.agents/${ag.name}/agent.json`,        content: toAntigravityJson(ag, undefined, paths, backendLanguage) };
             case "codex-cli":

@@ -34,34 +34,66 @@ export function buildMcpServerEntry(projectRoot: string) {
             UI.warning("  MCP Server not found. Did you run 'npm run build' inside atabey-mcp?");
         }
         relativePath = path.relative(projectRoot, mcpServerPath) || mcpServerPath;
+
+        return {
+            command: "node",
+            args: [relativePath],
+            env: {
+                [MCP.PROJECT_ROOT_ENV]: projectRoot,
+                [MCP.TRANSPORT_ENV]: MCP.TRANSPORT_STDIO,
+                [ORCHESTRATOR.AUTO_START_ENV]: "true",
+            },
+        };
     } else {
-        // If we are initializing in a user's project:
-        // We target the atabey-mcp package which is a dependency of atabey.
-        // This ensures a stable path across different npm/pnpm/yarn setups.
-        relativePath = "node_modules/atabey-mcp/dist/atabey-mcp/src/mcp/index.js";
-
-        // Fallback check if it actually exists in a different location during init
-        const localAtabeyPath = path.join(projectRoot, "node_modules/atabey", MCP.SERVER_DIST_PATH);
-        if (!fs.existsSync(path.join(projectRoot, relativePath)) && fs.existsSync(localAtabeyPath)) {
-            relativePath = path.join("node_modules/atabey", MCP.SERVER_DIST_PATH);
-        }
+        // In user projects, always emit 'npx -y atabey-mcp'.
+        // 1. If installed locally in node_modules, npx executes the local binary immediately with zero network overhead.
+        // 2. If not yet installed, npx downloads and runs it safely without MODULE_NOT_FOUND crashes.
+        // 3. Fully immune to relative path resolution errors when IDEs start with different working directories.
+        return {
+            command: "npx",
+            args: ["-y", "atabey-mcp"],
+            env: {
+                [MCP.PROJECT_ROOT_ENV]: projectRoot,
+                [MCP.TRANSPORT_ENV]: MCP.TRANSPORT_STDIO,
+                [ORCHESTRATOR.AUTO_START_ENV]: "true",
+            },
+        };
     }
-
-    return {
-        command: "node",
-        args: [relativePath],
-        env: {
-            [MCP.PROJECT_ROOT_ENV]: projectRoot,
-            [MCP.TRANSPORT_ENV]: MCP.TRANSPORT_STDIO,
-            [ORCHESTRATOR.AUTO_START_ENV]: "true",
-        },
-    };
 }
 
-/** Writes the canonical MCP block to project-root mcp.json (always refreshed). */
-export function writeRootMcpConfig(projectRoot: string): void {
+/** Adapters whose native project-scope MCP config is the root `.mcp.json`. */
+const ROOT_MCP_ADAPTERS = new Set<AdapterId>(["claude", "codex"]);
+
+/** Stale duplicate MCP config files from older Atabey versions. Removed on re-init. */
+const STALE_MCP_CONFIG_FILES = [
+    "mcp.json",                       // legacy root config (now `.mcp.json`)
+    ".claude/mcp_config.json",
+    ".gemini/mcp.json",
+    ".gemini/settings.json",
+    ".vscode/mcp.json",
+    ".opencode/mcp_config.json",
+];
+
+/** Removes duplicate/legacy MCP config files left behind by older layouts.
+ *  `.agents/mcp_config.json` is kept — it is Antigravity's native config. */
+export function removeStaleMcpConfigs(projectRoot: string): void {
+    for (const rel of STALE_MCP_CONFIG_FILES) {
+        const abs = path.join(projectRoot, rel);
+        if (fs.existsSync(abs)) {
+            fs.rmSync(abs, { force: true });
+            UI.success(`Removed stale MCP config → ${rel}`);
+        }
+    }
+}
+
+/** Writes the canonical MCP block to the project-root `.mcp.json`.
+ *  Only refreshed for adapters that natively read it (Claude, Codex) or in
+ *  unified (all-AIs) mode — platform-native files own the config otherwise. */
+export function writeRootMcpConfig(projectRoot: string, adapterId?: AdapterId): void {
+    if (adapterId && !ROOT_MCP_ADAPTERS.has(adapterId)) return;
     const mcpBlock = { mcpServers: { [MCP.SERVER_NAME]: buildMcpServerEntry(projectRoot) } };
     writeJsonFile(path.join(projectRoot, MCP.ROOT_CONFIG_FILE), mcpBlock);
+    removeStaleMcpConfigs(projectRoot);
 }
 
 export function runAdapterPostInit(
@@ -77,5 +109,5 @@ export function runAdapterPostInit(
         postInitFn(projectRoot, mcpBlock, options);
     }
 
-    writeRootMcpConfig(projectRoot);
+    writeRootMcpConfig(projectRoot, adapter.id);
 }

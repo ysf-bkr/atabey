@@ -130,6 +130,47 @@ if (isNaN(PORT) || PORT < 1 || PORT > 65535) {
 }
 const HOST = process.env.MCP_HOST || "127.0.0.1";
 
+// ─── Port fallback (EADDRINUSE resilience) ───────────────────────────────────
+
+/** How many consecutive ports to try when the preferred one is busy. */
+const MAX_PORT_FALLBACK_ATTEMPTS = 20;
+
+/**
+ * Starts an HTTP server on `preferredPort`, retrying the next consecutive
+ * ports when the address is already in use (multiple IDE windows, a stuck
+ * background process, etc.). Set `ATABEY_PORT_STRICT=true` to disable the
+ * fallback and fail fast on the first EADDRINUSE (useful in CI).
+ */
+export function listenWithFallback(
+    server: import("node:http").Server,
+    preferredPort: number,
+    host: string,
+    strict: boolean,
+    onListening: () => void,
+): void {
+    let attempt = 0;
+
+    const tryListen = (): void => {
+        const candidate = preferredPort + attempt;
+        server.once("error", (err: NodeJS.ErrnoException) => {
+            if (err.code === "EADDRINUSE" && !strict && attempt + 1 < MAX_PORT_FALLBACK_ATTEMPTS) {
+                process.stderr.write(
+                    `[atabey-mcp] Port ${candidate} in use — falling back to port ${candidate + 1}.\n`,
+                );
+                attempt += 1;
+                server.close(); // release the failed listener before retrying
+                tryListen();
+                return;
+            }
+            // Re-emit: the outer httpServer.on("error") handler decides the fatal message.
+            server.emit("error", err);
+        });
+        server.listen(candidate, host, onListening);
+    };
+
+    tryListen();
+}
+
 // ─── Session Tracking (Multi-User) ────────────────────────────────
 
 interface McpSession {
@@ -279,7 +320,7 @@ function createUnifiedServer() {
 
     httpServer.on("error", (err: NodeJS.ErrnoException) => {
         if (err.code === "EADDRINUSE") {
-            process.stderr.write(`\n[atabey-mcp] FATAL: Port ${PORT} is already in use by another process.\n`);
+            process.stderr.write(`\n[atabey-mcp] FATAL: All candidate ports (${PORT}..${PORT + MAX_PORT_FALLBACK_ATTEMPTS - 1}) are in use.\n`);
             process.stderr.write(`[atabey-mcp] Please terminate the existing process or start with a different port using MCP_PORT=<port>.\n\n`);
             process.exit(1);
         } else {
@@ -289,20 +330,24 @@ function createUnifiedServer() {
     });
 
     // ─── Start ───────────────────────────────────────────────
-    httpServer.listen(PORT, HOST, () => {
+    // Start with automatic port fallback on EADDRINUSE (ATABEY_PORT_STRICT=true disables it).
+    const strictPort = process.env.ATABEY_PORT_STRICT === "true";
+    listenWithFallback(httpServer, PORT, HOST, strictPort, () => {
+        const bound = httpServer.address();
+        const boundPort = typeof bound === "object" && bound !== null ? bound.port : PORT;
         process.stderr.write("\n");
         process.stderr.write("╔══════════════════════════════════════════════════════╗\n");
         process.stderr.write("║        ATABEY MCP SERVER                             ║\n");
         process.stderr.write("╠══════════════════════════════════════════════════════╣\n");
         process.stderr.write(`║  Transport:  ${describeTls(tls)}                     \n`);
-        process.stderr.write(`║  MCP SSE:    ${scheme}://localhost:${PORT}/mcp/sse        \n`);
-        process.stderr.write(`║  MCP Health: ${scheme}://localhost:${PORT}/mcp/health     \n`);
-        process.stderr.write(`║  Hermes Bus: ${scheme === "https" ? "wss" : "ws"}://localhost:${PORT}/bus          \n`);
+        process.stderr.write(`║  MCP SSE:    ${scheme}://localhost:${boundPort}/mcp/sse        \n`);
+        process.stderr.write(`║  MCP Health: ${scheme}://localhost:${boundPort}/mcp/health     \n`);
+        process.stderr.write(`║  Hermes Bus: ${scheme === "https" ? "wss" : "ws"}://localhost:${boundPort}/bus          \n`);
         process.stderr.write(`║  Sessions:   ${sessions.size} active                  \n`);
         process.stderr.write("╚══════════════════════════════════════════════════════╝\n");
         process.stderr.write("\n");
-        process.stderr.write(`[atabey-mcp] Unified server ready on port ${PORT} (transport: ${describeTls(tls)})\n`);
-        process.stderr.write(`[atabey-mcp] mcp.json: { "url": "${scheme}://localhost:${PORT}/mcp/sse" }\n`);
+        process.stderr.write(`[atabey-mcp] Unified server ready on port ${boundPort} (transport: ${describeTls(tls)})\n`);
+        process.stderr.write(`[atabey-mcp] mcp.json: { "url": "${scheme}://localhost:${boundPort}/mcp/sse" }\n`);
         process.stderr.write("\n");
     });
 }

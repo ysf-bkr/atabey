@@ -85,12 +85,22 @@ export function registerGlobalAntigravityPlugins(mcpBlock: unknown, projectRoot:
                 writeTextFile(path.join(globalAgentsDir, `${ag.name}.json`), agentJson);
             }
 
-            // Scaffold skills
+            // Scaffold skills (platform-discoverable directory format)
             const skillsDir = path.join(globalPluginDir, "skills");
             fs.mkdirSync(skillsDir, { recursive: true });
             for (const [key, skill] of Object.entries(CORE_SKILLS)) {
-                const skillContent = `# [TOOL] Skill — ${skill.name}\n\n${skill.mandates.join("\n")}\n`;
-                writeTextFile(path.join(skillsDir, `${key.toLowerCase()}.md`), skillContent);
+                const slug = key.toLowerCase().replace(/[_\s]+/g, "-").replace(/[^a-z0-9-]/g, "");
+                const skillDir = path.join(skillsDir, slug);
+                fs.mkdirSync(skillDir, { recursive: true });
+                const frontmatter = [
+                    "---",
+                    `name: ${skill.name}`,
+                    `description: ${skill.description.replace(/\s+/g, " ").trim()}`,
+                    `tools: ${skill.tools.join(", ")}`,
+                    "---",
+                ].join("\n");
+                const skillContent = `${frontmatter}\n\n# [TOOL] Skill — ${skill.name}\n\n${skill.mandates.join("\n")}\n`;
+                writeTextFile(path.join(skillDir, "SKILL.md"), skillContent);
             }
 
             // Scaffold rules

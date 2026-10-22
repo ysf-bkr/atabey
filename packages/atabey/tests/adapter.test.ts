@@ -25,8 +25,8 @@ describe("CLI Adapters", () => {
         });
 
         it("should resolve known adapter ID", () => {
-            const config = resolveAdapter("gemini");
-            expect(config.id).toBe("gemini");
+            const config = resolveAdapter("claude");
+            expect(config.id).toBe("claude");
             expect(uiWarningSpy).not.toHaveBeenCalled();
         });
 
@@ -46,10 +46,22 @@ describe("CLI Adapters", () => {
             expect(uiWarningSpy).not.toHaveBeenCalled();
         });
 
-        it("should fallback to gemini and log warning for unknown adapter", () => {
+        it("should map local LLM aliases to 'local'", () => {
+            expect(resolveAdapter("ollama").id).toBe("local");
+            expect(resolveAdapter("vllm").id).toBe("local");
+            expect(resolveAdapter("lmstudio").id).toBe("local");
+        });
+
+        it("should fallback to claude and log warning for unknown adapter", () => {
             const config = resolveAdapter("unknown-adapter");
-            expect(config.id).toBe("gemini");
+            expect(config.id).toBe("claude");
             expect(uiWarningSpy).toHaveBeenCalledWith(expect.stringContaining("Unknown adapter \"unknown-adapter\""));
+        });
+
+        it("should warn and fallback to claude for the removed gemini platform", () => {
+            const config = resolveAdapter("gemini");
+            expect(config.id).toBe("claude");
+            expect(uiWarningSpy).toHaveBeenCalledWith(expect.stringContaining("Unknown adapter \"gemini\""));
         });
     });
 
@@ -77,21 +89,21 @@ describe("CLI Adapters", () => {
 
         it("should map simple tokens {{FRAMEWORK_DIR}} and {{ADAPTER}}", () => {
             const content = "Framework: {{FRAMEWORK_DIR}} / Adapter: {{ADAPTER}}";
-            const result = remapFrameworkContent(content, ".gemini", "gemini");
-            expect(result).toBe("Framework: .gemini / Adapter: gemini");
+            const result = remapFrameworkContent(content, ".claude", "claude");
+            expect(result).toBe("Framework: .claude / Adapter: claude");
         });
 
         it("should map folder names and paths dynamically", () => {
             const content = "Source is .atabey/agents/ and .atabey/knowledge/";
-            const result = remapFrameworkContent(content, ".gemini", "antigravity-cli");
+            const result = remapFrameworkContent(content, ".agents", "antigravity-cli");
             // For antigravity-cli: agents -> agents, knowledge -> rules
-            expect(result).toBe("Source is .gemini/agents/ and .gemini/rules/");
+            expect(result).toBe("Source is .agents/agents/ and .agents/rules/");
         });
 
         it("should map directory paths based on config.json paths if file exists", () => {
-            const frameworkDir = ".gemini";
-            const geminiDir = path.join(tempDir, frameworkDir);
-            fs.mkdirSync(geminiDir, { recursive: true });
+            const frameworkDir = ".claude";
+            const claudeDir = path.join(tempDir, frameworkDir);
+            fs.mkdirSync(claudeDir, { recursive: true });
 
             const config = {
                 paths: {
@@ -101,10 +113,10 @@ describe("CLI Adapters", () => {
                     tests: "specs"
                 }
             };
-            fs.writeFileSync(path.join(geminiDir, "config.json"), JSON.stringify(config));
+            fs.writeFileSync(path.join(claudeDir, "config.json"), JSON.stringify(config));
 
             const content = "{{BACKEND_DIR}} / {{FRONTEND_DIR}} / {{DOCS_DIR}} / {{TESTS_DIR}}";
-            const result = remapFrameworkContent(content, frameworkDir, "gemini");
+            const result = remapFrameworkContent(content, frameworkDir, "claude");
             expect(result).toBe("server / client / wiki / specs");
         });
     });
@@ -112,9 +124,8 @@ describe("CLI Adapters", () => {
     describe("buildMcpServerEntry", () => {
         it("should build correct entry object", () => {
             const entry = buildMcpServerEntry("/path/to/project");
-            expect(entry.command).toBe("node");
-            // In tests, /path/to/project != packageRoot, so it falls back to node_modules path
-            expect(entry.args[0]).toMatch(/node_modules\/atabey-mcp\/dist\/atabey-mcp\/src\/mcp\/index\.js|framework-mcp\/dist\/index\.js/);
+            expect(entry.command).toBe("npx");
+            expect(entry.args).toEqual(["-y", "atabey-mcp"]);
             expect(entry.env[MCP.PROJECT_ROOT_ENV]).toBe("/path/to/project");
             expect(entry.env[MCP.TRANSPORT_ENV]).toBe(MCP.TRANSPORT_STDIO);
             expect(entry.env.ATABEY_AUTO_START_ORCHESTRATOR).toBe("true");
@@ -135,9 +146,9 @@ describe("CLI Adapters", () => {
         it("should respect dryRun and not create files", () => {
             const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-            scaffoldAgents(tempDir, "gemini", true);
+            scaffoldAgents(tempDir, "claude", true);
 
-            const agentsDir = path.join(tempDir, ".gemini/agents");
+            const agentsDir = path.join(tempDir, ".claude/agents");
             expect(fs.existsSync(agentsDir)).toBe(false);
             consoleWarnSpy.mockRestore();
         });
@@ -145,13 +156,17 @@ describe("CLI Adapters", () => {
         it("should scaffold agents successfully on normal mode", () => {
             const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-            scaffoldAgents(tempDir, "gemini", false);
+            scaffoldAgents(tempDir, "claude", false);
 
-            const agentsDir = path.join(tempDir, ".gemini/agents");
+            const agentsDir = path.join(tempDir, ".claude/agents");
             expect(fs.existsSync(agentsDir)).toBe(true);
             const files = fs.readdirSync(agentsDir);
             expect(files.length).toBeGreaterThan(0);
             expect(files).toContain("manager.md");
+            // Claude agent markdown carries YAML frontmatter for discoverability.
+            const manager = fs.readFileSync(path.join(agentsDir, "manager.md"), "utf8");
+            expect(manager.startsWith("---\n")).toBe(true);
+            expect(manager).toContain("name: manager");
 
             consoleWarnSpy.mockRestore();
         });

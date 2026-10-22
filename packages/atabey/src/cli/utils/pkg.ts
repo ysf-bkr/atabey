@@ -140,7 +140,8 @@ interface PackageJson {
 
 export function mergePackageJson(targetPath: string, sourcePath: string): void {
     let targetPkg: PackageJson & { frameworkRepo?: boolean } = {};
-    if (fs.existsSync(targetPath)) {
+    const exists = fs.existsSync(targetPath);
+    if (exists) {
         try {
             targetPkg = JSON.parse(fs.readFileSync(targetPath, "utf8"));
         } catch {
@@ -154,104 +155,37 @@ export function mergePackageJson(targetPath: string, sourcePath: string): void {
 
     const sourcePkg: PackageJson = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
 
-  type PackageMap = Record<string, string>;
-  const sanitizeDeps = (deps: PackageMap | Record<string, unknown> | undefined): Record<string, string> | undefined => {
-      if (!deps) return deps as undefined;
-      const cleaned: Record<string, string> = {};
-      for (const [name, version] of Object.entries(deps)) {
-          cleaned[name] = (typeof version === "string" && version.startsWith("workspace:")) ? "*" : String(version || "");
-      }
-      return cleaned;
-  };
-
-  const actualTargetScope = targetPkg.name && targetPkg.name.startsWith("@")
-      ? targetPkg.name.split("/")[0]
-      : (targetPkg.name ? `@${targetPkg.name}` : "");
-
-  // Cleanup potential leftovers from previous bugged runs where atabey was renamed to target name
-  if (actualTargetScope) {
-      const scopeName = actualTargetScope.startsWith("@") ? actualTargetScope.slice(1) : actualTargetScope;
-      const cleanup = (obj: Record<string, string> | undefined): void => {
-          if (!obj) return;
-          delete obj[scopeName];
-          delete obj[actualTargetScope];
-          delete obj["atabey"]; // Will be re-added correctly
-      };
-      cleanup(targetPkg.devDependencies);
-      cleanup(targetPkg.dependencies);
-  }
-
-  targetPkg.dependencies = sanitizeDeps({
-      ...targetPkg.dependencies,
-      ...sourcePkg.dependencies
-  });
-
-  // Merge scripts
-  targetPkg.scripts = {
-      ...targetPkg.scripts,
-      "atabey:status": "atabey status",
-      "atabey:trace": "atabey trace new",
-      "atabey:verify": "atabey contract",
-      "atabey:check": "atabey check",
-      "atabey:test": "vitest run",
-      "atabey:test:watch": "vitest",
-  };
-
-  const sourceDevDeps = sourcePkg.devDependencies || {};
-  targetPkg.devDependencies = sanitizeDeps({
-      ...targetPkg.devDependencies,
-      "atabey": `^${sourcePkg.version}`,
-      "atabey-mcp": `^${sourcePkg.version}`,
-      ...(sourceDevDeps["@modelcontextprotocol/sdk"] ? {"@modelcontextprotocol/sdk": sourceDevDeps["@modelcontextprotocol/sdk"]} : {}),
-      ...(sourceDevDeps["zod"] ? {"zod": sourceDevDeps["zod"]} : {}),
-      ...(sourceDevDeps["ts-morph"] ? {"ts-morph": sourceDevDeps["ts-morph"]} : {}),
-      ...(sourceDevDeps["typescript"] ? {"typescript": sourceDevDeps["typescript"]} : {}),
-      ...(sourceDevDeps["@types/node"] ? {"@types/node": sourceDevDeps["@types/node"]} : {}),
-      ...(sourceDevDeps["tsx"] ? {"tsx": sourceDevDeps["tsx"]} : {}),
-      ...(sourceDevDeps["vitest"] ? {"vitest": sourceDevDeps["vitest"]} : {})
-  });
-
-  if (targetPkg.peerDependencies) {
-      targetPkg.peerDependencies = sanitizeDeps(targetPkg.peerDependencies);
-  }
-  if (targetPkg.optionalDependencies) {
-      targetPkg.optionalDependencies = sanitizeDeps(targetPkg.optionalDependencies);
-  }
-
-  // Ensure basic fields
-  if (!targetPkg.name) targetPkg.name = path.basename(process.cwd());
-  if (!targetPkg.version) targetPkg.version = sourcePkg.version || "0.1.0";
-  if (!targetPkg.type) targetPkg.type = "module";
-  // DO NOT add atabey-mcp to workspaces in consumer projects
-  // if (!targetPkg.workspaces) targetPkg.workspaces = ["atabey-mcp"];
-
-  // Register the scaffolded applications as npm workspaces so a single
-  // `npm install` at the project root installs their dev tooling (vitest,
-  // eslint, fastify, ...). Without this, `run_tests`/`check_lint` and the
-  // generated `npm run test|lint` scripts fail with "command not found".
-  const targetRoot = path.dirname(targetPath);
-  if (!targetPkg.workspaces && !fs.existsSync(path.join(targetRoot, "pnpm-workspace.yaml"))) {
-    const appsDir = path.join(targetRoot, "apps");
-    if (fs.existsSync(appsDir)) {
-      try {
-        const appWorkspaces = fs.readdirSync(appsDir, { withFileTypes: true })
-          .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(appsDir, entry.name, "package.json")))
-          .map((entry) => `apps/${entry.name}`);
-        if (appWorkspaces.length > 0) targetPkg.workspaces = appWorkspaces;
-      } catch {
-        /* workspace detection is best-effort */
-      }
+    // If it's a completely NEW package.json (did not exist before):
+    if (!exists) {
+        targetPkg.name = path.basename(process.cwd());
+        targetPkg.version = "0.1.0";
+        targetPkg.type = "module";
     }
-  }
 
-  // Add metadata
-  targetPkg.atabey = {
-      version: sourcePkg.version || "0.0.0",
-      initializedAt: new Date().toISOString(),
-  };
+    // Merge scripts - prefix with atabey: to never overwrite user scripts
+    targetPkg.scripts = {
+        ...targetPkg.scripts,
+        "atabey:status": "atabey status",
+        "atabey:trace": "atabey trace new",
+        "atabey:verify": "atabey contract",
+        "atabey:check": "atabey check",
+    };
 
-  writeJsonFile(targetPath, targetPkg);
-  UI.success(" package.json updated with Atabey scripts and dependencies.");
+    // Add atabey and atabey-mcp to devDependencies only
+    targetPkg.devDependencies = {
+        ...targetPkg.devDependencies,
+        "atabey": `^${sourcePkg.version}`,
+        "atabey-mcp": `^${sourcePkg.version}`,
+    };
+
+    // Add metadata
+    targetPkg.atabey = {
+        version: sourcePkg.version || "0.1.5",
+        initializedAt: new Date().toISOString(),
+    };
+
+    writeJsonFile(targetPath, targetPkg);
+    UI.success("  package.json preserved and integrated with Atabey.");
 }
 
 export function sanitizeJson(obj: unknown, targetScope = ""): unknown {

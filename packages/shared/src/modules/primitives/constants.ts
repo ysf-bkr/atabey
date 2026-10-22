@@ -26,7 +26,6 @@ export const PROJECT_PHASES = [
 // ─── Adapter platform directories (native / legacy) ───────────────────────────
 
 export const ADAPTER_DIRS = {
-    GEMINI: ".gemini",
     CLAUDE: ".claude",
     GROK: ".grok",
     CURSOR: ".cursor",
@@ -43,7 +42,6 @@ export const FRAMEWORK_DIR_CANDIDATES = [
     FRAMEWORK.CORE_DIR,        // .atabey
     ADAPTER_DIRS.CODEX,        // .agents (codex + antigravity)
     ADAPTER_DIRS.CLAUDE,       // .claude
-    ADAPTER_DIRS.GEMINI,       // .gemini
     ADAPTER_DIRS.GROK,         // .grok
     ADAPTER_DIRS.CURSOR,       // .cursor
     ADAPTER_DIRS.OPENCODE,     // .opencode
@@ -51,7 +49,6 @@ export const FRAMEWORK_DIR_CANDIDATES = [
 
 /** Slug under `.agents/{slug}/` for each adapter in unified mode. */
 export const UNIFIED_ADAPTER_SLUG = {
-    gemini: "gemini",
     claude: "claude",
     grok: "grok",
     cursor: "cursor",
@@ -66,7 +63,6 @@ export type UnifiedAdapterSlug = keyof typeof UNIFIED_ADAPTER_SLUG;
 // ─── Native agent instruction paths (legacy tool compatibility) ───────────────
 
 export const NATIVE_AGENT_PATHS = {
-    gemini: pathJoin(ADAPTER_DIRS.GEMINI, "agents"),
     claude: pathJoin(ADAPTER_DIRS.CLAUDE, "agents"),
     grok: pathJoin(ADAPTER_DIRS.GROK, "agents"),
     cursor: pathJoin(ADAPTER_DIRS.CURSOR, "rules"),
@@ -78,7 +74,6 @@ export const NATIVE_AGENT_PATHS = {
 
 /** Legacy layout bases used by `check` and discovery (non-unified installs). */
 export const LEGACY_AGENT_LAYOUT_BASES = [
-    NATIVE_AGENT_PATHS.gemini,
     NATIVE_AGENT_PATHS.claude,
     NATIVE_AGENT_PATHS.cursor,
     NATIVE_AGENT_PATHS.grok,
@@ -177,11 +172,12 @@ export const CURSOR_AGENT_GLOBS: Record<string, string> = {
 
 export const MCP = {
     SERVER_NAME: "atabey",
-    ROOT_CONFIG_FILE: "mcp.json",
+    /** Root MCP config (VS Code / Claude Code / Codex project-scope standard). */
+    ROOT_CONFIG_FILE: ".mcp.json",
     PROJECT_ROOT_ENV: "ATABEY_PROJECT_ROOT",
     TEST_DIR_ENV: "ATABEY_TEST_DIR",
     TRANSPORT_ENV: "MCP_TRANSPORT",
-    /** IDE clients (Claude, Cursor, Gemini) spawn MCP via stdio JSON-RPC. */
+    /** IDE clients (Claude, Cursor, Codex) spawn MCP via stdio JSON-RPC. */
     TRANSPORT_STDIO: "stdio",
     /** HTTP/SSE unified server for multi-session and remote clients. */
     TRANSPORT_UNIFIED: "unified",
@@ -198,9 +194,7 @@ export const ORCHESTRATOR = {
 
 export const ROOT_CONFIG_FILES = {
     MCP: MCP.ROOT_CONFIG_FILE,
-    DOT_MCP: ".mcp.json",
     ENV_EXAMPLE: ".env.example",
-    VSCODE_MCP: ".vscode/mcp.json",
 } as const;
 
 // ─── Shim template placeholders ───────────────────────────────────────────────

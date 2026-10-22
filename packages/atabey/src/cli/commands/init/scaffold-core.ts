@@ -23,35 +23,20 @@ const COLOR_PALETTES = {
     "Deep Purple": { primary: "#8b5cf6", secondary: "#d8b4fe", accent: "#f59e0b" }
 };
 
-function buildProfileServiceConfig(profile: string): {
+/** Canonical service configuration — one setup, strictest posture.
+ *  Compliance: consent basis, fail-closed sandbox, required auth. */
+function buildServiceConfig(): {
     compliance: Record<string, unknown>;
     sandbox: Record<string, unknown>;
     auth: Record<string, unknown>;
 } {
-    const presets: Record<string, {
-        compliance: Record<string, unknown>;
-        sandbox: Record<string, unknown>;
-        auth: Record<string, unknown>;
-    }> = {
-        freelancer: {
-            compliance: { retentionEnabled: true, consentLogging: true, piiMasking: true, dataProcessingBasis: "legitimate_interest" },
-            sandbox: { runtime: "auto", required: false },
-            auth: { required: false },
-        },
-        team: {
-            compliance: { retentionEnabled: true, consentLogging: true, piiMasking: true, dataProcessingBasis: "contract" },
-            sandbox: { runtime: "auto", required: false },
-            auth: { required: false },
-        },
-        enterprise: {
-            compliance: { retentionEnabled: true, consentLogging: true, piiMasking: true, dataProcessingBasis: "consent" },
-            // Phase 1.3: fail closed without OS isolation (seatbelt / uid)
-            sandbox: { runtime: "auto", required: true, network: "none" },
-            // Phase 2.1: fail closed without bearer token on HTTP API
-            auth: { required: true },
-        },
+    return {
+        compliance: { retentionEnabled: true, consentLogging: true, piiMasking: true, dataProcessingBasis: "consent" },
+        // Phase 1.3: fail closed without OS isolation (seatbelt / uid)
+        sandbox: { runtime: "auto", required: true, network: "none" },
+        // Phase 2.1: fail closed without bearer token on HTTP API
+        auth: { required: true },
     };
-    return presets[profile] || presets.freelancer;
 }
 
 /** Restrict governance authorizedAgents to agents actually scaffolded in this profile. */
@@ -116,7 +101,7 @@ export function scaffoldFrameworkConfigs(
     adapter: AdapterConfig,
     dryRun: boolean,
     selectedPalette: string,
-    options?: { unified?: boolean; adapters?: string[]; backendLanguage?: string; frontendFramework?: string; nativeLanguage?: string; language?: SupportedLanguage; profile?: string; agents?: string[] }
+    options?: { unified?: boolean; adapters?: string[]; backendLanguage?: string; frontendFramework?: string; nativeLanguage?: string; language?: SupportedLanguage; agents?: string[] }
 ) {
     if (dryRun) return;
     const frameworkDir = path.join(targetDir, fDir);
@@ -131,7 +116,7 @@ export function scaffoldFrameworkConfigs(
     const config = {
         name: FRAMEWORK_NAME,
         version: getPackageVersion(),
-        profile: options?.profile || "custom",
+        setup: "standard",
         projectKind,
         agents: options?.agents || [],
         unified: options?.unified || false,
@@ -150,16 +135,16 @@ export function scaffoldFrameworkConfigs(
             autoStart: true,
             intervalMs: 1000,
         },
-        ...buildProfileServiceConfig(options?.profile || "custom"),
+        ...buildServiceConfig(),
     };
     writeJsonFile(path.join(frameworkDir, "config.json"), config, dryRun);
 
     // [SAFETY] Surface the sandbox posture loudly: an optional sandbox means
     // agent shell commands run with host privileges when isolation is unavailable.
-    const serviceConfig = buildProfileServiceConfig(options?.profile || "custom");
+    const serviceConfig = buildServiceConfig();
     if (!dryRun && serviceConfig.sandbox.required !== true) {
         UI.warning(
-            "Sandbox is NOT fail-closed for this profile (sandbox.required=false).\n" +
+            "Sandbox is NOT fail-closed (sandbox.required=false).\n" +
             "Agent shell commands will run with host privileges if OS isolation is unavailable.\n" +
             `For hardened setups set "sandbox": { "required": true } in ${fDir}/config.json\n` +
             "or export ATABEY_SANDBOX_REQUIRED=true."

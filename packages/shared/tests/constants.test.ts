@@ -17,7 +17,7 @@ describe("shared/constants", () => {
     });
 
     it("should build consistent native agent paths", () => {
-        expect(NATIVE_AGENT_PATHS.gemini).toBe(pathJoin(ADAPTER_DIRS.GEMINI, "agents"));
+        expect(NATIVE_AGENT_PATHS.claude).toBe(pathJoin(ADAPTER_DIRS.CLAUDE, "agents"));
         expect(NATIVE_AGENT_PATHS.cursor).toBe(pathJoin(ADAPTER_DIRS.CURSOR, "rules"));
     });
 
@@ -29,6 +29,6 @@ describe("shared/constants", () => {
 
     it("should build knowledge and unified paths", () => {
         expect(knowledgePath("security-standards.md")).toBe(".atabey/knowledge/security-standards.md");
-        expect(unifiedAdapterPath("gemini", "agents")).toBe(".agents/gemini/agents");
+        expect(unifiedAdapterPath("claude", "agents")).toBe(".agents/claude/agents");
     });
 });

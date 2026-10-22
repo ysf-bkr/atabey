@@ -7,7 +7,7 @@ import type { AdapterConfig, AdapterId } from "../../modules/providers/types.js"
 import { ADAPTERS, SHIM_FILES } from "./core.js";
 
 export function resolveAdapter(input?: string): AdapterConfig {
-    let normalized = (input || "gemini").toLowerCase();
+    let normalized = (input || "claude").toLowerCase();
     if (normalized === "antigravity" || normalized === "agy") {
         normalized = "antigravity-cli";
     } else if (normalized === "copilot" || normalized === "github") {
@@ -22,8 +22,8 @@ export function resolveAdapter(input?: string): AdapterConfig {
     if (normalized in ADAPTERS) {
         config = { ...ADAPTERS[normalized as AdapterId] };
     } else {
-        UI.warning(`Unknown adapter "${input}". Falling back to gemini.`);
-        config = { ...ADAPTERS.gemini };
+        UI.warning(`Unknown adapter "${input}". Falling back to claude.`);
+        config = { ...ADAPTERS.claude };
     }
 
     return config;

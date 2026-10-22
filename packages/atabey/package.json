@@ -1,6 +1,6 @@
 {
   "name": "atabey",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Atabey — Local AI Control Plane & Discipline Layer — Core Engine",
   "author": "Yusuf BEKAR",
   "license": "AGPL-3.0",
@@ -55,7 +55,7 @@
     "prepublishOnly": "node ../../scripts/build-readmes.mjs && npm run build"
   },
   "dependencies": {
-    "atabey-shared": "^0.1.5",
+    "atabey-shared": "^0.1.6",
     "better-sqlite3": "^13.0.2",
     "chalk": "^5.6.2",
     "js-yaml": "^4.2.0",
@@ -63,7 +63,7 @@
     "zod": "^3.24.2"
   },
   "optionalDependencies": {
-    "atabey-mcp": "^0.1.5"
+    "atabey-mcp": "^0.1.6"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",

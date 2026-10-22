@@ -19,7 +19,6 @@ export interface CliPreset {
  */
 export const CLI_PRESETS: Record<string, CliPreset> = {
     claude: { command: "claude", buildArgs: (p) => ["-p", p, "--output-format", "text"] },
-    gemini: { command: "gemini", buildArgs: (p) => ["-p", p] },
     codex: { command: "codex", buildArgs: (p) => ["exec", p] },
     opencode: { command: "opencode", buildArgs: (p) => ["run", "--standalone", "--auto", p] },
 };

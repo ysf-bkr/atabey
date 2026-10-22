@@ -50,11 +50,8 @@ export function scaffoldAgents(
             let secondaryFileName: string | null = null;
 
             switch (adapterId) {
-                case "gemini":
-                    content = toGeminiCliMd(agent, baseKnowledgeDir, paths, backendLanguage);
-                    break;
                 case "grok":
-                    // Grok uses same Gemini-compatible YAML format
+                    // Grok uses the Gemini-compatible YAML frontmatter format
                     content = toGeminiCliMd(agent, baseKnowledgeDir, paths, backendLanguage);
                     break;
                 case "claude":
@@ -77,7 +74,21 @@ export function scaffoldAgents(
                     content = toAntigravityJson(agent, baseKnowledgeDir, paths, backendLanguage);
                     fileName = path.join(agent.name, "agent.json");
 
-                    secondaryContent = `# [ATABEY] Atabey — @${agent.name}\n\n${agent.instructions.identity}\n\n${agent.instructions.mission}`;
+                    // agent.md must carry YAML frontmatter (name/description) so
+                    // AGENTS.md-standard discovery surfaces it in the tool's UI.
+                    const cleanDesc = agent.description.replace(/\s+/g, " ").trim();
+                    secondaryContent = [
+                        "---",
+                        `name: ${agent.name}`,
+                        `description: ${cleanDesc} Use for ${agent.role.toLowerCase()} tasks.`,
+                        "---",
+                        "",
+                        `# [ATABEY] Atabey — @${agent.name}`,
+                        "",
+                        `${agent.instructions.identity}`,
+                        "",
+                        `${agent.instructions.mission}`,
+                    ].join("\n");
                     secondaryFileName = path.join(agent.name, "agent.md");
                     break;
                 }

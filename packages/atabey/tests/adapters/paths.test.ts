@@ -25,13 +25,13 @@ describe("Adapter Paths", () => {
 
     describe("resolveAgentsDir", () => {
         it("should use adapter-specific dir in legacy mode", () => {
-            expect(resolveAgentsDir("gemini", false).agentsDir).toBe(".gemini/agents");
+            expect(resolveAgentsDir("claude", false).agentsDir).toBe(".claude/agents");
             expect(resolveAgentsDir("codex", false).agentsDir).toBe(".agents/instructions");
             expect(resolveAgentsDir("opencode", false).agentsDir).toBe(".opencode/agents");
         });
 
         it("should use per-platform subtree under unified hub in unified mode", () => {
-            expect(resolveAgentsDir("gemini", true).agentsDir).toBe(".agents/gemini/agents");
+            expect(resolveAgentsDir("claude", true).agentsDir).toBe(".agents/claude/agents");
             expect(resolveAgentsDir("cursor", true).agentsDir).toBe(".agents/cursor/rules");
             expect(resolveAgentsDir("codex", true).agentsDir).toBe(".agents/codex/instructions");
             expect(resolveAgentsDir("antigravity-cli", true).agentsDir).toBe(".agents/agents");
@@ -39,19 +39,20 @@ describe("Adapter Paths", () => {
 
         it("should expose a layout base for every adapter slug", () => {
             const bases = getUnifiedAgentLayoutBases();
-            expect(bases).toHaveLength(8);
-            expect(bases.some((b) => b.includes(UNIFIED_ADAPTER_SLUG.gemini))).toBe(true);
+            expect(bases).toHaveLength(7);
+            expect(bases.some((b) => b.includes(UNIFIED_ADAPTER_SLUG.claude))).toBe(true);
             expect(bases.some((b) => b.includes(UNIFIED_ADAPTER_SLUG.opencode))).toBe(true);
+            expect(bases.some((b) => b.includes("gemini"))).toBe(false);
         });
     });
 
     describe("findAgentInstruction", () => {
-        it("should find unified gemini agent", () => {
-            const dir = path.join(tempDir, ".agents/gemini/agents");
+        it("should find unified claude agent", () => {
+            const dir = path.join(tempDir, ".agents/claude/agents");
             fs.mkdirSync(dir, { recursive: true });
             fs.writeFileSync(path.join(dir, "manager.md"), "# manager");
 
-            expect(findAgentInstruction(tempDir, "manager")).toBe(".agents/gemini/agents/manager.md");
+            expect(findAgentInstruction(tempDir, "manager")).toBe(".agents/claude/agents/manager.md");
         });
 
         it("should find nested antigravity agent.json", () => {
@@ -64,22 +65,22 @@ describe("Adapter Paths", () => {
     });
 
     describe("mirrorUnifiedAgentsToNative", () => {
-        it("should copy unified agents to native gemini path", () => {
-            scaffoldAgents(tempDir, "gemini", false, ["manager"]);
-            mirrorUnifiedAgentsToNative(tempDir, "gemini");
+        it("should copy unified agents to native claude path", () => {
+            scaffoldAgents(tempDir, "claude", false, ["manager"]);
+            mirrorUnifiedAgentsToNative(tempDir, "claude");
 
-            expect(fs.existsSync(path.join(tempDir, ".gemini/agents/manager.md"))).toBe(true);
+            expect(fs.existsSync(path.join(tempDir, ".claude/agents/manager.md"))).toBe(true);
         });
     });
 
     describe("detectActiveAgentLayouts", () => {
         it("should list unified and legacy layouts", () => {
             fs.mkdirSync(path.join(tempDir, ".agents/claude/agents"), { recursive: true });
-            fs.mkdirSync(path.join(tempDir, ".gemini/agents"), { recursive: true });
+            fs.mkdirSync(path.join(tempDir, ".grok/agents"), { recursive: true });
 
             const layouts = detectActiveAgentLayouts(tempDir);
             expect(layouts).toContain(".agents/claude/agents");
-            expect(layouts).toContain(".gemini/agents");
+            expect(layouts).toContain(".grok/agents");
         });
     });
 });

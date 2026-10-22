@@ -4,15 +4,49 @@ import { CORE_SKILLS } from "../../../modules/skills/definitions.js";
 import { logger } from "../../../shared/logger.js";
 import { ensureDir, writeTextFile } from "../../utils/fs.js";
 import { getPackageRoot } from "../../utils/pkg.js";
+import { UI } from "../../utils/ui.js";
 
 const FRAMEWORK_NAME = "Atabey";
 
+/** Kebab-case directory slug for a skill (e.g. "DevOps Infrastructure" → "devops-infrastructure"). */
+function skillSlug(key: string): string {
+    return key
+        .toLowerCase()
+        .trim()
+        .replace(/[_\s]+/g, "-")
+        .replace(/[^a-z0-9-]/g, "");
+}
+
+/**
+ * Scaffolds the 15 core skills in the platform-discoverable directory format:
+ *   skills/<skill-slug>/SKILL.md   (YAML frontmatter: name, description, tools)
+ * Claude Code, Antigravity, Gemini-style runtimes and the AGENTS.md ecosystem
+ * all auto-discover this layout; flat `skills/<name>.md` files are not found.
+ */
 export function scaffoldSkills(skillsBaseDir: string, dryRun: boolean) {
     if (dryRun) return;
     ensureDir(skillsBaseDir, dryRun);
     for (const [key, skill] of Object.entries(CORE_SKILLS)) {
-        const mdContent = `# [TOOL] ${FRAMEWORK_NAME} Skill — ${skill.name}\n\n${skill.description}\n\n## [PLUGIN] Associated Tools\n${skill.tools.map(t => `- \`${t}\``).join("\n")}\n\n## [SECURITY] Core Mandates\n${skill.mandates.join("\n")}\n`;
-        writeTextFile(path.join(skillsBaseDir, `${key.toLowerCase()}.md`), mdContent);
+        const skillDir = path.join(skillsBaseDir, skillSlug(key));
+        if (!fs.existsSync(skillDir)) fs.mkdirSync(skillDir, { recursive: true });
+
+        const frontmatter = [
+            "---",
+            `name: ${skill.name}`,
+            `description: ${skill.description.replace(/\s+/g, " ").trim()}`,
+            `tools: ${skill.tools.join(", ")}`,
+            "---",
+        ].join("\n");
+
+        const mdContent = `${frontmatter}\n\n# [TOOL] ${FRAMEWORK_NAME} Skill — ${skill.name}\n\n${skill.description}\n\n## [PLUGIN] Associated Tools\n${skill.tools.map(t => `- \`${t}\``).join("\n")}\n\n## [SECURITY] Core Mandates\n${skill.mandates.join("\n")}\n`;
+        writeTextFile(path.join(skillDir, "SKILL.md"), mdContent);
+
+        // Remove legacy flat skill file from older Atabey layouts.
+        const legacyFlat = path.join(skillsBaseDir, `${key.toLowerCase()}.md`);
+        if (fs.existsSync(legacyFlat)) {
+            fs.rmSync(legacyFlat, { force: true });
+            UI.success(`Removed legacy flat skill → ${path.relative(process.cwd(), legacyFlat)}`);
+        }
     }
 }
 

@@ -9,38 +9,6 @@ import { UI } from "../../cli/utils/ui.js";
 
 // ─── Register Core Adapters ──────────────────────────────────────────────────
 
-// [GEMINI] Gemini
-registry.register(
-    {
-        id: "gemini",
-        frameworkDir: ".gemini",
-        shimFile: "GEMINI.md",
-        nestedDirs: ["agents", "rules"],
-        agentsDir: ".gemini/agents",
-        agentsExt: ".md"
-    },
-    (projectRoot, mcpBlock) => {
-        const frameworkDir = ".gemini";
-        writeJsonFile(path.join(projectRoot, frameworkDir, "mcp.json"), mcpBlock);
-
-        // Gemini CLI reads MCP servers from settings.json (`mcpServers`).
-        const settingsPath = path.join(projectRoot, frameworkDir, "settings.json");
-        let existing: Record<string, unknown> = {};
-        if (fs.existsSync(settingsPath)) {
-            try {
-                existing = JSON.parse(fs.readFileSync(settingsPath, "utf8")) as Record<string, unknown>;
-            } catch {
-                existing = {};
-            }
-        }
-        const block = mcpBlock as { mcpServers?: Record<string, unknown> };
-        existing["mcpServers"] = { ...((existing["mcpServers"] as Record<string, unknown>) ?? {}), ...(block.mcpServers ?? {}) };
-        writeJsonFile(settingsPath, existing);
-
-        UI.success(`Gemini MCP registered → ${frameworkDir}/mcp.json + ${frameworkDir}/settings.json`);
-    }
-);
-
 // [START] Claude
 registry.register(
     {
@@ -66,7 +34,6 @@ registry.register(
             if (ok) UI.success(`Claude MCP registered → ${configPath}`);
         }
         const frameworkDir = ".claude";
-        writeJsonFile(path.join(projectRoot, frameworkDir, "mcp_config.json"), mcpBlock);
         writeJsonFile(path.join(projectRoot, ".mcp.json"), mcpBlock);
 
         // PreToolUse Hook: Intercept built-in Edit/Write/Bash to enforce Atabey MCP governance
@@ -187,22 +154,9 @@ registry.register(
         agentsExt: ".md"
     },
     (projectRoot, mcpBlock) => {
-        const frameworkDir = ".agents";
-        writeJsonFile(path.join(projectRoot, frameworkDir, "mcp_config.json"), mcpBlock);
-        const block = mcpBlock as { mcpServers?: Record<string, Record<string, unknown>> };
-        const atabeyEntry = block.mcpServers?.["atabey"] ?? {};
-        const vscodeBlock = {
-            servers: {
-                atabey: {
-                    type: "stdio",
-                    ...atabeyEntry,
-                },
-            },
-            mcpServers: block.mcpServers ?? {},
-        };
-        writeJsonFile(path.join(projectRoot, ".vscode/mcp.json"), vscodeBlock);
+        // Codex CLI / GitHub Copilot read the standard root `.mcp.json`.
         writeJsonFile(path.join(projectRoot, ".mcp.json"), mcpBlock);
-        UI.success("GitHub Copilot Project MCP → .vscode/mcp.json & .mcp.json");
+        UI.success("Codex / Copilot Project MCP → .mcp.json");
     }
 );
 
@@ -254,9 +208,6 @@ registry.register(
         agentsExt: ".md"
     },
     (projectRoot, mcpBlock) => {
-        const frameworkDir = ".opencode";
-        writeJsonFile(path.join(projectRoot, frameworkDir, "mcp_config.json"), mcpBlock);
-
         // Standard OpenCode opencode.json in project root
         const opencodePath = path.join(projectRoot, "opencode.json");
         let existing: Record<string, unknown> = {};
@@ -272,7 +223,7 @@ registry.register(
         const mcpEntry = block.mcpServers?.["atabey"];
         const localCommand = mcpEntry?.command
             ? [mcpEntry.command, ...(mcpEntry.args || [])]
-            : ["node", "node_modules/atabey-mcp/dist/atabey-mcp/src/mcp/index.js"];
+            : ["npx", "-y", "atabey-mcp"];
 
         existing["$schema"] = "https://opencode.ai/config.json";
         const existingMcp = (existing["mcp"] as Record<string, unknown>) || {};

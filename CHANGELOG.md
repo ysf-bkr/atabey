@@ -11,6 +11,54 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## [0.1.6] — 2026-10-22 — Single Setup, Per-AI Compile & Platform Hardening
+
+### Breaking Changes
+- **Profile system removed:** `--profile freelancer|team|enterprise` is gone.
+  There is now **one canonical setup** — all 13 specialists, strictest governance
+  posture (consent-basis compliance, fail-closed sandbox, required auth).
+- **Gemini CLI is no longer a supported platform.** `atabey init gemini` warns
+  and falls back to `claude`. `.gemini/`, `GEMINI.md` and the gemini adapter are
+  removed; `toGeminiCliMd` remains internally as the Grok markdown format.
+- **`--unified` / `--single` flags removed.** Use `atabey init all` to compile
+  for every supported AI; `atabey init <ai>` (default `claude`) for one platform.
+- **Root MCP config renamed:** `mcp.json` → standard `.mcp.json`.
+
+### Fixed
+- **MCP `MODULE_NOT_FOUND` crashes:** generated MCP entries now use the portable
+  `npx -y atabey-mcp` launcher instead of a `node node_modules/...` path. Works
+  with or without a local install and is immune to IDE working-directory drift.
+- **Port crash on `EADDRINUSE`:** the HTTP/SSE hub now falls back automatically
+  to the next free port (5858→5878 range) and prints the actually bound port.
+  Strict mode: `ATABEY_PORT_STRICT=true`.
+- **Agents invisible in discovery UIs:** every generated agent `.md` (including
+  the Antigravity `agent.md` stubs) now starts with `name`/`description` YAML
+  frontmatter.
+- **Skills undiscoverable:** skills are scaffolded as `skills/<slug>/SKILL.md`
+  with YAML frontmatter (Claude/Antigravity/AGENTS.md-ecosystem layout). Legacy
+  flat `skills/<name>.md` files are migrated (removed) on re-init.
+
+### Changed
+- **One native MCP config per platform** (no more duplicates): Claude/Codex →
+  root `.mcp.json`, Cursor → `.cursor/mcp.json`, Grok → `.grok/mcp_config.json`,
+  Local LLM → `.atabey/mcp_config.json`, Antigravity → `.agents/mcp_config.json`,
+  OpenCode → `opencode.json`. Stale duplicate files from older layouts
+  (`mcp.json`, `.claude/mcp_config.json`, `.gemini/mcp.json`, `.vscode/mcp.json`,
+  `.opencode/mcp_config.json`) are cleaned up on re-init.
+- **Existing-project doc import:** `atabey init` detects root-level project docs
+  and offers to import them into `.atabey/knowledge/imported/` (root copies are
+  removed so all context lives under Atabey control). Non-interactive:
+  `--import-docs`.
+- **Bootstrap trace T-001:** a fresh init opens the first active task in project
+  memory instead of leaving empty tables.
+- `atabey:setup` script now runs `atabey init all --yes`.
+
+### Documentation
+- README (EN + TR) and package README templates updated for the new CLI surface,
+  per-AI setup guide, single-config matrix and a new Troubleshooting section.
+
+---
+
 ## [0.1.5] — 2026-10-21 — Repository Re-Baseline & Documentation Audit
 
 ### Repository

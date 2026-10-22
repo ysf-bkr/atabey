@@ -13,7 +13,8 @@ import {
     type AdapterId,
 } from "../platforms/index.js";
 import { ensureDir } from "../utils/fs.js";
-import { initializeMemory, resolveProjectPaths } from "../utils/memory.js";
+import { Storage } from "../../shared/storage.js";
+import { initializeMemory, resolveProjectPaths, updateDocumentStore } from "../utils/memory.js";
 import { getPackageRoot, getPackageVersion, mergePackageJson } from "../utils/pkg.js";
 import { UI } from "../utils/ui.js";
 
@@ -46,6 +47,8 @@ import {
 } from "./init/scaffold-standards.js";
 
 import { TRANSLATIONS, type SupportedLanguage } from "../utils/i18n.js";
+import { importRootDocs } from "./init/import-docs.js";
+import { ingestLegacyAiFiles, isExistingProject } from "../utils/onboarding.js";
 
 const FRAMEWORK_NAME = "Atabey";
 
@@ -61,239 +64,128 @@ const FRAMEWORK_SUBDIRS = [
     "rules",
 ];
 
-// ─── Profile Definitions ──────────────────────────────────────────────────
+/** Single canonical setup: every specialist, every framework directory. */
+const CANONICAL_AGENTS = ALL_AGENTS.map(a => a.name);
+const CANONICAL_DIRS = [...FRAMEWORK_SUBDIRS];
 
-const PROFILES: Record<string, { label: string; description: string; agents: string[]; dirs: string[] }> = {
-    freelancer: {
-        label: "Freelancer / Solo Developer",
-        description: "Autonomous setup for solo developers with full-stack delivery and security",
-        agents: ["manager", "backend", "frontend", "quality", "security"],
-        dirs: ["knowledge", "prompts", "memory", "router"],
-    },
-    team: {
-        label: "Team (5-15 people)",
-        description: "End-to-end delivery team with analysis, architecture, CI/CD and governance",
-        agents: ["manager", "architect", "analyst", "backend", "frontend", "quality", "database", "security", "devops"],
-        dirs: ["knowledge", "prompts", "memory", "router", "registry", "observability", "rules"],
-    },
-    enterprise: {
-        label: "Enterprise (15+ people)",
-        description: "All 13 agents with full governance, security and platform isolation",
-        agents: ALL_AGENTS.map(a => a.name),
-        dirs: [...FRAMEWORK_SUBDIRS],
-    },
-};
+/** Adapter keyword that compiles the agent set for every supported AI. */
+const ALL_ADAPTERS_KEYWORD = "all";
 
-export type InitProfile = "freelancer" | "team" | "enterprise";
-
-export function resolveAgentsByFocus(profile: string, focus: string): string[] {
-    if (profile === "enterprise") {
-        return ALL_AGENTS.map(a => a.name);
-    }
-
-    const cleanFocus = focus.toLowerCase().trim();
-    if (profile === "freelancer") {
-        switch (cleanFocus) {
-            case "backend":
-                return ["manager", "backend", "quality", "security"];
-            case "frontend":
-                return ["manager", "frontend", "quality", "security"];
-            case "mobile":
-                return ["manager", "mobile", "quality", "security"];
-            case "mobile-fullstack":
-                return ["manager", "backend", "mobile", "quality", "security"];
-            case "fullstack":
-            default:
-                return ["manager", "backend", "frontend", "quality", "security"];
-        }
-    }
-
-    if (profile === "team") {
-        switch (cleanFocus) {
-            case "backend":
-                return ["manager", "architect", "analyst", "backend", "quality", "database", "security", "devops"];
-            case "frontend":
-                return ["manager", "architect", "analyst", "frontend", "quality", "security", "devops"];
-            case "mobile":
-                return ["manager", "architect", "analyst", "mobile", "quality", "security", "native", "devops"];
-            case "mobile-fullstack":
-                return ["manager", "architect", "analyst", "backend", "mobile", "quality", "database", "security", "native", "devops"];
-            case "fullstack":
-            default:
-                return ["manager", "architect", "analyst", "backend", "frontend", "quality", "database", "security", "devops"];
-        }
-    }
-
-    return ["manager", "backend", "frontend", "quality", "security"];
+interface InteractiveSelection {
+    selectedPalette: string;
+    backendLanguage: string;
+    frontendFramework: string;
+    nativeLanguage: string;
+    mobileFramework: string;
+    focus: FocusKind;
 }
 
-
-async function runInteractiveInit(profile?: InitProfile, presetLanguage?: SupportedLanguage): Promise<{ selectedDirs: string[]; selectedAgents: string[]; selectedPalette: string; backendLanguage: string; frontendFramework: string; nativeLanguage: string; mobileFramework?: string; focus: FocusKind; language: SupportedLanguage }> {
-    // If profile is set, skip interactive agent/dir selection
-    if (profile) {
-        const p = PROFILES[profile];
-        process.stdout.write(`\n[PROFILE] ${p.label}\n`);
-
-        const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-        const question = (query: string): Promise<string> => new Promise((resolve) => rl.question(query, resolve));
-
-        try {
-            // Content language is English-only (project policy). --lang is accepted but ignored for content.
-            const language: SupportedLanguage = "en";
-            if (presetLanguage && presetLanguage !== "en") {
-                process.stdout.write(
-                    `\n[LANG] Content language is English only (requested --lang ${presetLanguage} is ignored for generated content).\n`,
-                );
-            } else {
-                process.stdout.write("\n[LANG] Content language: English\n");
-            }
-            const t = TRANSLATIONS[language];
-
-            process.stdout.write(`\n[START] ${t.welcome}\n`);
-
-            // --- Project Focus Question ---
-            process.stdout.write("\n[PROJECT FOCUS] Select Project Focus:\n");
-            process.stdout.write("1. Fullstack (Web UI + Backend API)\n");
-            process.stdout.write("2. Backend-Only (API / Services)\n");
-            process.stdout.write("3. Frontend-Only (Web UI / SPA)\n");
-            process.stdout.write("4. Mobile-Only (Mobile Application)\n");
-            process.stdout.write("5. Mobile-Fullstack (Mobile Application + Backend API)\n");
-            const focusInput = await question("\nSelect (1-5) or Enter for 'Fullstack': ");
-            const projectFocus = focusInput.trim() === "2" ? "backend" :
-                focusInput.trim() === "3" ? "frontend" :
-                    focusInput.trim() === "4" ? "mobile" :
-                        focusInput.trim() === "5" ? "mobile-fullstack" : "fullstack";
-
-            const selectedAgents = resolveAgentsByFocus(profile, projectFocus);
-            process.stdout.write(`\n[AGENTS] Selected Agents for ${projectFocus}: ${selectedAgents.join(", ")}\n`);
-
-            let backendLanguage = DEFAULT_BACKEND_LANGUAGE;
-            if (projectFocus !== "frontend" && projectFocus !== "mobile") {
-                process.stdout.write(`\n${t.select_backend}:\n`);
-                BACKEND_LANGUAGES.forEach((l, i) => process.stdout.write(`${i + 1}. ${l}\n`));
-                const bLangInput = await question(`\nSelect (1-${BACKEND_LANGUAGES.length}) or Enter for "${DEFAULT_BACKEND_LANGUAGE}": `);
-                backendLanguage = BACKEND_LANGUAGES[parseInt(bLangInput.trim()) - 1] || DEFAULT_BACKEND_LANGUAGE;
-            }
-
-            let frontendFramework = "Vanilla HTML/JS";
-            if (projectFocus !== "backend") {
-                process.stdout.write(`\n${t.select_frontend}:\n`);
-                FRONTEND_FRAMEWORKS.forEach((f, i) => process.stdout.write(`${i + 1}. ${f}\n`));
-                const fFrameInput = await question(`\nSelect (1-${FRONTEND_FRAMEWORKS.length}) or Enter for "${DEFAULT_FRONTEND_FRAMEWORK}": `);
-                frontendFramework = FRONTEND_FRAMEWORKS[parseInt(fFrameInput.trim()) - 1] || DEFAULT_FRONTEND_FRAMEWORK;
-            }
-
-            let nativeLanguage = DEFAULT_NATIVE_LANGUAGE;
-            process.stdout.write("\n[NATIVE / PLATFORM LAYER] Select the native/platform-tier language (Rust or Go - TypeScript is forbidden here):\n");
-            NATIVE_LANGUAGES.forEach((n, i) => process.stdout.write(`${i + 1}. ${n}\n`));
-            const nLangInput = await question(`\nSelect (1-${NATIVE_LANGUAGES.length}) or Enter for "${DEFAULT_NATIVE_LANGUAGE}": `);
-            nativeLanguage = NATIVE_LANGUAGES[parseInt(nLangInput.trim()) - 1] || DEFAULT_NATIVE_LANGUAGE;
-
-            let mobileFramework = DEFAULT_MOBILE_FRAMEWORK;
-            if (projectFocus === "mobile" || projectFocus === "mobile-fullstack") {
-                process.stdout.write("\n[MOBILE FRAMEWORK] Select the mobile framework:\n");
-                MOBILE_FRAMEWORKS.forEach((m, i) => process.stdout.write(`${i + 1}. ${m}\n`));
-                const mInput = await question(`\nSelect (1-${MOBILE_FRAMEWORKS.length}) or Enter for "${DEFAULT_MOBILE_FRAMEWORK}": `);
-                mobileFramework = MOBILE_FRAMEWORKS[parseInt(mInput.trim()) - 1] || DEFAULT_MOBILE_FRAMEWORK;
-            }
-
-            process.stdout.write("\n[Available Color Palettes]:\n");
-            const palettes = ["Modern Blue", "Enterprise Slate", "Deep Purple"];
-            palettes.forEach((p, i) => process.stdout.write(`${i + 1}. ${p}\n`));
-            const palInput = await question("\nSelect (1-3) or Enter for \"Modern Blue\": ");
-            const selectedPalette = palettes[parseInt(palInput.trim()) - 1] || "Modern Blue";
-
-            return {
-                selectedDirs: [...p.dirs],
-                selectedAgents,
-                selectedPalette,
-                backendLanguage,
-                frontendFramework,
-                nativeLanguage,
-                mobileFramework,
-                focus: projectFocus as FocusKind,
-                language,
-            };
-        } finally { rl.close(); }
-    }
-
-    // Full interactive mode (no profile)
+async function runInteractiveInit(presetLanguage?: SupportedLanguage): Promise<InteractiveSelection> {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     const question = (query: string): Promise<string> => new Promise((resolve) => rl.question(query, resolve));
 
     try {
-        process.stdout.write("\n[PROFILE] Select a setup profile:\n");
-        process.stdout.write("1. Freelancer / Solo Developer (custom focus)\n");
-        process.stdout.write("2. Team (5-15 people, custom focus)\n");
-        process.stdout.write("3. Enterprise (15+ people, 13 agents)\n");
-        process.stdout.write("4. Custom (select everything manually)\n");
-        const profileInput = await question("\nSelect (1-4) or Enter for 'Custom': ");
-        const selectedProfile = profileInput.trim() || "4";
-
-        if (selectedProfile === "1") {
-            return await runInteractiveInit("freelancer");
-        }
-        if (selectedProfile === "2") {
-            return await runInteractiveInit("team");
-        }
-        if (selectedProfile === "3") {
-            return await runInteractiveInit("enterprise");
-        }
-
-        process.stdout.write("\n[LANG] Content language: English (project policy — English only outside README)\n");
+        // Content language is English-only (project policy). --lang is accepted but ignored for content.
         const language: SupportedLanguage = "en";
+        if (presetLanguage && presetLanguage !== "en") {
+            process.stdout.write(
+                `\n[LANG] Content language is English only (requested --lang ${presetLanguage} is ignored for generated content).\n`,
+            );
+        } else {
+            process.stdout.write("\n[LANG] Content language: English\n");
+        }
         const t = TRANSLATIONS[language];
 
         process.stdout.write(`\n[START] ${t.welcome}\n`);
+        process.stdout.write("\n[SETUP] Canonical setup: all 13 specialists + full governance (single setup option).\n");
 
-        process.stdout.write(`\n${t.select_backend}:\n`);
-        BACKEND_LANGUAGES.forEach((l, i) => process.stdout.write(`${i + 1}. ${l}\n`));
-        const bLangInput = await question(`\nSelect (1-${BACKEND_LANGUAGES.length}) or Enter for "${DEFAULT_BACKEND_LANGUAGE}": `);
-        const backendLanguage = BACKEND_LANGUAGES[parseInt(bLangInput.trim()) - 1] || DEFAULT_BACKEND_LANGUAGE;
+        // --- Project Focus Question ---
+        process.stdout.write("\n[PROJECT FOCUS] Select Project Focus:\n");
+        process.stdout.write("1. Fullstack (Web UI + Backend API)\n");
+        process.stdout.write("2. Backend-Only (API / Services)\n");
+        process.stdout.write("3. Frontend-Only (Web UI / SPA)\n");
+        process.stdout.write("4. Mobile-Only (Mobile Application)\n");
+        process.stdout.write("5. Mobile-Fullstack (Mobile Application + Backend API)\n");
+        const focusInput = await question("\nSelect (1-5) or Enter for 'Fullstack': ");
+        const projectFocus = focusInput.trim() === "2" ? "backend" :
+            focusInput.trim() === "3" ? "frontend" :
+                focusInput.trim() === "4" ? "mobile" :
+                    focusInput.trim() === "5" ? "mobile-fullstack" : "fullstack";
 
-        process.stdout.write(`\n${t.select_frontend}:\n`);
-        FRONTEND_FRAMEWORKS.forEach((f, i) => process.stdout.write(`${i + 1}. ${f}\n`));
-        const fFrameInput = await question(`\nSelect (1-${FRONTEND_FRAMEWORKS.length}) or Enter for "${DEFAULT_FRONTEND_FRAMEWORK}": `);
-        const frontendFramework = FRONTEND_FRAMEWORKS[parseInt(fFrameInput.trim()) - 1] || DEFAULT_FRONTEND_FRAMEWORK;
+        let backendLanguage = DEFAULT_BACKEND_LANGUAGE;
+        if (projectFocus !== "frontend" && projectFocus !== "mobile") {
+            process.stdout.write(`\n${t.select_backend}:\n`);
+            BACKEND_LANGUAGES.forEach((l, i) => process.stdout.write(`${i + 1}. ${l}\n`));
+            const bLangInput = await question(`\nSelect (1-${BACKEND_LANGUAGES.length}) or Enter for "${DEFAULT_BACKEND_LANGUAGE}": `);
+            backendLanguage = BACKEND_LANGUAGES[parseInt(bLangInput.trim()) - 1] || DEFAULT_BACKEND_LANGUAGE;
+        }
+
+        let frontendFramework = "Vanilla HTML/JS";
+        if (projectFocus !== "backend") {
+            process.stdout.write(`\n${t.select_frontend}:\n`);
+            FRONTEND_FRAMEWORKS.forEach((f, i) => process.stdout.write(`${i + 1}. ${f}\n`));
+            const fFrameInput = await question(`\nSelect (1-${FRONTEND_FRAMEWORKS.length}) or Enter for "${DEFAULT_FRONTEND_FRAMEWORK}": `);
+            frontendFramework = FRONTEND_FRAMEWORKS[parseInt(fFrameInput.trim()) - 1] || DEFAULT_FRONTEND_FRAMEWORK;
+        }
 
         process.stdout.write("\n[NATIVE / PLATFORM LAYER] Select the native/platform-tier language (Rust or Go - TypeScript is forbidden here):\n");
         NATIVE_LANGUAGES.forEach((n, i) => process.stdout.write(`${i + 1}. ${n}\n`));
         const nLangInput = await question(`\nSelect (1-${NATIVE_LANGUAGES.length}) or Enter for "${DEFAULT_NATIVE_LANGUAGE}": `);
         const nativeLanguage = NATIVE_LANGUAGES[parseInt(nLangInput.trim()) - 1] || DEFAULT_NATIVE_LANGUAGE;
 
-        process.stdout.write("\nAvailable Framework Directories:\n");
-        FRAMEWORK_SUBDIRS.forEach((d, i) => process.stdout.write(`${i + 1}. ${d}\n`));
-        const dirInput = await question(`\n${t.select_dirs} `);
-        const selectedDirs = dirInput ? dirInput.split(",").map(n => FRAMEWORK_SUBDIRS[parseInt(n.trim()) - 1]).filter(Boolean) : [...FRAMEWORK_SUBDIRS];
+        let mobileFramework = DEFAULT_MOBILE_FRAMEWORK;
+        if (projectFocus === "mobile" || projectFocus === "mobile-fullstack") {
+            process.stdout.write("\n[MOBILE FRAMEWORK] Select the mobile framework:\n");
+            MOBILE_FRAMEWORKS.forEach((m, i) => process.stdout.write(`${i + 1}. ${m}\n`));
+            const mInput = await question(`\nSelect (1-${MOBILE_FRAMEWORKS.length}) or Enter for "${DEFAULT_MOBILE_FRAMEWORK}": `);
+            mobileFramework = MOBILE_FRAMEWORKS[parseInt(mInput.trim()) - 1] || DEFAULT_MOBILE_FRAMEWORK;
+        }
 
-        process.stdout.write("\nAvailable Core Agents:\n");
-        ALL_AGENTS.forEach((a, i) => process.stdout.write(`${i + 1}. ${a.name}\n`));
-        const agentInput = await question(`\n${t.select_agents} `);
-        const selectedAgents = agentInput ? agentInput.split(",").map(n => ALL_AGENTS[parseInt(n.trim()) - 1].name).filter(Boolean) : ALL_AGENTS.map(a => a.name);
-
-        process.stdout.write("\nAvailable Color Palettes:\n");
+        process.stdout.write("\n[Available Color Palettes]:\n");
         const palettes = ["Modern Blue", "Enterprise Slate", "Deep Purple"];
         palettes.forEach((p, i) => process.stdout.write(`${i + 1}. ${p}\n`));
-        const palInput = await question(`\n${t.select_palette} `);
+        const palInput = await question("\nSelect (1-3) or Enter for \"Modern Blue\": ");
         const selectedPalette = palettes[parseInt(palInput.trim()) - 1] || "Modern Blue";
 
-        return { selectedDirs, selectedAgents, selectedPalette, backendLanguage, frontendFramework, nativeLanguage, mobileFramework: DEFAULT_MOBILE_FRAMEWORK, focus: "fullstack", language };
+        return {
+            selectedPalette,
+            backendLanguage,
+            frontendFramework,
+            nativeLanguage,
+            mobileFramework,
+            focus: projectFocus as FocusKind,
+        };
     } finally { rl.close(); }
 }
 
-export async function initCommand(adapterName: string, options: { unified?: boolean; dryRun?: boolean; yes?: boolean; profile?: InitProfile; focus?: string; language?: SupportedLanguage; backend?: string; frontend?: string; native?: string; mobile?: string; global?: boolean }) {
-    const rawAdapterId = (adapterName || "gemini");
+export interface InitOptions {
+    dryRun?: boolean;
+    yes?: boolean;
+    focus?: string;
+    language?: SupportedLanguage;
+    backend?: string;
+    frontend?: string;
+    native?: string;
+    mobile?: string;
+    global?: boolean;
+    importDocs?: boolean;
+}
+
+export async function initCommand(adapterName: string, options: InitOptions) {
+    // `all` compiles for every supported AI; anything else is a single-AI setup.
+    const isAll = adapterName === ALL_ADAPTERS_KEYWORD;
+    const rawAdapterId = isAll ? "claude" : (adapterName || "claude");
     const adapter = resolveAdapter(rawAdapterId);
 
     if (!adapter) {
-        UI.error(`Unknown adapter: ${rawAdapterId}`);
+        UI.error(`Unknown AI platform: ${rawAdapterId}. Supported: ${[...ADAPTER_IDS, ALL_ADAPTERS_KEYWORD].join(", ")}`);
         process.exit(1);
     }
 
     const adapterId = adapter.id;
 
     const projectRoot = process.cwd();
-    const isUnified = options.unified ?? true;
+    const isUnified = isAll;
 
     // STRICT ISOLATION STRATEGY
     const coreDir = ".atabey"; // Pure Memory & Knowledge
@@ -302,47 +194,38 @@ export async function initCommand(adapterName: string, options: { unified?: bool
     const dryRun = options.dryRun || false;
     const forceYes = options.yes || false;
 
-    UI.intent("Atabey Initialization", `Bootstrapping ${FRAMEWORK_NAME} (v${getPackageVersion()}) with ${adapterId} adapter...`);
+    UI.intent("Atabey Initialization", `Bootstrapping ${FRAMEWORK_NAME} (v${getPackageVersion()}) for ${isAll ? "all supported AI platforms" : `${adapterId} adapter`}...`);
 
-
-    let selectedDirs: string[];
-    let selectedAgents: string[];
     let selectedPalette: string;
     let backendLanguage: string;
     let frontendFramework: string;
     let nativeLanguage: string;
     let mobileFramework: string;
-    let language: SupportedLanguage;
     let resolvedFocus: FocusKind;
 
     if (forceYes) {
-        const profile = options.profile || "team";
         const focus = options.focus || "fullstack";
-        const p = PROFILES[profile];
-        selectedDirs = [...p.dirs];
-        selectedAgents = resolveAgentsByFocus(profile, focus);
         selectedPalette = "Modern Blue";
         backendLanguage = normalizeBackendLanguage(options.backend);
         frontendFramework = normalizeFrontendFramework(options.frontend);
         nativeLanguage = normalizeNativeLanguage(options.native);
         mobileFramework = normalizeMobileFramework(options.mobile);
-        language = options.language || "en";
         resolvedFocus = focus as FocusKind;
-        UI.success(`Non-interactive mode: ${profile} profile (${selectedAgents.length} agents, focus: ${focus}, language: ${language}).`);
+        UI.success(`Non-interactive mode: canonical setup (${CANONICAL_AGENTS.length} agents, focus: ${focus}).`);
         UI.success(`Stack: backend=${backendLanguage}, frontend=${frontendFramework}, mobile=${mobileFramework}, native=${nativeLanguage}.`);
     } else {
-        const result = await runInteractiveInit(options.profile, options.language);
-        selectedDirs = result.selectedDirs.filter(d => d !== "agents" && d !== "skills");
-        selectedAgents = result.selectedAgents;
+        const result = await runInteractiveInit(options.language);
         selectedPalette = result.selectedPalette;
         backendLanguage = result.backendLanguage;
         frontendFramework = result.frontendFramework;
         nativeLanguage = result.nativeLanguage;
         mobileFramework = result.mobileFramework ?? normalizeMobileFramework(options.mobile);
-        language = result.language;
         resolvedFocus = result.focus;
     }
 
+    const selectedDirs = [...CANONICAL_DIRS];
+    const selectedAgents = [...CANONICAL_AGENTS];
+    const language: SupportedLanguage = "en";
     const t = TRANSLATIONS[language];
 
     ensureDir(path.join(projectRoot, coreDir), dryRun);
@@ -355,6 +238,30 @@ export async function initCommand(adapterName: string, options: { unified?: bool
         adapter.nestedDirs.forEach(dir => ensureDir(path.join(projectRoot, aiToolDir, dir), dryRun));
     }
 
+    // Detect whether we are running inside the framework monorepo itself —
+    // consumer-only steps (app skeleton, doc import, package.json merge) skip.
+    let isFrameworkRepo = false;
+    try {
+        const rootPkgPath = path.join(projectRoot, "package.json");
+        if (fs.existsSync(rootPkgPath)) {
+            const rootPkg = JSON.parse(fs.readFileSync(rootPkgPath, "utf8")) as { frameworkRepo?: boolean; atabey?: { frameworkRepo?: boolean } };
+            isFrameworkRepo = Boolean(rootPkg.frameworkRepo || rootPkg.atabey?.frameworkRepo);
+        }
+    } catch {
+        isFrameworkRepo = false;
+    }
+
+    // Brownfield onboarding: absorb pre-existing user-written AI rule files
+    // (.cursorrules, a hand-written CLAUDE.md, CONVENTIONS.md, …) into the
+    // Atabey knowledge store and remove the scattered originals. This MUST run
+    // before scaffolding so Atabey's freshly generated shims are not eaten.
+    if (!isFrameworkRepo && !dryRun && isExistingProject(projectRoot)) {
+        const ingested = ingestLegacyAiFiles(projectRoot, coreDir, dryRun);
+        if (ingested.length > 0) {
+            UI.success(`Ingested ${ingested.length} legacy AI rule file(s): ${ingested.join(", ")}`);
+        }
+    }
+
     scaffoldConstitution(projectRoot, coreDir, adapterId, dryRun, language);
     scaffoldFrameworkConfigs(projectRoot, coreDir, adapter, dryRun, selectedPalette, {
         unified: isUnified,
@@ -363,7 +270,6 @@ export async function initCommand(adapterName: string, options: { unified?: bool
         frontendFramework,
         nativeLanguage,
         language,
-        profile: options.profile || (forceYes ? "team" : "custom"),
         agents: selectedAgents,
     });
 
@@ -392,18 +298,7 @@ export async function initCommand(adapterName: string, options: { unified?: bool
     scaffoldShims(projectRoot, coreDir, adapterId, adapter, dryRun, isUnified);
 
     // Generate the real application skeleton under apps/ based on the user's
-    // stack selection, unless running inside the framework monorepo itself.
-    let isFrameworkRepo = false;
-    try {
-        const rootPkgPath = path.join(projectRoot, "package.json");
-        if (fs.existsSync(rootPkgPath)) {
-            const rootPkg = JSON.parse(fs.readFileSync(rootPkgPath, "utf8")) as { frameworkRepo?: boolean; atabey?: { frameworkRepo?: boolean } };
-            isFrameworkRepo = Boolean(rootPkg.frameworkRepo || rootPkg.atabey?.frameworkRepo);
-        }
-    } catch {
-        isFrameworkRepo = false;
-    }
-
+    // stack selection (framework monorepo itself is excluded above).
     if (!isFrameworkRepo) {
         const appProjectName = path.basename(projectRoot).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "app";
         scaffoldApp(projectRoot, {
@@ -426,6 +321,39 @@ export async function initCommand(adapterName: string, options: { unified?: bool
 
     initializeMemory(path.join(projectRoot, coreDir), dryRun);
 
+    // Open the bootstrap trace (T-001) so PROJECT_MEMORY.md starts with an
+    // active task instead of empty tables (constitution RULE 2 / RULE 5).
+    if (!dryRun) {
+        try {
+            const existingTasks = Storage.getTasks();
+            if (existingTasks.length === 0) {
+                const bootstrapTraceId = "T-001";
+                updateDocumentStore("task", {
+                    traceId: bootstrapTraceId,
+                    description: "Atabey bootstrap: governance layer initialized, knowledge base authoritative.",
+                    agent: "manager",
+                    priority: "P2",
+                    status: "IN_PROGRESS",
+                    createdAt: new Date().toISOString(),
+                }, bootstrapTraceId, path.join(projectRoot, coreDir));
+                Storage.setMetadata("traceId", bootstrapTraceId);
+                UI.success("Bootstrap trace T-001 opened (active task initialized in project memory).");
+            }
+        } catch (e) {
+            UI.warning(`Could not open bootstrap trace: ${e}`);
+        }
+    }
+
+    // Import pre-existing root-level project docs into the Atabey knowledge
+    // base so everything stays under Atabey control.
+    if (!isFrameworkRepo && !dryRun) {
+        await importRootDocs(projectRoot, {
+            interactive: !forceYes,
+            autoImport: options.importDocs ?? false,
+            coreDir,
+        });
+    }
+
     if (!dryRun && !isFrameworkRepo) {
         const pkgJsonPath = path.join(projectRoot, "package.json");
         const sourcePkgPath = path.join(getPackageRoot(), "package.json");
@@ -445,10 +373,10 @@ export async function initCommand(adapterName: string, options: { unified?: bool
     UI.success(`\n[START] ${FRAMEWORK_NAME} (v${getPackageVersion()}) ${t.init_success}`);
     process.stdout.write(`\n- Brain & Memory Hub: ${coreDir}/\n`);
     process.stdout.write(`- AI Agent Commands: ${aiToolDir}/\n`);
-    process.stdout.write(`- Profile: ${options.profile || "custom"}\n`);
+    process.stdout.write(`- Setup: standard (${selectedAgents.length} agents${isUnified ? ", all AI platforms" : `, ${adapterId}`})\n`);
     process.stdout.write(`\n${t.next_steps}\n`);
     process.stdout.write("  1. Run 'npm install' to install dependencies.\n");
     process.stdout.write("  2. Run 'atabey status' to verify the environment.\n");
-    process.stdout.write("  3. Open your AI Assistant (Claude/Gemini/Cursor) and start using @agent commands.\n");
+    process.stdout.write("  3. Open your AI Assistant (Claude/Cursor/Codex) and start using @agent commands.\n");
     process.stdout.write("  4. Open your AI Assistant — MCP auto-starts the orchestrator. Optional: 'atabey orchestrate' for TUI.\n");
 }

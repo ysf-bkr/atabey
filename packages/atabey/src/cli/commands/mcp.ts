@@ -138,13 +138,13 @@ async function installMcpConfig() {
     process.stdout.write("[MCP] Installing Atabey MCP configuration...\n");
 
     const projectRoot = process.cwd();
-    writeRootMcpConfig(projectRoot);
+    writeRootMcpConfig(projectRoot, "claude");
 
     const configPath = path.resolve(projectRoot, MCP.ROOT_CONFIG_FILE);
     const entry = buildMcpServerEntry(projectRoot);
     process.stdout.write(`[OK] Created ${MCP.ROOT_CONFIG_FILE} at ${configPath}\n`);
     process.stdout.write(`[INFO] Transport: ${entry.env[MCP.TRANSPORT_ENV]} (IDE-compatible stdio)\n`);
-    process.stdout.write("[INFO] Used by Claude Code, Gemini CLI, Cursor, Codex, and Grok.\n");
+    process.stdout.write("[INFO] Used by Claude Code, Cursor, Codex/Copilot, and Grok.\n");
     process.stdout.write("[INFO] For HTTP/SSE unified mode: MCP_TRANSPORT=unified MCP_PORT=5858\n");
 }
 
