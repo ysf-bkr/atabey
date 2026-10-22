@@ -96,6 +96,26 @@ All notable changes to this project are documented in this file.
   updated for the current platform/config matrix; docs headers re-versioned to
   v0.1.6; lockfile re-synced to 0.1.6.
 
+### Git Discipline & Runtime Fixes (follow-up audit)
+- **Consumer .gitignore is now managed by init** (`updateGitIgnore` was dead
+  code — never called): compiled platform output (`.claude/`, `.agents/`,
+  `.cursor/`, root shims, `.mcp.json`, `opencode.json`) and machine-local state
+  (`.atabey/*.db`, `logs/`, `messages/`, locks, keys, `secrets.vault.json`) are
+  ignored, while the brain — `.atabey/` memory, knowledge, constitution,
+  permission matrix — is COMMITTED on purpose: it is the project's shared,
+  versioned state. Previously a consumer `git commit` tracked everything,
+  including the SQLite DB and the (encrypted) secrets vault.
+- **Port fallback actually works now** (two integration bugs fixed, found via
+  live testing): (1) attaching the Hermes WebSocketServer to a not-yet-listening
+  server corrupted the EADDRINUSE flow — the error bypassed every handler and
+  crashed the process; the bus now attaches only after the port is bound.
+  (2) the listening callback was queued once per retry attempt, printing the
+  startup banner and attaching the bus multiple times; it is now registered
+  exactly once.
+- Verified live: blocked port → `Port 39222 in use — falling back to port
+  39223` → single banner → `/mcp/health` reports the bound port, version and
+  project root.
+
 ### Deferred (documented, not fixed in this release)
 - Unifying the 3 `frameworkDir` resolvers and the duplicated compliance engine.
 - Removing the `utils/` re-export shim layer (roadmap S12).

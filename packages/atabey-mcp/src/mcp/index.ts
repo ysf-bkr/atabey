@@ -150,6 +150,12 @@ export function listenWithFallback(
 ): void {
     let attempt = 0;
 
+    // Register the success callback exactly ONCE: passing it to every
+    // server.listen() call would queue one 'listening' listener per attempt,
+    // firing the banner (and any post-listen setup) multiple times after a
+    // successful retry.
+    server.once("listening", onListening);
+
     const tryListen = (): void => {
         const candidate = preferredPort + attempt;
         server.once("error", (err: NodeJS.ErrnoException) => {
@@ -162,10 +168,18 @@ export function listenWithFallback(
                 tryListen();
                 return;
             }
-            // Re-emit: the outer httpServer.on("error") handler decides the fatal message.
-            server.emit("error", err);
+            // Exhausted (or strict mode): report and fail. Handled HERE — the
+            // outer httpServer error handler is transport-agnostic and must
+            // not race this listener on EADDRINUSE.
+            if (err.code === "EADDRINUSE") {
+                process.stderr.write(`\n[atabey-mcp] FATAL: All candidate ports (${preferredPort}..${preferredPort + MAX_PORT_FALLBACK_ATTEMPTS - 1}) are in use.\n`);
+                process.stderr.write(`[atabey-mcp] Please terminate the existing process or start with a different port using MCP_PORT=<port>.\n\n`);
+            } else {
+                process.stderr.write(`[atabey-mcp] Server error: ${err.message}\n`);
+            }
+            process.exit(1);
         });
-        server.listen(candidate, host, onListening);
+        server.listen(candidate, host);
     };
 
     tryListen();
@@ -314,17 +328,16 @@ function createUnifiedServer() {
 
     // ─── Hermes WSS Bus (distributed locks + inter-agent routing) ────
     // Zero extra dependency: reuses the same HTTP(S) server and `ws`.
-    const hermesBus = new HermesBus({ server: httpServer, path: "/bus" });
-    process.stderr.write(
-        `[atabey-mcp] Hermes WSS Bus attached at /bus (online: ${hermesBus.getStats().online.length})\n`,
-    );
+    // [FIX] Attached only AFTER the server is actually listening. Attaching a
+    // WebSocketServer to a not-yet-listening server corrupts the listen error
+    // flow: the EADDRINUSE emitted during port-fallback retries then bypasses
+    // every error handler and crashes the process as an uncaught exception.
 
     httpServer.on("error", (err: NodeJS.ErrnoException) => {
-        if (err.code === "EADDRINUSE") {
-            process.stderr.write(`\n[atabey-mcp] FATAL: All candidate ports (${PORT}..${PORT + MAX_PORT_FALLBACK_ATTEMPTS - 1}) are in use.\n`);
-            process.stderr.write(`[atabey-mcp] Please terminate the existing process or start with a different port using MCP_PORT=<port>.\n\n`);
-            process.exit(1);
-        } else {
+        // NOTE: EADDRINUSE is fully owned by listenWithFallback (port retry +
+        // final fatal report). Handling it here as well would race the retry
+        // listener and kill the process on the first busy port.
+        if (err.code !== "EADDRINUSE") {
             process.stderr.write(`[atabey-mcp] Server error: ${err.message}\n`);
             process.exit(1);
         }
@@ -336,6 +349,13 @@ function createUnifiedServer() {
     listenWithFallback(httpServer, PORT, HOST, strictPort, () => {
         const bound = httpServer.address();
         const boundPort = typeof bound === "object" && bound !== null ? bound.port : PORT;
+
+        // Hermes WSS Bus attaches once the port is bound (see note above).
+        const hermesBus = new HermesBus({ server: httpServer, path: "/bus" });
+        process.stderr.write(
+            `[atabey-mcp] Hermes WSS Bus attached at /bus (online: ${hermesBus.getStats().online.length})\n`,
+        );
+
         process.stderr.write("\n");
         process.stderr.write("╔══════════════════════════════════════════════════════╗\n");
         process.stderr.write("║        ATABEY MCP SERVER                             ║\n");

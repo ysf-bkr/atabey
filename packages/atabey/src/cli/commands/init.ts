@@ -13,6 +13,7 @@ import {
     type AdapterId,
 } from "../platforms/index.js";
 import { ensureDir } from "../utils/fs.js";
+import { updateGitIgnore } from "../utils/fs.js";
 import { Storage } from "../../shared/storage.js";
 import { initializeMemory, resolveProjectPaths, updateDocumentStore } from "../utils/memory.js";
 import { getPackageRoot, getPackageVersion, mergePackageJson } from "../utils/pkg.js";
@@ -360,6 +361,11 @@ export async function initCommand(adapterName: string, options: InitOptions) {
         const pkgJsonPath = path.join(projectRoot, "package.json");
         const sourcePkgPath = path.join(getPackageRoot(), "package.json");
         mergePackageJson(pkgJsonPath, sourcePkgPath);
+
+        // Git discipline: compiled platform output + machine-local state are
+        // ignored; the brain (.atabey memory/knowledge/constitution) stays
+        // committable so the project's shared state is versioned with the code.
+        updateGitIgnore(path.join(projectRoot, ".gitignore"), coreDir, dryRun);
     }
 
     // Automatic codebase indexing — RAG content index (knowledge table) plus

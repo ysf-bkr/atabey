@@ -21,36 +21,46 @@ describe("FileSystem Utilities", () => {
     });
 
     describe("updateGitIgnore", () => {
-        it("should create .gitignore and append all framework rules if file does not exist", () => {
+        it("should create .gitignore with the compiled-output + local-state split if file does not exist", () => {
             const gitignorePath = path.join(tempDir, ".gitignore");
 
-            updateGitIgnore(gitignorePath, ".gemini", false);
+            updateGitIgnore(gitignorePath, ".atabey", false);
 
             expect(fs.existsSync(gitignorePath)).toBe(true);
             const content = fs.readFileSync(gitignorePath, "utf8");
-            expect(content).toContain("# Atabey");
-            expect(content).toContain(".gemini/logs/*.json");
-            expect(content).toContain(".gemini/memory/");
+            // Compiled platform output is ignored…
+            expect(content).toContain("/.claude/");
+            expect(content).toContain("/.agents/");
+            expect(content).toContain("/CLAUDE.md");
+            expect(content).toContain("/.mcp.json");
+            // …machine-local state is ignored…
+            expect(content).toContain("/.atabey/*.db");
+            expect(content).toContain("/.atabey/logs/");
+            expect(content).toContain("/.atabey/secrets.vault.json");
+            // …and the memory/knowledge brain must NOT be ignored.
+            expect(content).not.toContain("/.atabey/memory/");
+            expect(content).not.toMatch(/^\/\.atabey\/$/m);
+            expect(content).not.toContain(".atabey/knowledge/");
         });
 
         it("should not append duplicate lines to an existing .gitignore", () => {
             const gitignorePath = path.join(tempDir, ".gitignore");
-            fs.writeFileSync(gitignorePath, "# AI-Atabey\n.gemini/logs/*.json\n");
+            fs.writeFileSync(gitignorePath, "# AI-Atabey\n/.claude/\n");
 
-            updateGitIgnore(gitignorePath, ".gemini", false);
+            updateGitIgnore(gitignorePath, ".atabey", false);
 
             const content = fs.readFileSync(gitignorePath, "utf8");
             // Count occurrences of '# AI-Atabey'
             const occurrences = (content.match(/# AI-Atabey/g) || []).length;
             expect(occurrences).toBe(1);
-            expect(content).toContain(".gemini/*.lock"); // Added missing one
+            expect(content).toContain("/.atabey/*.lock"); // Added missing one
         });
 
         it("should respect dryRun mode", () => {
             const gitignorePath = path.join(tempDir, ".gitignore");
             const stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
 
-            updateGitIgnore(gitignorePath, ".gemini", true);
+            updateGitIgnore(gitignorePath, ".atabey", true);
 
             expect(fs.existsSync(gitignorePath)).toBe(false);
             expect(stdoutSpy).toHaveBeenCalled();
