@@ -49,6 +49,7 @@ import {
 import { TRANSLATIONS, type SupportedLanguage } from "../utils/i18n.js";
 import { importRootDocs } from "./init/import-docs.js";
 import { ingestLegacyAiFiles, isExistingProject } from "../utils/onboarding.js";
+import { indexCodebase } from "./index-codebase.js";
 
 const FRAMEWORK_NAME = "Atabey";
 
@@ -169,6 +170,7 @@ export interface InitOptions {
     mobile?: string;
     global?: boolean;
     importDocs?: boolean;
+    skipIndex?: boolean;
 }
 
 export async function initCommand(adapterName: string, options: InitOptions) {
@@ -358,6 +360,25 @@ export async function initCommand(adapterName: string, options: InitOptions) {
         const pkgJsonPath = path.join(projectRoot, "package.json");
         const sourcePkgPath = path.join(getPackageRoot(), "package.json");
         mergePackageJson(pkgJsonPath, sourcePkgPath);
+    }
+
+    // Automatic codebase indexing — RAG content index (knowledge table) plus
+    // the incremental symbol/import graph, so agents can answer "what does
+    // this code do / where is X defined" from the DB without re-scanning.
+    // Skipped in the framework monorepo (its own packages/* is not consumer
+    // app code) and with --skip-index.
+    if (!isFrameworkRepo && !dryRun && !options.skipIndex) {
+        try {
+            UI.success("[RAG] Indexing codebase into Vector Memory + symbol graph...");
+            const indexResult = await indexCodebase(projectRoot);
+            UI.success(
+                `[RAG] Indexed ${indexResult.filesIndexed}/${indexResult.filesFound} files into Core Memory; ` +
+                `symbol graph: ${indexResult.graphFiles} files, ${indexResult.graphSymbols} symbols, ${indexResult.graphImports} imports.`
+            );
+        } catch (e) {
+            UI.warning(`[RAG] Automatic indexing skipped: ${e}`);
+            UI.warning("[RAG] Run 'atabey index' manually to build the Vector Memory index.");
+        }
     }
 
     if (!dryRun) {

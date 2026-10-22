@@ -51,6 +51,13 @@ All notable changes to this project are documented in this file.
   `--import-docs`.
 - **Bootstrap trace T-001:** a fresh init opens the first active task in project
   memory instead of leaving empty tables.
+- **Automatic RAG indexing:** init now indexes the codebase into Vector Memory
+  (content + tags, TF-IDF/OpenAI embeddings, FTS) and the incremental
+  symbol/import graph, so agents answer "what does this code do / where is X
+  defined" from the local DB without re-scanning. `--skip-index` opts out;
+  `atabey index` rebuilds manually. The `packages/` directory is only excluded
+  inside the Atabey framework monorepo itself — consumer monorepos are fully
+  indexed.
 - `atabey:setup` script now runs `atabey init all --yes`.
 
 ### Documentation

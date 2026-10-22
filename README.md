@@ -473,6 +473,7 @@ Compiles the agent set into every platform's native format under the unified
 | **Skills** | `skills/<slug>/SKILL.md` directory format with YAML frontmatter (auto-discoverable) |
 | **Memory** | Bootstrap trace **T-001** opened automatically (active task from the first minute) |
 | **Existing docs** | Root-level project docs are offered for import into `.atabey/knowledge/imported/` |
+| **RAG index** | Init automatically indexes the codebase into Vector Memory (TF-IDF/OpenAI) + an incremental symbol/import graph — agents answer "what does this code do / where is X defined" from the local DB without re-scanning. Skip with `--skip-index`; rebuild manually with `atabey index` |
 
 ### Stack-Based Application Scaffolding
 
@@ -882,6 +883,7 @@ atabey quickstart               Generate example task file
 | `--native` | `rust`, `go` | Native/platform-tier language (TypeScript is forbidden for this tier) |
 | `--lang` | `tr`, `en` | Deprecated no-op (kept for backward compatibility) — all generated content is English-only |
 | `--import-docs` | Flag | Non-interactive: import root-level project docs into `.atabey/knowledge/imported/` and remove the root copies |
+| `--skip-index` | Flag | Skip the automatic post-init RAG + symbol-graph indexing (`atabey index` does it manually) |
 | `--global` | Flag | Also register MCP in user-level configs (`~/.claude.json`, `~/.gemini/antigravity-cli/`). Off by default — project files only. |
 | `--yes` | Flag | Non-interactive mode |
 
@@ -1543,6 +1545,7 @@ Her tool çağrısı gerçek `cl100k_base` BPE tokenizer ile ölçülür; sağla
 | `EADDRINUSE: 5858` | Sunucu artık otomatik olarak bir sonraki boş porta geçer (5858→5878). Sıkı mod: `ATABEY_PORT_STRICT=true` |
 | Ajanlar arayüzde görünmüyor | `atabey init <ai>` ile yeniden derleyin — agent `.md` dosyaları artık YAML frontmatter ile üretilir |
 | Skill'ler keşfedilmiyor | `atabey init` çalıştırın — skills artık `skills/<slug>/SKILL.md` klasör formatında |
+| Ajanlar "bu kod ne yapıyor" diyerek tüm kodu tarıyor | Init sonrası otomatik RAG indekslemesi çalışmalı; elle tetiklemek için `atabey index` (atlamak için: `--skip-index`) |
 
 Detaylı İngilizce bölüm: [Troubleshooting](#troubleshooting)
 

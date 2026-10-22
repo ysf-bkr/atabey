@@ -90,9 +90,10 @@ const COMMANDS: Record<string, { run: (args: string[]) => Promise<void>; descrip
                 mobile,
                 global: args.includes("--global"),
                 importDocs: args.includes("--import-docs"),
+                skipIndex: args.includes("--skip-index"),
             });
         },
-        description: "Initialize Atabey for one AI platform (claude|cursor|codex|grok|local|antigravity-cli|opencode) or all of them (all) [--focus fullstack|backend|frontend|mobile] [--backend node|go|java|python|dotnet|rust] [--frontend vite|next|vanilla] [--mobile react-native|flutter] [--native rust|go] [--import-docs] [--global]",
+        description: "Initialize Atabey for one AI platform (claude|cursor|codex|grok|local|antigravity-cli|opencode) or all of them (all) [--focus fullstack|backend|frontend|mobile] [--backend node|go|java|python|dotnet|rust] [--frontend vite|next|vanilla] [--mobile react-native|flutter] [--native rust|go] [--import-docs] [--skip-index] [--global]",
     },
     mcp: {
         run: async (args) => { await mcpCommand(args); },
@@ -429,6 +430,7 @@ Core Commands:
   init all                                               Initialize for ALL supported AIs
   init [ai] [--backend go --frontend next --native rust]  Choose stack (--yes)
   init [ai] [--import-docs]                              Import root .md docs into Atabey knowledge
+  init [ai] [--skip-index]                               Skip the automatic RAG/symbol-graph indexing
   init [ai] [--global]                                   Also register MCP in user-level AI configs
   mcp start|install|status                               MCP server management
   orchestrate                                            Start orchestration loop

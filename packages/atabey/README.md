@@ -223,6 +223,7 @@ atabey quickstart            Generate an example task file
 | `--backend` / `--frontend` / `--native` | `node|go|java|python|dotnet|rust` / `vite|next|vanilla` / `rust|go` | Application-tier scaffolding |
 | `--lang` | `tr`, `en` | Deprecated no-op (kept for backward compatibility) — all generated content is English-only |
 | `--import-docs` | Flag | Non-interactive: import root-level project docs into `.atabey/knowledge/imported/` |
+| `--skip-index` | Flag | Skip the automatic post-init RAG + symbol-graph indexing |
 | `--yes` | Flag | Non-interactive mode |
 
 > One canonical setup: all 13 specialists, strictest governance posture — no freelancer/team/enterprise profiles.
