@@ -35,6 +35,7 @@
     "node": ">=22.0.0"
   },
   "scripts": {
+    "prebuild": "node -e \"const fs=require('fs');for(const p of ['packages/shared/dist','packages/atabey/dist','packages/atabey-mcp/dist'])fs.rmSync(p,{recursive:true,force:true});console.log('[build] dist dirs cleaned');\"",
     "build": "npm run build --workspaces",
     "build:atabey": "npm run build -w packages/atabey",
     "build:mcp": "npm run build -w packages/atabey-mcp",
@@ -53,7 +54,7 @@
     "clean": "node scripts/clean.mjs",
     "atabey:status": "atabey status",
     "atabey:check": "atabey check",
-    "atabey:setup": "atabey init all --yes",
+    "atabey:setup": "atabey init local --yes",
     "atabey:orchestrate": "atabey orchestrate",
     "atabey:test": "vitest run",
     "atabey:build": "npm run build --workspaces",

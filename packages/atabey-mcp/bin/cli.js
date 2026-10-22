@@ -14,7 +14,7 @@ const ERRORS = {
 ║  🚧  Atabey MCP is not built yet                         ║
 ╠══════════════════════════════════════════════════════════╣
 ║  The compiled MCP server was not found at:               ║
-║    dist/mcp/index.js                                     ║
+║    dist/atabey-mcp/src/mcp/index.js                     ║
 ║                                                          ║
 ║  📋  To fix this, run:                                   ║
 ║     npm run build                                        ║

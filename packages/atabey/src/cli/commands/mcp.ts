@@ -163,19 +163,21 @@ function showMcpHelp() {
 Usage: atabey mcp <subcommand>
 
 Subcommands:
-  start     Start the MCP server (Stdio transport) — connects to Claude/Gemini/Cursor
-  install   Generate a local mcp.json configuration for AI interfaces
+  start     Start the MCP server (Stdio transport) — connects to Claude/Cursor/Codex
+  install   Generate the root .mcp.json configuration for AI interfaces
   status    Check the health and build status of the MCP server
   help      Show this help message
 
 About MCP Integration:
   Atabey connects to AI interfaces via the Model Context Protocol (MCP).
-  Supported platforms:
-    - Claude Code    (reads mcp.json)
-    - Gemini CLI     (reads mcp.json)
+  Supported platforms and their native config:
+    - Claude Code    (reads .mcp.json)
     - Cursor         (reads .cursor/mcp.json)
-    - Codex CLI      (reads mcp.json)
-    - Antigravity CLI
+    - Codex CLI      (reads .mcp.json)
+    - Grok           (reads .grok/mcp_config.json)
+    - Antigravity CLI(reads .agents/mcp_config.json)
+    - OpenCode       (reads opencode.json)
+    - Local LLM      (reads .atabey/mcp_config.json)
 
   Once connected, you can use @agent syntax in your AI chat:
     @backend Create a user login service

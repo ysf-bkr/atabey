@@ -121,15 +121,15 @@ describe("sandbox-runtime (local OS isolation)", () => {
         );
     });
 
-    it("defaults required=true when ATABEY_PROFILE=enterprise or NODE_ENV=production", () => {
-        const prevProfile = process.env.ATABEY_PROFILE;
+    it("defaults required=true when NODE_ENV=production", () => {
+        const prevNodeEnv = process.env.NODE_ENV;
         try {
-            process.env.ATABEY_PROFILE = "enterprise";
+            process.env.NODE_ENV = "production";
             const cfg = resolveSandboxRuntimeConfig("/tmp/project");
             expect(cfg.required).toBe(true);
         } finally {
-            if (prevProfile === undefined) delete process.env.ATABEY_PROFILE;
-            else process.env.ATABEY_PROFILE = prevProfile;
+            if (prevNodeEnv === undefined) delete process.env.NODE_ENV;
+            else process.env.NODE_ENV = prevNodeEnv;
         }
     });
 

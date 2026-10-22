@@ -55,6 +55,10 @@ export function handleRunTests(projectRoot: string, args: RunTestsArgs): ToolRes
             cwd,
             encoding: "utf8",
             stdio: "pipe",
+            // Hard execution timeout — a hung test runner must never block the
+            // agent loop indefinitely (configurable, 10 minutes default).
+            timeout: parseInt(process.env.ATABEY_TEST_TIMEOUT_MS || "600000", 10),
+            maxBuffer: 10 * 1024 * 1024,
             env: {
                 ...scrubEnvForSubprocess(process.env),
                 // Circuit breaker: never hang on an interactive prompt.

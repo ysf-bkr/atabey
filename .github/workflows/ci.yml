@@ -126,5 +126,5 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && matrix.node-version == '22.x'
         with:
           name: coverage-report
-          path: coverage/
+          path: packages/*/coverage/
           retention-days: 7

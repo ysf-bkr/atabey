@@ -60,6 +60,49 @@ All notable changes to this project are documented in this file.
   indexed.
 - `atabey:setup` script now runs `atabey init all --yes`.
 
+### Security & Correctness (full-project audit fixes)
+- **Hub bridge isolation:** a stdio MCP process no longer silently attaches to
+  whatever hub answers on 5858. Bridging now requires `ATABEY_ALLOW_HUB_BRIDGE=true`
+  AND a verified match of project root AND server version (both exposed via
+  `/mcp/health`). Cross-project tool-call leakage and hub hijacking are closed.
+- **RBAC hardening:** `.atabey/config.json`, `.atabey/*.db`, `.atabey/agents/*.md`
+  and `ATABEY.md` are protected write paths in BOTH the MCP permissions layer and
+  the shared PolicyGate (governance self-modification closed). Anonymous callers
+  on the network (unified) transport are now default-DENY.
+- **Shell hardening:** `isWriteCommand` recognizes formatters and stash/clean
+  (`go fmt`, `cargo fmt`, `dotnet format`, `ruff format`, `git stash`, ...);
+  `run_shell_command` argument strings are scanned for protected/secret paths
+  (`mv .env .env.bak`, `cat .env` are denied).
+- **`check_lint` no longer uses a shell:** `execFile` with `shell:false` and
+  argv splitting — shell metacharacters cannot be smuggled through lint commands.
+- **`run_tests` hard timeout:** 10-minute default (`ATABEY_TEST_TIMEOUT_MS`) so a
+  hung test runner can never block the agent loop.
+- **Single-AI re-init no longer deletes other AIs' setups:** `.grok/` and
+  `.opencode/` removed from the legacy-cleanup list (only the obsolete `.gemini/`
+  is cleaned); Atabey-managed shims are no longer unlinked during brownfield
+  ingestion.
+- **Retention boot order:** data-retention cleanup starts only after the audit
+  schema exists — the "no such table: audit_log" error on fresh installs is gone.
+- **`atabey check` regression:** the MCP-config check accepts `.mcp.json` (or the
+  local adapter config) and a regression test now covers init → check exit 0.
+- **Env surface:** generated `.env.example` defaults `MCP_HOST=127.0.0.1`
+  (was the network-exposed `0.0.0.0`); root `.env.example` documents 86 variables
+  (was 40) and no longer tells users to "copy to .env" (no dotenv loader exists).
+- **Removed `ATABEY_PROFILE`** leftovers (profile system is gone; production
+  hardening now keys off `NODE_ENV=production` only).
+- **Ops:** `prebuild` cleans stale `dist/` artifacts; release workflow no longer
+  swallows `npm publish` failures (`|| true` removed); CI uploads the real
+  coverage path (`packages/*/coverage/`); `mcp help` and `bin/cli.js` messages
+  updated for the current platform/config matrix; docs headers re-versioned to
+  v0.1.6; lockfile re-synced to 0.1.6.
+
+### Deferred (documented, not fixed in this release)
+- Unifying the 3 `frameworkDir` resolvers and the duplicated compliance engine.
+- Removing the `utils/` re-export shim layer (roadmap S12).
+- Syncing agent frontmatter tool lists with the full 40-tool MCP surface.
+- Side-effect-free package entry (`main`/`exports` currently start the CLI).
+- Breaking the `atabey ↔ atabey-mcp` circular dependency.
+
 ### Documentation
 - README (EN + TR) and package README templates updated for the new CLI surface,
   per-AI setup guide, single-config matrix and a new Troubleshooting section.

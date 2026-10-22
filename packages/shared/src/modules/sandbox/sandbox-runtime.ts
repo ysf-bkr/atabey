@@ -88,8 +88,7 @@ export function resolveDefaultSandboxRequired(_mode: SandboxRuntimeMode = "auto"
     if (envBool("ATABEY_ALLOW_UNSANDBOXED", false)) {
         return false;
     }
-    const profile = (process.env.ATABEY_PROFILE || "").toLowerCase();
-    if (process.env.NODE_ENV === "production" || profile === "enterprise") {
+    if (process.env.NODE_ENV === "production") {
         return true;
     }
     const isTestEnv = Boolean(process.env.VITEST) || process.env.NODE_ENV === "test";

@@ -14,7 +14,7 @@
 
 | Capability | Description |
 |-----------|-------------|
-| **CLI** | 27 commands for initialization, orchestration, status, compliance and memory |
+| **CLI** | 31 commands for initialization, orchestration, status, compliance and memory |
 | **Engines** | 9 engines: routing, risk, quality, evaluation, health, planning, agent-executor, agent-loop, crud-governance |
 | **Agents** | 13 specialized agent definitions with a 3-tier hierarchy (Supreme / Core / Recon) |
 | **Runtime** | Headless CLI adapters, DAG dispatcher, git-worktree isolation, signed evidence bundles |
@@ -198,7 +198,7 @@ atabey quickstart            Generate an example task file
 packages/atabey/
 ├── src/
 │   ├── cli/
-│   │   ├── commands/    # 27 CLI commands
+│   │   ├── commands/    # 31 CLI commands
 │   │   ├── platforms/   # 7 platform adapters
 │   │   └── utils/       # CLI utilities (compliance, memory, pkg, config)
 │   ├── modules/

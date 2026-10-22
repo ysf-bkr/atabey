@@ -1,6 +1,6 @@
 # 🗺️ Atabey — Project Roadmap
 
-**Atabey** is an **AI Engineering Control Plane** ("Chief Engineer & Verification Layer") sitting above AI coding tools and models (Claude Code, Gemini CLI, Cursor, Codex, Local LLMs). Rather than acting as a prompt-to-toy-app builder, Atabey governs existing (brownfield) repositories across **4 Core Pillars**:
+**Atabey** is an **AI Engineering Control Plane** ("Chief Engineer & Verification Layer") sitting above AI coding tools and models (Claude Code, Cursor, Codex, Grok, Local LLMs). Rather than acting as a prompt-to-toy-app builder, Atabey governs existing (brownfield) repositories across **4 Core Pillars**:
 1. **Remember (Project Brain & Code Graph):** Symbol/import/API graph + ADR memory to eliminate full-repo re-scanning.
 2. **Bound (Security, Privacy & Token Limits):** Secret vault, PII masking, fail-closed `PolicyGate`, HITL approval gate, and per-provider token/rate ceilings.
 3. **Coordinate (Isolated Execution):** DAG wave dispatcher (`AgentDispatcher`) + isolated Git worktrees and sandboxes (`AgentRuntime`) executing a focused **Plan → Code → Verify** workflow.
@@ -10,7 +10,7 @@
 
 ## 📈 Completed: `PHASE_0` & Core Hardening
 - [x] **Core Governance & Security:** Fail-closed `PolicyGate`, universal tool permission matrix, AES-256-GCM `SecretManager` vault, TLS 1.3 + mTLS transport, and keyed HMAC-SHA256 immutable audit chain.
-- [x] **Stateless MCP Server (40 Tools):** Consolidated, strictly typed MCP tool surface across Claude Code, Gemini CLI, Cursor, Antigravity, OpenCode, and Codex with 36 synchronized enterprise standards.
+- [x] **Stateless MCP Server (40 Tools):** Consolidated, strictly typed MCP tool surface across Claude Code, Cursor, Antigravity, OpenCode, Codex, and Grok with 36 synchronized enterprise standards.
 - [x] **Static Compliance & Token Limits:** TypeScript Compiler API AST scanner (`ast-scan.ts`), pre-write validation, real `cl100k_base` BPE tokenizer (`js-tiktoken`), and a multi-provider token pricing catalog (informational).
 - [x] **Unified HTTP/SSE Control Plane:** JSON API + real-time WebSocket event stream (agents, Hermes, approvals, token telemetry); HITL approval via CLI/API. (The bundled React web UI was removed in favour of the headless API.)
 - [x] **Agent Runtime P0 & DAG Dispatcher Core:** `HeadlessCliAdapter`, `AgentRuntime.runTurn`, per-agent Git worktree isolation (`worktree.ts`), fail-closed sandbox execution, OTel spans, and Kahn-wave `AgentDispatcher` (`dispatcher.ts`).

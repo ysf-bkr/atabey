@@ -49,9 +49,9 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          npm publish -w packages/shared --access public --provenance || true
-          npm publish -w packages/atabey --access public --provenance || true
-          npm publish -w packages/atabey-mcp --access public --provenance || true
+          npm publish -w packages/shared --access public --provenance
+          npm publish -w packages/atabey --access public --provenance
+          npm publish -w packages/atabey-mcp --access public --provenance
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

@@ -236,12 +236,20 @@ function isWriteCommand(parsed: { cmd: string; args: string[] }): boolean {
     if (cmd === "npm" && ["install", "ci", "audit", "run"].includes(firstArg)) return true;
     if (cmd === "yarn" && ["install", "run"].includes(firstArg)) return true;
     if (cmd === "pnpm" && ["install", "run"].includes(firstArg)) return true;
-    
-    if (cmd === "git" && ["add", "commit", "push", "pull", "merge", "rebase", "checkout", "reset"].includes(firstArg)) return true;
-    
-    if (cmd === "dotnet" && ["build", "run", "restore"].includes(firstArg)) return true;
-    if (cmd === "go" && ["build", "run", "mod"].includes(firstArg)) return true;
-    if (cmd === "cargo" && ["build", "check"].includes(firstArg)) return true;
+
+    if (cmd === "git" && ["add", "commit", "push", "pull", "merge", "rebase", "checkout", "reset", "stash", "clean"].includes(firstArg)) return true;
+
+    if (cmd === "dotnet" && ["build", "run", "restore", "format"].includes(firstArg)) return true;
+    if (cmd === "go" && ["build", "run", "mod", "fmt", "generate", "fix"].includes(firstArg)) return true;
+    if (cmd === "cargo" && ["build", "check", "fmt", "fix", "generate"].includes(firstArg)) return true;
+
+    // Formatters mutate source files on disk — they are writes, not reads.
+    if (["rustfmt", "gofmt", "black", "ruff", "prettier", "eslint", "stylelint"].includes(cmd)) {
+        const mutating = ["", "--fix", "--write", "format", "fmt"];
+        if (mutating.includes(firstArg) || parsed.args.includes("--fix") || parsed.args.includes("--write")) return true;
+    }
+    if (cmd === "ruff" && firstArg === "format") return true;
+    if (cmd === "prettier" && (firstArg === "--write" || firstArg === "-w" || parsed.args.includes("--write"))) return true;
 
     return false;
 }

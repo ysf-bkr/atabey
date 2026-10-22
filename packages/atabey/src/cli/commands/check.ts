@@ -78,7 +78,7 @@ export async function checkCommand() {
         { name: "Command Map (cli-commands.json)", path: path.join(frameworkDir, "cli-commands.json") },
         { name: "Framework Config (config.json)", path: path.join(frameworkDir, "config.json") },
         { name: "Agent Status (STATUS.md)", path: path.join(frameworkDir, "STATUS.md") },
-        { name: "MCP Config (mcp.json)", path: "mcp.json" },
+        { name: `MCP Config (${MCP.ROOT_CONFIG_FILE})`, path: MCP.ROOT_CONFIG_FILE, alt: path.join(FRAMEWORK.CORE_DIR, "mcp_config.json") },
         { name: "ESLint Config (eslint.config.js)", path: "eslint.config.js", optional: !isFrameworkDevelopment },
         { name: "ESLint Standards", path: path.join(frameworkDir, `${knowledgeDir}/eslint-standards.md`) },
         { name: "CRUD Governance Standards", path: path.join(frameworkDir, `${knowledgeDir}/crud-governance.md`) },
@@ -106,7 +106,10 @@ export async function checkCommand() {
     for (const check of checks) {
         if ("skip" in check && check.skip) continue;
         const fullPath = path.isAbsolute(check.path) ? check.path : path.join(process.cwd(), check.path);
-        if (fs.existsSync(fullPath)) {
+        // `alt`: an alternative location that also satisfies the check (e.g. the
+        // local-adapter MCP config inside .atabey/ on minimal framework setups).
+        const altPath = "alt" in check && check.alt ? path.join(process.cwd(), check.alt) : null;
+        if (fs.existsSync(fullPath) || (altPath !== null && fs.existsSync(altPath))) {
             UI.success(`${check.name} found.`);
         } else {
             if (check.optional) {

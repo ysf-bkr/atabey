@@ -1,6 +1,6 @@
 # Atabey Threat Model
 
-**Version:** v0.1.5  
+**Version:** v0.1.6  
 **Date:** 2026-10-22  
 **Scope:** MCP tool surface, local `.atabey/` state, shell execution, host bypass vectors, agent lifecycle  
 **Methodology:** STRIDE & Defense-in-Depth
@@ -16,7 +16,7 @@ Atabey is a deterministic control plane. The core threat assumption is:
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │                    HOST AI ASSISTANT (UNTRUSTED)             │
-│            Claude Code / Gemini CLI / Cursor / Grok          │
+│            Claude Code / Cursor / Codex / Grok          │
 └──────────────────────────────┬───────────────────────────────┘
                                │ MCP Protocol (JSON-RPC)
                                ▼

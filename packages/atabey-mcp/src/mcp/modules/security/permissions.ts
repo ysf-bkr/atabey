@@ -156,6 +156,16 @@ const SUPREME_PROTECTED_WRITE_PATTERNS: RegExp[] = [
     /(^|\/)\.atabey\/audit-hmac\.key$/i,
     /(^|\/)\.atabey\/master\.key$/i,
     /(^|\/)\.atabey\/secrets\.vault\.json$/i,
+    // [SECURITY] Governance self-modification & state tampering: the config
+    // file itself controls auth/sandbox/policy posture — no agent may rewrite it.
+    /(^|\/)\.atabey\/config\.json$/i,
+    // SQLite state (memory, tasks, audit, RBAC matrix cache) must not be edited as a file.
+    /(^|\/)\.atabey\/[^/]+\.db$/i,
+    /(^|\/)\.atabey\/[^/]+\.db-(wal|shm)$/i,
+    // Agent instruction files define the specialists themselves — regenerating
+    // them is an init-only operation, not an agent tool call.
+    /(^|\/)\.atabey\/agents\/[^/]+\.md$/i,
+    /(^|\/)\.atabey\/ATABEY\.md$/i,
     /\.pem$/i,
     /\.key$/i,
 ];
@@ -231,8 +241,21 @@ function enforcePermission(
             : null
     );
 
-    // No active agent identified → default-allow (non-agent call, e.g. CLI tools)
-    if (!resolved) return;
+    // No active agent identified.
+    // - stdio (local IDE/CLI spawned by the human developer): allow — the call
+    //   is a direct human-driven tool invocation, not an autonomous agent.
+    // - unified (HTTP/SSE, potentially remote): default-DENY. Anonymous
+    //   network callers must not bypass RBAC; require an agent identity or an
+    //   explicit matrix rule.
+    if (!resolved) {
+        if (process.env.MCP_TRANSPORT === "unified") {
+            throw new Error(
+                "Permission Denied: no agent identity on a network (unified) transport. " +
+                "Provide an agent identity (ATABEY_ACTIVE_AGENT) or call via the local stdio transport.",
+            );
+        }
+        return;
+    }
 
     const activeAgent = resolved;
     const tier = getAgentTier(activeAgent);
@@ -257,8 +280,7 @@ function enforcePermission(
         // Fall through to glob check below
     }
 
-    const isDenyByDefault = process.env.ATABEY_PERMISSIONS_DENY_BY_DEFAULT === "true" ||
-                            process.env.ATABEY_PROFILE === "enterprise";
+    const isDenyByDefault = process.env.ATABEY_PERMISSIONS_DENY_BY_DEFAULT === "true";
 
     // No matrix file → default-allow (unless strict deny-by-default mode is enabled)
     if (!matrix) {

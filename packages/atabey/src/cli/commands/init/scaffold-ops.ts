@@ -119,7 +119,25 @@ export function scaffoldOps(frameworkDir: string, dryRun: boolean) {
     // Scaffold .env.example
     const envExamplePath = path.join(process.cwd(), ".env.example");
     if (!fs.existsSync(envExamplePath)) {
-        writeTextFile(envExamplePath, "# Atabey - Environment Variables\n\n# Core Settings\nMCP_PORT=5858\nMCP_HOST=0.0.0.0\nNODE_ENV=development\n\n# Security\n# MCP_AUTH_TOKEN=\n\n# AI Provider Keys (optional - for embeddings)\n# OPENAI_API_KEY=\n");
+        // [SECURITY] MCP_HOST must default to the loopback interface — 0.0.0.0
+        // would expose the hub (and its file tools) to the whole network.
+        writeTextFile(envExamplePath, [
+            "# Atabey — Environment Variables",
+            "# NOTE: Atabey does not auto-load .env files; export these variables",
+            "# in your shell or IDE launch environment instead.",
+            "",
+            "# Core Settings",
+            "MCP_PORT=5858",
+            "MCP_HOST=127.0.0.1",
+            "NODE_ENV=development",
+            "",
+            "# Security",
+            "# MCP_AUTH_TOKEN=",
+            "",
+            "# AI Provider Keys (optional — for embeddings)",
+            "# OPENAI_API_KEY=",
+            "",
+        ].join("\n"));
     }
 
     // Scaffold rules

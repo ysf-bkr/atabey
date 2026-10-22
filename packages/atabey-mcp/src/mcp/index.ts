@@ -303,6 +303,7 @@ function createUnifiedServer() {
                 sessions,
                 createServer: createMcpServer,
                 broadcastWS,
+                projectRoot: PROJECT_ROOT,
             });
         } catch (e) {
             process.stderr.write(`[SERVER ERROR] ${(e as Error).message}\n`);
@@ -386,13 +387,29 @@ async function run() {
             const { probeHubHealth, runStdioBridge } = await import("./utils/hub-discovery.js");
             const existingHub = await probeHubHealth(PORT, HOST);
 
-            if (existingHub) {
-                process.stderr.write(`[atabey-mcp] Active Primary Hub detected on port ${PORT} (sessions: ${existingHub.sessions}). Attaching as Stdio Bridge...\n`);
+            // [SECURITY] Bridge ONLY when the existing hub provably serves THIS
+            // project at a compatible version, and the user opted in. Otherwise
+            // a hub from another project (or a fake listener on 5858) would
+            // silently receive all of this process's tool calls and file reads.
+            const bridgeOptIn = process.env.ATABEY_ALLOW_HUB_BRIDGE === "true";
+            const sameProject = existingHub?.projectRoot === PROJECT_ROOT;
+            const compatibleVersion = Boolean(existingHub?.version && existingHub.version === serverVersion);
+
+            if (existingHub && bridgeOptIn && sameProject && compatibleVersion) {
+                process.stderr.write(`[atabey-mcp] Verified Primary Hub for this project on port ${PORT} (sessions: ${existingHub.sessions}). Attaching as Stdio Bridge...\n`);
                 await runStdioBridge(PORT, HOST);
                 return;
             }
 
-            process.stderr.write(`[atabey-mcp] Port ${PORT} is free. Starting as PRIMARY HUB on port ${PORT}...\n`);
+            if (existingHub && !bridgeOptIn) {
+                process.stderr.write(`[atabey-mcp] Hub detected on port ${PORT} but bridge mode is disabled (set ATABEY_ALLOW_HUB_BRIDGE=true to attach).\n`);
+            } else if (existingHub && !sameProject) {
+                process.stderr.write(`[atabey-mcp] Hub on port ${PORT} serves a different project — not bridging (cross-project isolation).\n`);
+            } else if (existingHub && !compatibleVersion) {
+                process.stderr.write(`[atabey-mcp] Hub on port ${PORT} runs version ${existingHub.version} (expected ${serverVersion}) — not bridging.\n`);
+            }
+
+            process.stderr.write(`[atabey-mcp] Starting as PRIMARY HUB on port ${PORT} (auto port fallback enabled)...\n`);
             createUnifiedServer();
         }
 

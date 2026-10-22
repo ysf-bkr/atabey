@@ -80,6 +80,15 @@ const PROTECTED_PATH_PATTERNS: RegExp[] = [
     /(^|\/)\.docker\/config\.json$/i,
     /(^|\/)\.kube\/config$/i,
     /(^|\/)\.gitconfig$/i,
+    // Atabey governance state — self-modification must go through init/CLI,
+    // never through agent tool calls (auth/sandbox posture, secrets, DB, agents).
+    /(^|\/)\.atabey\/config\.json$/i,
+    /(^|\/)\.atabey\/permission-matrix\.json$/i,
+    /(^|\/)\.atabey\/secrets\.vault\.json$/i,
+    /(^|\/)\.atabey\/[^/]+\.key$/i,
+    /(^|\/)\.atabey\/[^/]+\.db$/i,
+    /(^|\/)\.atabey\/agents\/[^/]+\.md$/i,
+    /(^|\/)\.atabey\/ATABEY\.md$/i,
     // Private keys / certs
     /\.pem$/i,
     /\.key$/i,
@@ -142,6 +151,29 @@ export function evaluateToolCall(input: ToolCallPolicyInput): PolicyDecision {
 
     // Path safety for any tool that carries paths (read or write)
     const paths = collectPaths(args);
+
+    // [SECURITY] Shell commands carry paths inside their argument STRING —
+    // `run_shell_command` args must be scanned too, otherwise
+    // `mv .env .env.bak` or `cat .env` bypass the protected-path rules.
+    if (typeof args.command === "string" && args.command.trim()) {
+        for (const token of args.command.split(/\s+/)) {
+            const t = token.replace(/^["']|["']$/g, "");
+            if (t.includes("/") || t.includes("\\") || t === ".env" || t.startsWith(".env") || t.startsWith(".atabey/")) {
+                paths.push(t);
+            }
+        }
+        // Secret-file READS through shell viewers are denied as well
+        // (cat/grep/head/tail/less on .env or key material).
+        const shellCmd = args.command.trim();
+        const secretRead = /\b(cat|head|tail|less|more|grep|rg|awk|sed(-n)?|strings)\b[^|;&]*\b(\.env(\.\w+)?|id_rsa|id_ed25519|\.pem|\.key|secrets\.vault\.json)\b/;
+        if (secretRead.test(shellCmd)) {
+            return deny(
+                "DENY_PROTECTED_PATH",
+                "Shell command reads secret/protected material (.env, keys, vault). Use the Atabey secrets tooling instead.",
+            );
+        }
+    }
+
     for (const p of paths) {
         if (!p) {
             return deny("DENY_EMPTY_PATH", "Empty path argument is not allowed");

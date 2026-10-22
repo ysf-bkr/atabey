@@ -1,6 +1,6 @@
 # Atabey — Known Limitations & System Boundaries (LIMITATIONS.md)
 
-**Version:** v0.1.5  
+**Version:** v0.1.6  
 **Last Updated:** 2026-10-19  
 **Status:** Active Living Document
 
@@ -24,7 +24,7 @@ This document transparently presents the actual architecture, operational bounda
 - **Multi-Node Distributed Orchestration:** Not a distributed Kubernetes or multi-machine cluster orchestrator; tailored for local developer environments or single-host runners.
 
 ### 1.3 Autonomy Definition & Red Lines
-- **Autonomous Agent:** A host CLI process (e.g., Claude Code, Gemini CLI) spawned, bounded, and monitored by Atabey.
+- **Autonomous Agent:** A host CLI process (e.g., Claude Code, Codex CLI) spawned, bounded, and monitored by Atabey.
 - **Target Autonomy Level:** Constrained within sandbox + step limits, outputting pull requests (PR / git diff) on isolated branches. Unsupervised production access is strictly out-of-scope.
 - **Operations That Will NEVER Be Autonomous:**
   1. Production deployments or release pipeline execution,
@@ -39,7 +39,7 @@ This document transparently presents the actual architecture, operational bounda
 ## 2. Agent Reality: "13 Role Profiles", Not "13 Independent Agents"
 
 Atabey does not run 13 concurrent independent LLM processes or backend model servers.
-- **Actual Architecture:** Your single connected host AI assistant (Claude Code, Gemini CLI, Cursor, etc.) executes operations sequentially.
+- **Actual Architecture:** Your single connected host AI assistant (Claude Code, Cursor, Codex, etc.) executes operations sequentially.
 - **Role Profile Mechanism:** On `@agent` invocations, Atabey dynamically injects tailored system role definitions, context constraints, and task blueprints into the host session.
 - **Limitation:** The host LLM assumes the profile persona but can hallucinate or suffer prompt leakage. Consequently, Atabey deterministically enforces boundaries and permission matrices at the MCP tool layer.
 

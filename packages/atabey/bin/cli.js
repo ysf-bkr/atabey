@@ -14,7 +14,7 @@ const ERRORS = {
 ║  🚧  Atabey is not built yet                           ║
 ╠══════════════════════════════════════════════════════════╣
 ║  The compiled CLI was not found at:                     ║
-║    dist/src/cli/index.js                                ║
+║    dist/atabey/src/cli/index.js                        ║
 ║                                                         ║
 ║  📋  To fix this, run:                                  ║
 ║     npm run build                                       ║

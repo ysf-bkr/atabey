@@ -48,9 +48,10 @@ export async function handleRequest(
         sessions: Map<string, McpSession>;
         createServer: () => Server;
         broadcastWS: (type: string, payload: unknown) => void;
+        projectRoot: string;
     }
 ): Promise<void> {
-    const { serverVersion, sessions, createServer, broadcastWS } = context;
+    const { serverVersion, sessions, createServer, broadcastWS, projectRoot: PROJECT_ROOT } = context;
     const url = req.url || "/";
     const { pathname, params } = parseUrl(url);
 
@@ -101,7 +102,9 @@ export async function handleRequest(
         } catch (err) {
             logger.debug("TLS config resolution failed; reporting health transport as plaintext (non-fatal)", err);
         }
-        serveJson(res, 200, { status: "ok", version: serverVersion, sessions: sessions.size, transport });
+        // projectRoot lets stdio bridge candidates verify they attach to a hub
+        // serving THEIR project (prevents silent cross-project bridging).
+        serveJson(res, 200, { status: "ok", version: serverVersion, sessions: sessions.size, transport, projectRoot: PROJECT_ROOT });
         return;
     }
 

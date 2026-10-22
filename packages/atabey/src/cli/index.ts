@@ -437,6 +437,10 @@ Core Commands:
   check                                                  System health check
   status                                                 Agent status + costs
   plan [submit <json>]                                   Task planning
+  grill <topic>                                          Socratic assumption stress-testing & pre-mortem
+  spec init|parse <file>                                 Specification engine & contract design
+  handoff [summary]                                      Preserve and freeze active session state
+  retro [title]                                          Post-task retrospective & memory sync
   hitl [status|answer|approve|reject]                    HITL responses & approvals
   approve <traceId>                                      Approve blocked task
   trace new|replay <id>                                  Execution traces

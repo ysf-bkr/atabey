@@ -60,6 +60,7 @@ coverage-summary.json
 /test-init/
 tests/test-init/
 /test-lab/
+/test-app/
 
 # Compiled artifacts in source directories (should be in dist/)
 packages/atabey/src/**/*.js

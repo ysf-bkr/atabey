@@ -6,6 +6,8 @@ export interface HubHealth {
     version: string;
     sessions: number;
     transport?: string;
+    /** Project root the hub is serving — used to prevent cross-project bridging. */
+    projectRoot?: string;
 }
 
 /**

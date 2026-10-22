@@ -41,11 +41,7 @@ export function bootstrapComplianceServices(projectRoot: string): { retention: b
     );
 
     const compliance = resolveComplianceConfig(projectRoot);
-
-    if (compliance.retentionEnabled) {
-        DataRetention.initialize();
-        process.stderr.write("[atabey-mcp] Data retention cleanup active (KVKK/GDPR)\n");
-    }
+    const retentionEnabled = compliance.retentionEnabled;
 
     if (compliance.consentLogging) {
         process.stderr.write(
@@ -76,6 +72,13 @@ export function bootstrapComplianceServices(projectRoot: string): { retention: b
                     Storage.getDB();
                     const { Audit } = await import("atabey-shared/audit.js");
                     Audit.initialize();
+                    // [FIX] Retention starts only AFTER the audit schema exists
+                    // (Audit.initialize creates audit_log) — otherwise every
+                    // fresh install logs "Cleanup failed: no such table".
+                    if (retentionEnabled) {
+                        DataRetention.initialize();
+                        process.stderr.write("[atabey-mcp] Data retention cleanup active (KVKK/GDPR)\n");
+                    }
                     const logs = Storage.verifyLogIntegrity();
                     const structured = Audit.verifyIntegrity();
                     if (!logs.valid) {
