@@ -34,9 +34,6 @@ export function writeTextFile(filePath: string, content: string): void {
     }
 }
 
-/** @deprecated Use writeTextFile instead */
-export const writeTextFileAtomic = writeTextFile;
-
 /**
  * Appends content to a file. Creates parent directories if missing.
  * Compatible with src/shared/fs.ts appendFile API.
@@ -47,5 +44,3 @@ export function appendFile(filePath: string, content: string): void {
     fs.appendFileSync(filePath, content, "utf8");
 }
 
-/** @deprecated Use appendFile instead */
-export const appendFileSafe = appendFile;

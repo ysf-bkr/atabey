@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 import { ALL_AGENTS } from "../../../modules/agents/definitions.js";
 import {
     ADAPTERS,
@@ -138,6 +139,20 @@ export function scaffoldFrameworkConfigs(
         ...buildServiceConfig(),
     };
     writeJsonFile(path.join(frameworkDir, "config.json"), config, dryRun);
+
+    // [SECURITY] Auth bootstrap: the canonical setup requires bearer-token auth
+    // on the HTTP/SSE API. Generate a random project token into
+    // `.atabey/auth.key` (gitignored, 0600, protected from agent writes) so a
+    // fresh install never locks itself out with "all requests denied".
+    // The MCP server reads this file when MCP_AUTH_TOKEN is not set.
+    if (!dryRun) {
+        const authKeyPath = path.join(frameworkDir, "auth.key");
+        if (!fs.existsSync(authKeyPath)) {
+            const token = crypto.randomBytes(32).toString("hex");
+            fs.writeFileSync(authKeyPath, token + "\n", { mode: 0o600 });
+            UI.success(` Auth token generated → ${fDir}/auth.key (HTTP/SSE API key; keep local)`);
+        }
+    }
 
     // [SAFETY] Surface the sandbox posture loudly: an optional sandbox means
     // agent shell commands run with host privileges when isolation is unavailable.

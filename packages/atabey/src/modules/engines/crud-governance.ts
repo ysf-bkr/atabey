@@ -32,15 +32,6 @@ export type HighRiskOperation =
     | "PRODUCTION_DEPLOY"
     | "FORCE_PUSH";
 
-export interface HighRiskRequest {
-    operation: HighRiskOperation;
-    agent: string;
-    description: string;
-    traceId: string;
-    target?: string;
-    reason: string;
-}
-
 export interface GovernanceDecision {
     allowed: boolean;
     requiresApproval: boolean;

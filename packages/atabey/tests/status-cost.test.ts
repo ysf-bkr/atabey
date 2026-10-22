@@ -19,6 +19,8 @@ describe("Status Cost Dashboard", () => {
         fs.mkdirSync(observabilityDir, { recursive: true });
 
         process.env.ATABEY_TEST_DIR = tempDir;
+        // Init marker so statusCommand recognizes the (mocked) framework dir.
+        fs.writeFileSync(path.join(tempDir, "config.json"), "{}");
         vi.spyOn(memoryUtils, "getFrameworkDir").mockReturnValue(tempDir);
         vi.spyOn(memoryUtils, "getDocumentStorePath").mockReturnValue(memoryDir);
 

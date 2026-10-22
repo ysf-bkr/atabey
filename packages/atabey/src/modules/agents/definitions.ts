@@ -545,7 +545,6 @@ export function toAntigravityJson(ag: AgentDefinition, _baseKnowledgeDir?: strin
 }
 
 /** Alias for Antigravity JSON export used by CLI */
-export const buildAgentJson = toAntigravityJson;
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  4. CODEX CLI (OpenAI)  →  .agents/{name}.md
@@ -637,28 +636,3 @@ export function toOpenCodeMd(ag: AgentDefinition, baseKnowledgeDir?: string, pat
 //  Batch export
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type ExportTarget = "claude-code" | "grok" | "antigravity" | "codex-cli" | "cursor" | "opencode";
-
-export interface ExportedFile {
-  path: string;
-  content: string;
-}
-
-export function exportAllAgents(target: ExportTarget, paths?: Record<string, string>, backendLanguage?: string): ExportedFile[] {
-    return ALL_AGENTS.map(ag => {
-        switch (target) {
-            case "claude-code":
-                return { path: `.claude/agents/${ag.name}.md`,         content: toClaudeCodeMd(ag, undefined, paths, backendLanguage) };
-            case "grok":
-                return { path: `.grok/agents/${ag.name}.md`,           content: toGeminiCliMd(ag, undefined, paths, backendLanguage) };
-            case "antigravity":
-                return { path: `.agents/${ag.name}/agent.json`,        content: toAntigravityJson(ag, undefined, paths, backendLanguage) };
-            case "codex-cli":
-                return { path: `.agents/${ag.name}.md`,                content: toCodexMd(ag, undefined, paths, backendLanguage) };
-            case "cursor":
-                return { path: `.cursor/rules/${ag.name}.mdc`,         content: toCursorMdc(ag, undefined, paths, backendLanguage) };
-            case "opencode":
-                return { path: `.opencode/agents/${ag.name}.md`,       content: toOpenCodeMd(ag, undefined, paths, backendLanguage) };
-        }
-    });
-}

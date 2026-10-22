@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ALL_AGENTS, buildAgentJson } from "../src/modules/agents/definitions.js";
+import { ALL_AGENTS, toAntigravityJson } from "../src/modules/agents/definitions.js";
 
 describe("Agents Definitions", () => {
     it("should have exactly 13 agents defined", () => {
@@ -31,7 +31,7 @@ describe("Agents Definitions", () => {
         expect(names).toHaveLength(uniqueNames.size);
     });
 
-    it("should build valid agent JSON spec via buildAgentJson", () => {
+    it("should build valid agent JSON spec via toAntigravityJson", () => {
         const mockAgent = {
             name: "test-agent",
             displayName: "Test Agent",
@@ -48,7 +48,7 @@ describe("Agents Definitions", () => {
             }
         };
 
-        const jsonString = buildAgentJson(mockAgent as any);
+        const jsonString = toAntigravityJson(mockAgent as any);
         const parsed = JSON.parse(jsonString);
 
         expect(parsed.name).toBe("test-agent");

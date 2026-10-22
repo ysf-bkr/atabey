@@ -10,9 +10,7 @@ import {
 } from "../../shared/constants.js";
 import { ADAPTERS } from "./core.js";
 
-export {
-    CORE_FRAMEWORK_DIR, UNIFIED_ADAPTER_SLUG, UNIFIED_HUB_DIR
-} from "../../shared/constants.js";
+export { UNIFIED_ADAPTER_SLUG } from "../../shared/constants.js";
 
 export interface AgentsDestination {
     agentsDir: string;

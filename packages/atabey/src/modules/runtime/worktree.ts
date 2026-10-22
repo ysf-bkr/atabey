@@ -112,27 +112,6 @@ export function ensureAgentWorktree(projectRoot: string, agentName: string, requ
     }
 }
 
-/**
- * Return the list of modified / untracked relative file paths inside an agent worktree.
- * Used by `AgentDispatcher` to detect cross-agent write collisions before merging.
- */
-export function listWorktreeModifiedFiles(worktreePath: string): string[] {
-    if (!isGitRepo(worktreePath)) return [];
-    try {
-        const out = execFileSync("git", ["status", "--porcelain", "-uall"], {
-            cwd: worktreePath,
-            encoding: "utf8",
-            stdio: ["pipe", "pipe", "pipe"],
-        });
-        return out
-            .split(/\r?\n/)
-            .map((line) => line.slice(3).trim())
-            .filter((f) => f.length > 0 && !f.startsWith(".atabey/"));
-    } catch {
-        return [];
-    }
-}
-
 export interface MergeWorktreeReport {
     merged: boolean;
     appliedFiles: string[];

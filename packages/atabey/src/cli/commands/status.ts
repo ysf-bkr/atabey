@@ -14,6 +14,18 @@ export async function statusCommand() {
     const agentStatuses = readStatus();
     const frameworkDir = getFrameworkDir();
 
+    // readState() always returns fallback defaults (PHASE_0/T-000) — a null
+    // check would never fire. Detect a genuinely uninitialized project via
+    // the init marker instead, so `status` in a bare directory fails loudly
+    // instead of printing phantom defaults.
+    const initMarker = path.join(frameworkDir, "config.json");
+    if (!fs.existsSync(initMarker)) {
+        UI.error(`No Atabey project found (missing ${initMarker}).`);
+        UI.error("Run 'atabey init <ai>' in your project root first.");
+        process.exitCode = 1;
+        return;
+    }
+
     if (!state) {
         UI.error("Memory state not found. Please run 'init' first.");
         return;

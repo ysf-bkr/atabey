@@ -4,10 +4,7 @@
 // This allows handler files to import from "../types.js" without changes.
 export type {
     AcquireLockArgs,
-    AnalyzeCodeQualityArgs,
     BatchSurgicalEditArgs,
-    CheckArchitectureComplianceArgs,
-    CheckPortsArgs,
     GetProjectGapsArgs,
     GetProjectMapArgs,
     GrepSearchArgs,
@@ -18,7 +15,6 @@ export type {
     RegisterAgentArgs,
     ReleaseLockArgs,
     ReplaceTextArgs,
-    RunShellCommandArgs,
     RunTestsArgs,
     SendAgentMessageArgs,
     UpdateProjectMemoryArgs,

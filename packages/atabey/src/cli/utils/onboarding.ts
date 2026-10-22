@@ -1,9 +1,8 @@
 import fs from "fs";
 import path from "path";
 import { UI } from "./ui.js";
-import { ensureDir, writeJsonFile, writeTextFile } from "./fs.js";
+import { ensureDir, writeTextFile } from "./fs.js";
 import { AtabeyStorage } from "atabey-shared";
-import { syncMarkdownMemory } from "./memory.js";
 
 /**
  * Checks whether the projectRoot already contains an existing application codebase
@@ -132,73 +131,3 @@ export function ingestLegacyAiFiles(projectRoot: string, coreDir: string, dryRun
     return ingestedFiles;
 }
 
-/**
- * Indexes the existing codebase architecture into Atabey's memory document store and markdown graph.
- */
-export function indexCodebaseMemory(projectRoot: string, coreDir: string, dryRun: boolean): void {
-    if (dryRun) return;
-
-    const memoryDir = path.join(projectRoot, coreDir, "memory");
-    ensureDir(memoryDir);
-
-    const statePath = path.join(memoryDir, "state.json");
-    let existingState: Record<string, unknown> = {};
-
-    if (fs.existsSync(statePath)) {
-        try {
-            existingState = JSON.parse(fs.readFileSync(statePath, "utf8"));
-        } catch {
-            existingState = {};
-        }
-    }
-
-    // Inspect project
-    const pkgPath = path.join(projectRoot, "package.json");
-    let pkgInfo: Record<string, unknown> = {};
-    if (fs.existsSync(pkgPath)) {
-        try {
-            pkgInfo = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
-        } catch {
-            // Malformed package.json — fall back to an empty metadata object.
-        }
-    }
-
-    // Discover top-level directories
-    const topLevelDirs: string[] = [];
-    try {
-        const entries = fs.readdirSync(projectRoot, { withFileTypes: true });
-        for (const entry of entries) {
-            if (entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "node_modules" && entry.name !== "dist" && entry.name !== "build") {
-                topLevelDirs.push(entry.name);
-            }
-        }
-    } catch {
-        // Unreadable directory (permissions / race) — treat as no top-level dirs.
-    }
-
-    const projectMetadata = {
-        name: pkgInfo.name || path.basename(projectRoot),
-        version: pkgInfo.version || "0.1.0",
-        type: pkgInfo.type || "commonjs",
-        workspaces: pkgInfo.workspaces || [],
-        keyDirectories: topLevelDirs,
-        onboardedAt: new Date().toISOString(),
-    };
-
-    const newState = {
-        ...existingState,
-        phase: existingState.phase || "PHASE_1_ONBOARDED",
-        project: projectMetadata,
-        managerState: existingState.managerState || "ACTIVE",
-    };
-
-    writeJsonFile(statePath, newState);
-
-    try {
-        syncMarkdownMemory(path.join(projectRoot, coreDir));
-    } catch {
-        /* best-effort markdown sync */
-    }
-
-    UI.success(`  [MEMORY] Codebase architecture indexed: ${topLevelDirs.join(", ") || "root"} into Atabey memory.`);
-}

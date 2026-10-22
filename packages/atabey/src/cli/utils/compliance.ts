@@ -15,8 +15,6 @@
 import fs from "fs";
 import path from "path";
 import ts from "typescript";
-import { RiskEngine } from "../../modules/engines/risk-engine.js";
-import type { RiskAssessment } from "../../modules/engines/types.js";
 
 export interface ComplianceIssue {
     file: string;
@@ -27,21 +25,6 @@ export interface ComplianceIssue {
 // ─── High-Risk Operations ───────────────────────────────────────────
 // Governance-specific operation patterns (broader than RiskEngine keywords)
 // These are business-level risk patterns used for pre-screening before scoring.
-
-const HIGH_RISK_OPERATIONS = [
-    "user.*create", "user.*delete", "user.*modify",
-    "role.*create", "role.*delete",
-    "drop table", "drop database", "truncate",
-    "bulk delete", "schema.*drop",
-    "billing", "payment.*config",
-    "secret.*rotate", "env.*rotate",
-    "force.*push",
-];
-
-export function isHighRiskOperation(taskOrCommand: string): boolean {
-    const lower = taskOrCommand.toLowerCase();
-    return HIGH_RISK_OPERATIONS.some(op => new RegExp(op, "i").test(lower));
-}
 
 // ─── AST-Based Compliance Scanner ──────────────────────────────────
 
@@ -229,26 +212,3 @@ export function scanProjectCompliance(targetDir: string = "src"): ComplianceIssu
 // Delegates to RiskEngine for unified risk scoring.
 // Governance layer adds operation-context pre-screening.
 
-/**
- * Pre-screens a task for high-risk operations before sending to RiskEngine.
- * Returns true if the task matches business-level operation patterns.
- */
-export function isGovernanceRiskyOperation(taskOrCommand: string): boolean {
-    return isHighRiskOperation(taskOrCommand);
-}
-
-/**
- * Verifies if an operation requires approval based on risk assessment.
- * Delegates to RiskEngine.assessTaskRisk() for unified scoring.
- *
- * Governance Pipeline:
- *   1. isHighRiskOperation() — business-level pre-screening
- *   2. RiskEngine.assessTaskRisk() — detailed keyword + path + behavioral scoring
- *   3. Returns RiskAssessment if score >= 60 (requires approval)
- *
- * @returns RiskAssessment if approval needed, null otherwise
- */
-export function verifyRiskAndAwaitApproval(task: string, _traceId?: string): RiskAssessment | null {
-    const assessment = RiskEngine.assessTaskRisk(task);
-    return assessment.requiresApproval ? assessment : null;
-}

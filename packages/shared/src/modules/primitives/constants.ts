@@ -149,18 +149,17 @@ export const FRAMEWORK_MONOREPO_PATHS = {
 } as const;
 
 /** @deprecated Use DEFAULT_CONSUMER_PATHS */
-export const DEFAULT_MONOREPO_PATHS = DEFAULT_CONSUMER_PATHS;
 
 /** Cursor rule globs per agent role (framework monorepo layout). */
 export const CURSOR_AGENT_GLOBS: Record<string, string> = {
     manager:   "**/*",
     security:  "**/*",
     architect: "**/*",
-    backend:   `${DEFAULT_MONOREPO_PATHS.backend}/**/*`,
-    frontend:  `${DEFAULT_MONOREPO_PATHS.frontend}/**/*`,
-    mobile:    `${DEFAULT_MONOREPO_PATHS.mobile}/**/*`,
+    backend:   `${DEFAULT_CONSUMER_PATHS.backend}/**/*`,
+    frontend:  `${DEFAULT_CONSUMER_PATHS.frontend}/**/*`,
+    mobile:    `${DEFAULT_CONSUMER_PATHS.mobile}/**/*`,
     native:    "apps/native/**/*",
-    database:  `${DEFAULT_MONOREPO_PATHS.backend}/src/database/**/*`,
+    database:  `${DEFAULT_CONSUMER_PATHS.backend}/src/database/**/*`,
     devops:    "{.github,docker,infra,scripts,*.yml,*.yaml,Dockerfile*}",
     quality:   "**/*",
     analyst:   "{docs,specs,contracts}/**/*",

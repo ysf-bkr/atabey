@@ -28,8 +28,6 @@ export const ApiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
             .optional(),
     });
 
-export type ApiResponse<T = unknown> = z.infer<ReturnType<typeof ApiResponseSchema<z.ZodType<T>>>>;
-
 // ─── Pagination ────────────────────────────────────────────────────────────────
 
 export const PaginationSchema = z.object({
@@ -39,12 +37,9 @@ export const PaginationSchema = z.object({
     order: z.enum(["asc", "desc"]).default("asc"),
 });
 
-export type Pagination = z.infer<typeof PaginationSchema>;
-
 // ─── CRUD Contract ─────────────────────────────────────────────────────────────
 
 export const CrudOperationSchema = z.enum(["CREATE", "READ", "UPDATE", "DELETE", "LIST"]);
-export type CrudOperation = z.infer<typeof CrudOperationSchema>;
 
 /**
  * CRUD endpoint response contract.
@@ -57,8 +52,6 @@ export const CrudResponseSchema = z.object({
     affectedCount: z.number().int().nonnegative().optional(),
     timestamp: z.string().datetime(),
 });
-
-export type CrudResponse = z.infer<typeof CrudResponseSchema>;
 
 // ─── Health Check ──────────────────────────────────────────────────────────────
 
@@ -74,4 +67,3 @@ export const HealthCheckSchema = z.object({
     ),
 });
 
-export type HealthCheck = z.infer<typeof HealthCheckSchema>;

@@ -116,6 +116,31 @@ All notable changes to this project are documented in this file.
   39223` → single banner → `/mcp/health` reports the bound port, version and
   project root.
 
+### Dead Code Sweep & Auth Bootstrap (follow-up)
+- **knip was configured to hide its findings** (`exclude: [exports, types,
+  duplicates]`). After a full sweep the exclude list now only covers
+  duplicates — unused exports/types fail `npm run knip` from now on.
+- **26 dead declarations removed:** unused exports (`PhaseIDSchema`,
+  `isGovernanceRiskyOperation`, `verifyRiskAndAwaitApproval`,
+  `resolveContentLanguage`, `indexCodebaseMemory`, `getPackageManager`,
+  `getDependencyVersions`, `exportAllAgents` (+ `ExportTarget`/`ExportedFile`),
+  `listWorktreeModifiedFiles`, the `writeRootMcpConfig`/`CORE_FRAMEWORK_DIR`/
+  `UNIFIED_HUB_DIR`/`CLI_PRESETS` re-exports), 13 unused exported types, the
+  dead `isHighRiskOperation` + pattern list in the CLI compliance module (the
+  MCP has its own live copy), and the deprecated `writeTextFileAtomic`/
+  `appendFileSafe`/`buildAgentJson` aliases (tests now use canonical names).
+  `DEFAULT_MONOREPO_PATHS` was inlined; `AtabeyStorage`/`Storage` remain as the
+  one intentional alias pair (both actively used).
+- **Auth bootstrap:** a fresh strict install no longer locks itself out of the
+  HTTP/SSE API. `atabey init` generates a random 32-byte token into
+  `.atabey/auth.key` (0600, gitignored, protected from agent writes); the MCP
+  auth module reads it when `MCP_AUTH_TOKEN` is unset (logged as
+  `source: auth.key`).
+- **`atabey status` fails loudly in uninitialized directories** — `readState()`
+  always returns fallback defaults, so the old null check was dead code and a
+  bare directory printed phantom `PHASE_0/T-000` state. Status now checks the
+  init marker (`.atabey/config.json`) and exits 1 with a clear error.
+
 ### Deferred (documented, not fixed in this release)
 - Unifying the 3 `frameworkDir` resolvers and the duplicated compliance engine.
 - Removing the `utils/` re-export shim layer (roadmap S12).

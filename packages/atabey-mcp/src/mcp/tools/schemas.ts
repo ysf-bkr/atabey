@@ -19,8 +19,6 @@ export const TaskIDSchema = z.string()
     .regex(/^TASK-[0-9]+$/, "TaskID must follow the format 'TASK-001'.")
     .min(1);
 
-export const PhaseIDSchema = z.enum(["PHASE_0", "PHASE_1", "PHASE_2", "PHASE_3", "PHASE_4"]);
-
 /**
  * ─── TOOL CONTRACTS ────────────────────────────────────────────────
  * Every tool must have a strict schema defining its boundary.
@@ -282,7 +280,6 @@ export type UpdateProjectMemoryArgs = z.infer<typeof UpdateProjectMemorySchema>;
 export type RunShellCommandArgs = z.infer<typeof RunShellCommandSchema>;
 export type AnalyzeCodeQualityArgs = z.infer<typeof AnalyzeCodeQualitySchema>;
 export type CheckArchitectureComplianceArgs = z.infer<typeof CheckArchitectureComplianceSchema>;
-export type ApproveOperationArgs = z.infer<typeof ApproveOperationSchema>;
 
 // ─── Network Proxy Request ──────────────────────────────────────────
 export const HttpProxyRequestSchema = z.object({

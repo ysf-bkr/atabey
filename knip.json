@@ -15,5 +15,5 @@
   "ignoreDependencies": ["tsx"],
   "ignore": ["scripts/benchmark.mjs"],
   "ignoreExportsUsedInFile": true,
-  "exclude": ["exports", "types", "duplicates"]
+  "exclude": ["duplicates"]
 }

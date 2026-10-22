@@ -9,23 +9,6 @@ export function getPackageVersion() {
     return pkg.version;
 }
 
-export function getPackageManager() {
-    const override = process.env.ATABEY_PACKAGE_MANAGER;
-    if (override) return override.toLowerCase();
-
-    const userAgent = process.env.npm_config_user_agent || "";
-    const npmExecPath = process.env.npm_execpath || "";
-
-    if (userAgent.includes("pnpm") || npmExecPath.includes("pnpm")) return "pnpm";
-    if (userAgent.includes("yarn") || npmExecPath.includes("yarn")) return "yarn";
-
-    // Check for lockfiles in target directory
-    if (fs.existsSync(path.join(process.cwd(), "pnpm-lock.yaml")) || fs.existsSync(path.join(process.cwd(), "pnpm-workspace.yaml"))) return "pnpm";
-    if (fs.existsSync(path.join(process.cwd(), "yarn.lock"))) return "yarn";
-
-    return "npm";
-}
-
 /**
  * Robustly locates the atabey package root from the currently executing module (src via tsx or bin).
  * Walks up from import.meta.url until it finds package.json with name === "atabey".
@@ -62,67 +45,6 @@ function findAtabeyPackageRoot(): string {
 
 export function getPackageRoot(): string {
     return findAtabeyPackageRoot();
-}
-
-export function getDependencyVersions() {
-    const root = getPackageRoot();
-    const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
-    const devDependencies = pkg.devDependencies || {};
-    const dependencies = pkg.dependencies || {};
-
-    return {
-        // ── Backend Core ──────────────────────────────────────────
-        "fastify": dependencies["fastify"] || "^5.0.0",
-        "@fastify/cors": dependencies["@fastify/cors"] || "^11.0.0",
-        "@fastify/swagger": dependencies["@fastify/swagger"] || "^9.0.0",
-        "@fastify/swagger-ui": dependencies["@fastify/swagger-ui"] || "^5.0.0",
-        "@fastify/rate-limit": dependencies["@fastify/rate-limit"] || "^10.0.0",
-        "@fastify/static": dependencies["@fastify/static"] || "^8.0.0",
-        "zod": dependencies["zod"] || "^3.24.2",
-
-        // ── Database / ORM ────────────────────────────────────────
-        "kysely": dependencies["kysely"] || "^0.27.0",
-        "typeorm": dependencies["typeorm"] || "^0.3.0",
-        "reflect-metadata": dependencies["reflect-metadata"] || "^0.2.0",
-        "pg": dependencies["pg"] || "^8.13.0",
-        "better-sqlite3": dependencies["better-sqlite3"] || "^13.0.2",
-
-        // ── Authentication ────────────────────────────────────────
-        "bcrypt": dependencies["bcrypt"] || "^5.1.0",
-        "@types/bcrypt": devDependencies["@types/bcrypt"] || "^5.0.0",
-        "jsonwebtoken": dependencies["jsonwebtoken"] || "^9.0.0",
-        "@types/jsonwebtoken": devDependencies["@types/jsonwebtoken"] || "^9.0.0",
-
-        // ── Logging ───────────────────────────────────────────────
-        "pino": dependencies["pino"] || "^9.0.0",
-        "pino-pretty": devDependencies["pino-pretty"] || "^12.0.0",
-
-        // ── Validation ────────────────────────────────────────────
-        "@fastify/type-provider-typebox": dependencies["@fastify/type-provider-typebox"] || "^5.0.0",
-
-        // Backend devDependencies
-        "@types/node": devDependencies["@types/node"] || "^22.13.4",
-        "tsx": devDependencies["tsx"] || "^4.19.4",
-        "typescript": devDependencies["typescript"] || "^5.9.3",
-        "vitest-backend": devDependencies["vitest"] || "^3.0.5",
-
-        // ── Frontend Core ─────────────────────────────────────────
-        "@vitejs/plugin-react": dependencies["@vitejs/plugin-react"] || "^5.0.0",
-        "vite": dependencies["vite"] || "^7.0.0",
-        "react": dependencies["react"] || "^19.0.0",
-        "react-dom": dependencies["react-dom"] || "^19.0.0",
-        "lucide-react": dependencies["lucide-react"] || "^0.468.0",
-        "react-router-dom": dependencies["react-router-dom"] || "^7.0.0",
-        "@tanstack/react-query": dependencies["@tanstack/react-query"] || "^5.0.0",
-
-        // Frontend devDependencies
-        "@types/react": devDependencies["@types/react"] || "^19.0.0",
-        "@types/react-dom": devDependencies["@types/react-dom"] || "^19.0.0",
-        "vitest-frontend": devDependencies["vitest"] || "^3.0.5",
-
-        // ── Testing ───────────────────────────────────────────────
-        "@playwright/test": devDependencies["@playwright/test"] || "^1.50.0",
-    };
 }
 
 interface PackageJson {

@@ -25,8 +25,6 @@ export const HermesMessageSchema = z.object({
     dependencies: z.array(z.string()).optional(),
 });
 
-export type HermesMessage = z.infer<typeof HermesMessageSchema>;
-
 let isLooping = false;
 
 export async function orchestrateCommand(options?: { maxIterations?: number; signal?: AbortSignal }) {

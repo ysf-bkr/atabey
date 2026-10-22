@@ -44,7 +44,3 @@ export const TRANSLATIONS: Record<SupportedLanguage, Translations> = {
     tr: EN,
 };
 
-/** Normalize any language flag to the content language (always English). */
-export function resolveContentLanguage(_lang?: string): "en" {
-    return "en";
-}
