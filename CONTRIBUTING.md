@@ -115,7 +115,7 @@ repository root must contain only project source, docs, and configuration.
 
 - **Strict Type-Safety:** Strict mode is enabled (`strict: true`). The use of `any` types is strictly forbidden.
 - **Structured Logging:** Avoid `console.log`. Use the structured `logger` (`atabey-shared`) for debug/info output.
-- **KVKK/GDPR Compliance:** Mask sensitive data or credentials before outputting them to logs or external contexts.
+- **Data protection:** Mask sensitive data or credentials before outputting them to logs or external contexts (KVKK/GDPR technical controls).
 
 ---
 

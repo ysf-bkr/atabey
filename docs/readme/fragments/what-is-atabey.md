@@ -1,7 +1,12 @@
-**Atabey** is a **local AI control plane & discipline layer** that sits between your
-codebase and your local AI coding assistants. It does **not** write code and does **not**
-host an LLM — it **disciplines, bounds and coordinates** the assistant you already use
-through the Model Context Protocol (MCP).
+**Atabey** is a **local governance and verification layer for AI coding agents**. It sits
+between your codebase and the AI coding assistant you already use (Claude Code, Cursor,
+Codex, OpenCode, local LLMs) and connects over the Model Context Protocol (MCP).
 
-> "Order from Chaos" — keeps AI coding assistants focused, blocks destructive actions,
-> rolls back broken edits, prevents runaway token loops, and records an audit trail.
+It does **not** host an LLM and does **not** write code. Your AI tool writes the code;
+Atabey governs which tools it can reach, gates risky operations behind policy and human
+approval, and verifies task results with tests and audit evidence.
+
+> **Scope of control:** these controls apply to operations that go through Atabey's MCP
+> tools. Native host tools (built-in shell/edit commands) can bypass them unless they are
+> disabled or hooked in the host configuration. See
+> [Known Limitations](https://github.com/ysf-bkr/atabey/blob/main/docs/limitations.md).

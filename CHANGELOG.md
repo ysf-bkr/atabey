@@ -11,6 +11,47 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## [Unreleased] — Positioning & Documentation Consistency
+
+No runtime behavior change. This entry records what was reworded and what claims were
+narrowed so the docs match the implementation.
+
+### Changed — product positioning
+- Unified the product statement as **“local governance and verification layer for AI coding
+  agents”** across the root README (EN + TR), package READMEs, `package.json` metadata and the
+  CLI banner.
+- Removed the implication that Atabey is an “AI Engineering Control Plane” / “Local AI Control
+  Plane & Discipline Layer”, or a substitute for LangGraph/CrewAI.
+- “13 specialized agents” is now consistently **“13 role profiles”** (prompt + task blueprint
+  injected into the host), matching `docs/limitations.md` §2.
+
+### Changed — claims narrowed to what the code supports
+- **Fail-closed** is now scoped: it applies when policy/auth/TLS enforcement is enabled. The
+  open-access default (`SECURITY.md`) is stated explicitly instead of being contradicted.
+- **“Immutable” audit log** → **tamper-evident / detectable** audit chain.
+- **“100% local”** → **local by default**; optional OpenAI embeddings send text to the OpenAI
+  API when `OPENAI_API_KEY` is set.
+- **KVKK/GDPR “compliance”** → **technical controls**, not a legal declaration or certification.
+- Platform enforcement table now states that native host tools can bypass MCP controls.
+- Benchmark section explicitly says **results pending**; no comparative results are implied.
+
+### Fixed — inventory drift
+- Standards count corrected to **36** (was “30+”, “33” and “26+” in different files).
+- `packages/atabey/PRIVACY.md` re-synced with the root `PRIVACY.md` (it was stale and shipped
+  with the npm package).
+- Removed stale Gemini CLI support from `ATABEY_FULL.md` (unsupported since v0.1.5).
+- Root README version badge/tagline updated to v0.1.7.
+
+### Removed — dead / unsupported surface
+- `gemini-cli` keyword removed from all four `package.json` files (`ai-agents` and
+  `orchestration` demoted in favour of governance/verification terms).
+- Stale Freelancer/Team/Enterprise columns and “all 13 specialists” framing in docs.
+
+### Verified
+- `npm run build`, `npm test` (387 tests), `npm run lint`, `npm run knip`, `npm run readme:check`.
+
+---
+
 ## [0.1.7] — 2026-10-23 — Memory Round-Trip Fixes, `atabey update`, OTLP Observability
 
 ### Fixed (found via full end-to-end npm-install testing)

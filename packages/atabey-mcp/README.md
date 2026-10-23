@@ -1,20 +1,28 @@
-# Atabey MCP — Local AI Control Plane & Discipline Layer (MCP Server)
+# Atabey MCP — Local Governance & Verification for AI Coding Agents (MCP Server)
 
 [![Version](https://img.shields.io/badge/Version-v0.1.7-blue.svg)](https://github.com/ysf-bkr/atabey)
 [![npm](https://img.shields.io/npm/v/atabey-mcp)](https://www.npmjs.com/package/atabey-mcp)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![MCP](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io)
-[![MCP Tools](https://img.shields.io/badge/MCP%20Tools-40-blue)](https://github.com/ysf-bkr/atabey)
 
-**Atabey MCP** is the MCP (Model Context Protocol) server component of the Atabey framework. It provides **40 MCP tools** and a multi-layer governance pipeline (validation, PII masking, discipline, loop detection, token limits, CRUD governance, risk gating and more), vector memory, risk engine, auto-rollback, prompt-injection protection and a real-time event stream.
+**Atabey MCP** is the Model Context Protocol server component of the Atabey framework. It
+exposes the tool surface your AI host calls, and runs those calls through a multi-layer
+governance pipeline (validation, PII masking, discipline, loop detection, token limits,
+CRUD governance, risk gating and more), plus vector memory, a risk engine, auto-rollback,
+prompt-injection protection and a real-time event stream.
 
-**Atabey** is a **local AI control plane & discipline layer** that sits between your
-codebase and your local AI coding assistants. It does **not** write code and does **not**
-host an LLM — it **disciplines, bounds and coordinates** the assistant you already use
-through the Model Context Protocol (MCP).
+**Atabey** is a **local governance and verification layer for AI coding agents**. It sits
+between your codebase and the AI coding assistant you already use (Claude Code, Cursor,
+Codex, OpenCode, local LLMs) and connects over the Model Context Protocol (MCP).
 
-> "Order from Chaos" — keeps AI coding assistants focused, blocks destructive actions,
-> rolls back broken edits, prevents runaway token loops, and records an audit trail.
+It does **not** host an LLM and does **not** write code. Your AI tool writes the code;
+Atabey governs which tools it can reach, gates risky operations behind policy and human
+approval, and verifies task results with tests and audit evidence.
+
+> **Scope of control:** these controls apply to operations that go through Atabey's MCP
+> tools. Native host tools (built-in shell/edit commands) can bypass them unless they are
+> disabled or hooked in the host configuration. See
+> [Known Limitations](https://github.com/ysf-bkr/atabey/blob/main/docs/limitations.md).
 
 
 ---
@@ -23,7 +31,7 @@ through the Model Context Protocol (MCP).
 
 | Capability | Description |
 |-----------|-------------|
-| **MCP Tools** | 40 tools across 9 categories: file system, search, messaging, governance, memory, quality, network, orchestration, API catalog |
+| **MCP Tools** | 40 tools across 9 categories: file system, search, messaging, governance, memory, quality, network, orchestration, API catalog (full list below) |
 | **Governance Pipeline** | Multi-layer pre/post execution validation: PII masking, risk gate, discipline, loop detection, token limits, license scan, CRUD governance |
 | **Memory** | Vector memory (TF-IDF/OpenAI embeddings), project memory, knowledge base |
 | **Observability** | Headless HTTP/SSE server (`/mcp/*`) + real-time WebSocket event stream |
@@ -52,7 +60,7 @@ MCP_TRANSPORT=unified MCP_PORT=5858 atabey-mcp
 
 ---
 
-## 🛠️ 40 MCP Tools
+## 🛠️ MCP Tools (Reference)
 
 ### File System (5)
 | Tool | Description |
@@ -132,7 +140,7 @@ MCP_TRANSPORT=unified MCP_PORT=5858 atabey-mcp
 
 ## Multi-Layer Governance Pipeline
 
-Every MCP tool call passes through this **fail-closed** pipeline:
+Every **MCP tool call** passes through this pipeline:
 
 ```
 CallToolRequest
@@ -151,10 +159,13 @@ CallToolRequest
 12. [INJECTION PROTECTION] sanitizeResponse()
 13. [PII MASKING]      maskToolResult() → mask before returning to AI
     ↓
- Return governed result
+  Return governed result
 ```
 
-A control that cannot run **denies** the operation rather than passing it silently.
+A control that cannot run **denies the MCP operation** rather than passing it silently.
+
+> This pipeline covers Atabey MCP tools. Native host tools that never call Atabey are
+> outside it — see [Known Limitations](https://github.com/ysf-bkr/atabey/blob/main/docs/limitations.md).
 
 
 ### Pipeline Details
@@ -193,17 +204,13 @@ search_knowledge(query) → generateEmbedding() → VectorStore.search() → cos
 
 | Layer | Storage | Technology | Purpose |
 |-------|---------|------------|---------|
-| **Vector Memory** | SQLite | TF-IDF / OpenAI embeddings + cosine similarity | Semantic search across project knowledge |
+| **Vector Memory** | SQLite | Local TF-IDF embeddings (cosine similarity); optional OpenAI `text-embedding-3-small` when `OPENAI_API_KEY` is set | Semantic search across project knowledge |
 | **Project Memory** | Markdown | `PROJECT_MEMORY.md` | Central project state, synchronized every session |
 | **Specialty Memory** | Markdown | `.atabey/memory/specialties/{agent}.md` | Per-agent learned conventions from past tasks |
 
-```
-Task → Evaluation Engine → Score (0-100)
-  ├── Success → extractSuccessLesson() → updateSpecialtyMemory()
-  └── Failure → compliance/lint/test lesson → updateSpecialtyMemory()
-       ↓
-  Next session: readLearnedConventions() → injected into agent prompt
-```
+> **Local by default, not unconditionally local:** if you configure `OPENAI_API_KEY`,
+> embedding requests send the embedded text to the OpenAI API. Without a key, Atabey stays
+> on-machine and falls back to the local TF-IDF vectorizer (384-dim).
 
 
 ---
@@ -253,15 +260,18 @@ export MCP_AUTH_USERS="alice:key1,bob:key2"
 
 ## Security & Compliance
 
-### Rule-based, fail-closed governance
+### Rule-based governance
+
 - AST-based compliance scanning + strict TypeScript (**`any` is forbidden**, no `console.*` in production code)
-- **Fail-closed PolicyGate** + deny-by-default RBAC permission matrix (protected paths: `.env*`, `.git/`, `.ssh/`, `.atabey/*`, keys)
+- **Deny-by-default RBAC** permission matrix and protected paths (`.env*`, `.git/`, `.ssh/`, `.atabey/*`, keys)
+- **Risk gating** with mandatory human approval when the risk score reaches the configured threshold (default ≥ 60)
 - **Prompt-injection mitigation** (OWASP LLM01 aligned) on both input and tool response
 - **Secret-leak redaction** on tool output + AES-256-GCM local secret vault
-- **HMAC-SHA256** tamper-evident audit chain
+- **HMAC-SHA256** audit chain — tampering is detectable, not impossible
 - SSRF-guarded HTTP proxy + Host header DNS-rebinding protection on localhost
-- **TLS 1.3 + optional mTLS** on the unified HTTP/SSE transport
-- Human-in-the-Loop: risk score ≥ 60 requires human approval
+- **TLS 1.3 + optional mTLS** when the HTTP/SSE transport is configured with certificates
+- **Fail-closed only when enforcement is enabled**: with no auth token and TLS off, the HTTP
+  server is open access (local-dev default). See [Security Policy](https://github.com/ysf-bkr/atabey/blob/main/SECURITY.md).
 
 ### KVKK / GDPR technical alignment
 
@@ -273,7 +283,8 @@ export MCP_AUTH_USERS="alice:key1,bob:key2"
 | Audit Trail (tamper-evident log chain) | Art. 12 | Art. 30 | ✅ |
 | Data Classification | Art. 6 | Art. 9 | ✅ |
 
-> Technical compliance tooling — not legal certification. Pair with your DPO / counsel.
+> These are technical controls, not a legal compliance declaration or certification.
+> Whether your deployment is compliant depends on your configuration and usage; pair with your DPO / counsel.
 
 
 ## Token Efficiency
@@ -330,8 +341,8 @@ packages/atabey-mcp/
 
 | Package | Role | Links |
 |---------|------|-------|
-| **atabey** | Core engine — CLI, agents, engines, orchestrator | [npm](https://www.npmjs.com/package/atabey) · [source](https://github.com/ysf-bkr/atabey/tree/main/packages/atabey) |
-| **atabey-mcp** | MCP server — 40 tools & governance pipeline | [npm](https://www.npmjs.com/package/atabey-mcp) · [source](https://github.com/ysf-bkr/atabey/tree/main/packages/atabey-mcp) |
+| **atabey** | Core runtime — CLI, project setup, agents, engines and task verification | [npm](https://www.npmjs.com/package/atabey) · [source](https://github.com/ysf-bkr/atabey/tree/main/packages/atabey) |
+| **atabey-mcp** | MCP server — tool surface & governance pipeline | [npm](https://www.npmjs.com/package/atabey-mcp) · [source](https://github.com/ysf-bkr/atabey/tree/main/packages/atabey-mcp) |
 | **atabey-shared** | Shared utilities — constants, storage, PII, audit, locks | [npm](https://www.npmjs.com/package/atabey-shared) · [source](https://github.com/ysf-bkr/atabey/tree/main/packages/shared) |
 
 > Full bilingual documentation (TR + EN): **[github.com/ysf-bkr/atabey](https://github.com/ysf-bkr/atabey#readme)**

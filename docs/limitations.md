@@ -1,10 +1,20 @@
 # Atabey — Known Limitations & System Boundaries (LIMITATIONS.md)
 
-**Version:** v0.1.6  
-**Last Updated:** 2026-10-19  
+**Version:** v0.1.7  
+**Last Updated:** 2026-10-23  
 **Status:** Active Living Document
 
-This document transparently presents the actual architecture, operational boundaries, and unresolved or deliberately out-of-scope aspects of Atabey. Atabey is not a magic wand; it is a deterministic **control plane** for AI coding assistants.
+This document transparently presents the actual architecture, operational boundaries, and
+deliberately out-of-scope aspects of Atabey. Atabey is not a magic wand; it is a local
+**governance and verification layer** for AI coding agents.
+
+## 0. What Atabey Is Not
+
+- **Not an LLM and not a code generator.** It does not choose models, host inference, or write your code.
+- **Not universal control over the host.** Controls apply to operations that go through Atabey MCP tools (see §3).
+- **Not a correctness or security guarantee.** Passing the quality gate does not prove code is bug-free or secure; human review remains required.
+- **Not a legal compliance certification.** KVKK/GDPR features are technical controls only (§1.2).
+- **Not a production deployment tool.** It will not run production deploys, destructive migrations, or protected-branch merges autonomously (§1.3).
 
 ---
 
@@ -14,7 +24,10 @@ This document transparently presents the actual architecture, operational bounda
 - **Policy & Authorization Enforcement:** Deny-by-default file RBAC matrix, protected paths (`.env`, `.git/`, `.atabey/*`), tiered agent hierarchy (Supreme / Core / Recon).
 - **Risk Engine & Gates:** Static analysis, AST risk scoring, destructive shell command blocking, and mandatory Human-in-the-Loop (HITL) approvals.
 - **Token Economics:** Model token tracking, per-provider token/rate limits, step/iteration caps, and hard execution timeouts.
-- **Audit Trail:** Local HMAC-SHA256 signed audit trails, tamper-evident hash-chained logs, and W3C OTel-compliant spans.
+- **Audit Trail:** Local HMAC-SHA256 signed audit trails and hash-chained logs. Tampering is
+  *detectable* rather than impossible: anyone with access to both the database and the HMAC
+  key file can rewrite history. Export to external storage if you need stronger guarantees.
+  OTel spans follow the W3C format.
 - **Human Approval (HITL):** Explicit human clearance via CLI (`atabey hitl answer` / `atabey approve`) or MCP for operations exceeding defined risk thresholds.
 
 ### 1.2 Out-of-Scope
@@ -60,7 +73,7 @@ A fundamental architectural boundary:
 ## 4. Permission Matrix & Sandbox Realities
 
 - **Deny-by-Default:** No write or read operation is permitted unless explicitly granted in `permission-matrix.json` for that agent profile.
-- **Protected Paths:** Sensitive files (`.env*`, `.ssh/*`, `.git/*`, `.atabey/*`, private keys) are globally immutable across all tiers (even Supreme `@manager`).
+- **Protected Paths:** Sensitive files (`.env*`, `.ssh/*`, `.git/*`, `.atabey/*`, private keys) are read-only through Atabey MCP tools at every tier (even Supreme `@manager`). This is enforced in the MCP layer, not by OS permissions.
 - **Sandbox Requirement:** When `sandbox.mode: "none"` (standard local development), shell commands inherit the host user's privileges. Production or automated runner environments must enforce containerized execution (`sandbox.mode: "docker"`).
 
 ---

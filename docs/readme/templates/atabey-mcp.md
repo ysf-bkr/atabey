@@ -1,12 +1,15 @@
-# Atabey MCP — Local AI Control Plane & Discipline Layer (MCP Server)
+# Atabey MCP — Local Governance & Verification for AI Coding Agents (MCP Server)
 
 [![Version](https://img.shields.io/badge/Version-v{{VERSION}}-blue.svg)](https://github.com/ysf-bkr/atabey)
 [![npm](https://img.shields.io/npm/v/atabey-mcp)](https://www.npmjs.com/package/atabey-mcp)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![MCP](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io)
-[![MCP Tools](https://img.shields.io/badge/MCP%20Tools-40-blue)](https://github.com/ysf-bkr/atabey)
 
-**Atabey MCP** is the MCP (Model Context Protocol) server component of the Atabey framework. It provides **40 MCP tools** and a multi-layer governance pipeline (validation, PII masking, discipline, loop detection, token limits, CRUD governance, risk gating and more), vector memory, risk engine, auto-rollback, prompt-injection protection and a real-time event stream.
+**Atabey MCP** is the Model Context Protocol server component of the Atabey framework. It
+exposes the tool surface your AI host calls, and runs those calls through a multi-layer
+governance pipeline (validation, PII masking, discipline, loop detection, token limits,
+CRUD governance, risk gating and more), plus vector memory, a risk engine, auto-rollback,
+prompt-injection protection and a real-time event stream.
 
 <!-- include: ../fragments/what-is-atabey.md -->
 
@@ -16,7 +19,7 @@
 
 | Capability | Description |
 |-----------|-------------|
-| **MCP Tools** | 40 tools across 9 categories: file system, search, messaging, governance, memory, quality, network, orchestration, API catalog |
+| **MCP Tools** | 40 tools across 9 categories: file system, search, messaging, governance, memory, quality, network, orchestration, API catalog (full list below) |
 | **Governance Pipeline** | Multi-layer pre/post execution validation: PII masking, risk gate, discipline, loop detection, token limits, license scan, CRUD governance |
 | **Memory** | Vector memory (TF-IDF/OpenAI embeddings), project memory, knowledge base |
 | **Observability** | Headless HTTP/SSE server (`/mcp/*`) + real-time WebSocket event stream |
@@ -45,7 +48,7 @@ MCP_TRANSPORT=unified MCP_PORT=5858 atabey-mcp
 
 ---
 
-## 🛠️ 40 MCP Tools
+## 🛠️ MCP Tools (Reference)
 
 ### File System (5)
 | Tool | Description |

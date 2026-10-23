@@ -1,11 +1,16 @@
 # Privacy & Compliance — Atabey
 
-## KVKK & GDPR Compliance Declaration
+## KVKK & GDPR Technical Controls
 
-Atabey is designed with **Privacy by Design** and **Privacy by Default** principles, compliant with:
+Atabey is designed with **Privacy by Design** and **Privacy by Default** principles and
+provides technical controls intended to assist with:
 
 - **KVKK** (Turkish Personal Data Protection Law No. 6698) — Articles 4, 5, 7, 11, 12
 - **GDPR** (EU General Data Protection Regulation) — Articles 5, 17, 32
+
+> These controls are technical enablers, **not a legal compliance declaration or
+> certification**. Whether a deployment is compliant depends on how it is configured and
+> used; assess that with your DPO or legal counsel.
 
 ---
 
@@ -14,7 +19,7 @@ Atabey is designed with **Privacy by Design** and **Privacy by Default** princip
 | Data Type | Collected | Storage | Retention | Purpose |
 |-----------|-----------|---------|-----------|---------|
 | **Chat messages** | ✅ | SQLite (`messages`) | 30 days | Agent communication (Hermes) |
-| **Audit logs** | ✅ | SQLite (`audit_log`) | 30-90 days | Governance & traceability |
+| **Audit logs** | ✅ | SQLite (`audit_log`) | 30–730 days (by category) | Governance & traceability |
 | **Agent execution logs** | ✅ | SQLite (`logs`) | 30 days | Performance monitoring |
 | **Task plans** | ✅ | SQLite (`tasks`) | 30 days | Task orchestration |
 | **Project memory** | ✅ | SQLite + `.md` | Project lifetime | Agent context |
@@ -34,24 +39,25 @@ All logs and audit records are automatically scanned for Personally Identifiable
 ```typescript
 // Automatic masking on every log entry
 logger.info("User email: user@example.com");
-// Output: [INFO] User email: [EMAIL]
+// Output: [INFO] User email: ***@***
 
 // Automatic masking on audit records
 audit.log({ details: { phone: "+90 555 123 4567" } });
-// Stored: { phone: "[PHONE]" }
+// Stored: { phone: "***-***-****" }
 ```
 
-**Masked patterns:**
+**Masked patterns** (actual replacements produced by `pii.ts`):
 | Pattern | Example | Masked |
 |---------|---------|--------|
-| Email | `user@example.com` | `[EMAIL]` |
-| Phone (TR) | `+90 555 123 4567` | `[PHONE]` |
-| TC Kimlik | `12345678901` | `[TCKN]` |
-| Credit Card | `4532 1234 5678 1234` | `[CC]` |
-| IP Address | `192.168.1.1` | `[IP]` |
-| API Keys | `sk-abc...` | `[REDACTED]` |
-| JWT Tokens | `eyJ...` | `[REDACTED]` |
-| Passwords | `"password": "123"` | `"password": "***"` |
+| Email | `user@example.com` | `***@***` |
+| Phone (TR) | `+90 555 123 4567` | `***-***-****` |
+| TC Kimlik | `10000000146` (checksum-valid) | `***********` |
+| Credit Card | `4532 1234 5678 1234` | `****-****-****-****` |
+| IP Address | `192.168.1.1` | `***.***.***.***` |
+| API Keys | `sk-abc...` | `***-REDACTED-***` |
+| JWT Tokens | `eyJ...` | `***-JWT-REDACTED-***` |
+| IBAN | `TR33...` | `****-IBAN-REDACTED-****` |
+| Passwords | `"password": "123"` | `"password": "***-REDACTED-***"` |
 
 ### 2. Data Retention (KVKK Art. 5 / GDPR Art. 5)
 
@@ -70,26 +76,32 @@ export ATABEY_DATA_RETENTION_DAYS=60  # Override default (30)
 
 ### 3. Right to Erasure (KVKK Art. 7 / GDPR Art. 17)
 
-Users can request deletion of all data associated with a Trace ID:
+Users can request deletion of all data associated with a Trace ID, via the CLI
+or the `DataRetention` service:
 
 ```bash
-# Delete all data for a specific trace
-npx atabey approve T-042
+# Erase a single trace (audit log, messages, tasks, logs, costs, approvals)
+atabey audit erase T-042
 
-# Complete data erasure (admin only)
-atabey kvkk:erase-all
+# Full right-to-erasure across every table (requires confirmation code)
+atabey audit erase --all --confirm KVKK-RIGHT-TO-ERASURE
 ```
 
-Via API:
+Via the library:
 ```typescript
 import { DataRetention } from "./shared/retention.js";
 
-// Delete trace data
+// Delete trace data (audit_log, messages, tasks, logs, costs, approvals)
 DataRetention.eraseTraceData("T-abc123");
 
-// Delete ALL data (requires confirmation code)
+// Delete ALL data (requires confirmation code) across every table
 DataRetention.eraseAllData("KVKK-RIGHT-TO-ERASURE");
 ```
+
+> The append-only audit chain uses **HMAC-SHA256 with a key stored outside the
+> database** (`.atabey/audit-hmac.key`, or `ATABEY_AUDIT_HMAC_KEY`), plus an
+> out-of-DB tip anchor to detect tail truncation. Legitimate erasure refreshes
+> the anchor so removal is distinguishable from tampering.
 
 ### 4. Data Portability (KVKK Art. 11 / GDPR Art. 20)
 
@@ -119,8 +131,9 @@ Every data processing operation is logged in the audit trail:
 | Measure | KVKK | GDPR | Implementation |
 |---------|------|------|----------------|
 | Pseudonymization | Art. 5 | Art. 32 | PII masking |
-| Encryption at rest | Art. 12 | Art. 32 | SQLite file permissions |
-| Access control | Art. 12 | Art. 32 | File-based locking |
+| Encryption in transit | Art. 12 | Art. 32 | TLS 1.3 (+ mTLS) for HTTP/SSE/WebSocket |
+| Encryption at rest | Art. 12 | Art. 32 | SQLite file permissions (no built-in encryption) |
+| Access control | Art. 12 | Art. 32 | Optional auth + passcode gate for high-risk approvals |
 | Incident response | Art. 12 | Art. 33 | Hermes alert system |
 | Data breach notification | Art. 12 | Art. 34 | Audit log + logger |
 

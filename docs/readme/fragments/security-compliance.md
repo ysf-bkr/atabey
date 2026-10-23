@@ -1,14 +1,17 @@
 ## Security & Compliance
 
-### Rule-based, fail-closed governance
+### Rule-based governance
+
 - AST-based compliance scanning + strict TypeScript (**`any` is forbidden**, no `console.*` in production code)
-- **Fail-closed PolicyGate** + deny-by-default RBAC permission matrix (protected paths: `.env*`, `.git/`, `.ssh/`, `.atabey/*`, keys)
+- **Deny-by-default RBAC** permission matrix and protected paths (`.env*`, `.git/`, `.ssh/`, `.atabey/*`, keys)
+- **Risk gating** with mandatory human approval when the risk score reaches the configured threshold (default ≥ 60)
 - **Prompt-injection mitigation** (OWASP LLM01 aligned) on both input and tool response
 - **Secret-leak redaction** on tool output + AES-256-GCM local secret vault
-- **HMAC-SHA256** tamper-evident audit chain
+- **HMAC-SHA256** audit chain — tampering is detectable, not impossible
 - SSRF-guarded HTTP proxy + Host header DNS-rebinding protection on localhost
-- **TLS 1.3 + optional mTLS** on the unified HTTP/SSE transport
-- Human-in-the-Loop: risk score ≥ 60 requires human approval
+- **TLS 1.3 + optional mTLS** when the HTTP/SSE transport is configured with certificates
+- **Fail-closed only when enforcement is enabled**: with no auth token and TLS off, the HTTP
+  server is open access (local-dev default). See [Security Policy](https://github.com/ysf-bkr/atabey/blob/main/SECURITY.md).
 
 ### KVKK / GDPR technical alignment
 
@@ -20,4 +23,5 @@
 | Audit Trail (tamper-evident log chain) | Art. 12 | Art. 30 | ✅ |
 | Data Classification | Art. 6 | Art. 9 | ✅ |
 
-> Technical compliance tooling — not legal certification. Pair with your DPO / counsel.
+> These are technical controls, not a legal compliance declaration or certification.
+> Whether your deployment is compliant depends on your configuration and usage; pair with your DPO / counsel.

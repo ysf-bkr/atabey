@@ -1,10 +1,16 @@
-# Atabey Shared — Local AI Control Plane & Discipline Layer (Shared Utilities)
+# Atabey Shared — Shared Infrastructure for the Atabey Monorepo
 
 [![Version](https://img.shields.io/badge/Version-v{{VERSION}}-blue.svg)](https://github.com/ysf-bkr/atabey)
 [![npm](https://img.shields.io/npm/v/atabey-shared)](https://www.npmjs.com/package/atabey-shared)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
-**Atabey Shared** is the foundational utility package of the Atabey framework: shared constants and branded types, security filters (PII, secrets, TLS, policy gate), the SQLite holder and migrations, structured logging, audit chain, concurrency primitives (locks, job queue, worker pool) and the sandbox runtime — used by both `atabey` (core CLI/orchestrator) and `atabey-mcp` (MCP server).
+**Atabey Shared** is the internal utility package of the Atabey monorepo: shared constants
+and branded types, security filters (PII, secrets, TLS, policy gate), the SQLite holder and
+migrations, structured logging, audit chain, concurrency primitives (locks, job queue,
+worker pool) and the sandbox runtime.
+
+It is not a standalone product. It is the common infrastructure used by both `atabey`
+(core CLI/runtime) and `atabey-mcp` (MCP server).
 
 ---
 
@@ -72,7 +78,7 @@ import { maskText } from "atabey-shared/security/pii.js";
 
 ## ⚙️ Core Modules Detail
 
-### 1. PII Protection (KVKK/GDPR Compliance)
+### 1. PII Protection (Technical Controls)
 The `pii.ts` module scans and redacts sensitive data before it is logged to disk or sent to external LLM providers.
 ```typescript
 import { maskText } from "atabey-shared";

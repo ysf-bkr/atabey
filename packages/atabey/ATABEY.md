@@ -1,4 +1,4 @@
-# Atabey Governance Layer — Supreme Law (Summary)
+# Atabey — Project Rules (Summary)
 
 > This file contains the core rules that AI agents must follow.
 > **Full version:** `packages/atabey/templates/full/ATABEY_FULL.md`
@@ -14,12 +14,14 @@
 - **Framework Monorepo (`frameworkRepo: true`):** Framework development is strictly organized under `packages/` (`packages/shared`, `packages/atabey`, `packages/atabey-mcp`).
 
 ## [RULE 2] Hierarchy
-1. **ATABEY.md** — Supreme Law
+1. **ATABEY.md** — project rules
 2. **`.atabey/knowledge/*.md`** — Standard Operating Procedures
 3. **@manager directives** — Tasks and approvals
 
-## [RULE 3] 13 Specialized Agents
-| Agent | Tier | Responsibility |
+## [RULE 3] 13 Role Profiles
+> These are role definitions injected into your host assistant — not 13 independent LLM agents.
+
+| Profile | Tier | Responsibility |
 |-------|------|----------------|
 | @manager | Supreme | Orchestration, governance, quality gate |
 | @security | Supreme | Security audit |

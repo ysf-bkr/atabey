@@ -34,4 +34,4 @@
 ## 6. Data Retention & Privacy (GDPR / KVKK)
 - **Soft Delete:** Entities subject to regulatory compliance must use soft delete (`deleted_at TIMESTAMP NULL`). Hard delete must only occur through scheduled data retention purge jobs.
 - **Right to Be Forgotten:** Implement cryptographic shredding or automated data scrubbing pipelines to anonymize user PII across primary and backup storage upon request.
-- **Audit Trail:** Maintain immutable audit logs of all privileged access and configuration modifications using the Atabey cryptographic audit chain.
+- **Audit Trail:** Maintain tamper-evident audit logs of all privileged access and configuration modifications using the Atabey cryptographic audit chain.

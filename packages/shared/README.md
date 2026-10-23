@@ -1,10 +1,16 @@
-# Atabey Shared — Local AI Control Plane & Discipline Layer (Shared Utilities)
+# Atabey Shared — Shared Infrastructure for the Atabey Monorepo
 
 [![Version](https://img.shields.io/badge/Version-v0.1.7-blue.svg)](https://github.com/ysf-bkr/atabey)
 [![npm](https://img.shields.io/npm/v/atabey-shared)](https://www.npmjs.com/package/atabey-shared)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
-**Atabey Shared** is the foundational utility package of the Atabey framework: shared constants and branded types, security filters (PII, secrets, TLS, policy gate), the SQLite holder and migrations, structured logging, audit chain, concurrency primitives (locks, job queue, worker pool) and the sandbox runtime — used by both `atabey` (core CLI/orchestrator) and `atabey-mcp` (MCP server).
+**Atabey Shared** is the internal utility package of the Atabey monorepo: shared constants
+and branded types, security filters (PII, secrets, TLS, policy gate), the SQLite holder and
+migrations, structured logging, audit chain, concurrency primitives (locks, job queue,
+worker pool) and the sandbox runtime.
+
+It is not a standalone product. It is the common infrastructure used by both `atabey`
+(core CLI/runtime) and `atabey-mcp` (MCP server).
 
 ---
 
@@ -72,7 +78,7 @@ import { maskText } from "atabey-shared/security/pii.js";
 
 ## ⚙️ Core Modules Detail
 
-### 1. PII Protection (KVKK/GDPR Compliance)
+### 1. PII Protection (Technical Controls)
 The `pii.ts` module scans and redacts sensitive data before it is logged to disk or sent to external LLM providers.
 ```typescript
 import { maskText } from "atabey-shared";
@@ -127,8 +133,8 @@ const task: TaskID = asTaskID("TASK-102");
 
 | Package | Role | Links |
 |---------|------|-------|
-| **atabey** | Core engine — CLI, agents, engines, orchestrator | [npm](https://www.npmjs.com/package/atabey) · [source](https://github.com/ysf-bkr/atabey/tree/main/packages/atabey) |
-| **atabey-mcp** | MCP server — 40 tools & governance pipeline | [npm](https://www.npmjs.com/package/atabey-mcp) · [source](https://github.com/ysf-bkr/atabey/tree/main/packages/atabey-mcp) |
+| **atabey** | Core runtime — CLI, project setup, agents, engines and task verification | [npm](https://www.npmjs.com/package/atabey) · [source](https://github.com/ysf-bkr/atabey/tree/main/packages/atabey) |
+| **atabey-mcp** | MCP server — tool surface & governance pipeline | [npm](https://www.npmjs.com/package/atabey-mcp) · [source](https://github.com/ysf-bkr/atabey/tree/main/packages/atabey-mcp) |
 | **atabey-shared** | Shared utilities — constants, storage, PII, audit, locks | [npm](https://www.npmjs.com/package/atabey-shared) · [source](https://github.com/ysf-bkr/atabey/tree/main/packages/shared) |
 
 > Full bilingual documentation (TR + EN): **[github.com/ysf-bkr/atabey](https://github.com/ysf-bkr/atabey#readme)**

@@ -1,18 +1,25 @@
-# Atabey — Local AI Control Plane & Discipline Layer (Core Engine)
+# Atabey — Local Governance & Verification for AI Coding Agents (Core Runtime)
 
 [![Version](https://img.shields.io/badge/Version-v0.1.7-blue.svg)](https://github.com/ysf-bkr/atabey)
 [![npm](https://img.shields.io/npm/v/atabey)](https://www.npmjs.com/package/atabey)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
-**Atabey Core Engine** is the CLI and orchestration layer of the Atabey framework: the multi-agent system, governance engines, routing engine, risk assessment, quality gates, evaluation & learning, contract management, phase management, memory systems, skill definitions and provider integrations.
+**Atabey Core** is the CLI and runtime package of the Atabey framework. It handles project
+setup, task orchestration, risk assessment, quality gates, contract management, memory,
+skill definitions and provider integrations.
 
-**Atabey** is a **local AI control plane & discipline layer** that sits between your
-codebase and your local AI coding assistants. It does **not** write code and does **not**
-host an LLM — it **disciplines, bounds and coordinates** the assistant you already use
-through the Model Context Protocol (MCP).
+**Atabey** is a **local governance and verification layer for AI coding agents**. It sits
+between your codebase and the AI coding assistant you already use (Claude Code, Cursor,
+Codex, OpenCode, local LLMs) and connects over the Model Context Protocol (MCP).
 
-> "Order from Chaos" — keeps AI coding assistants focused, blocks destructive actions,
-> rolls back broken edits, prevents runaway token loops, and records an audit trail.
+It does **not** host an LLM and does **not** write code. Your AI tool writes the code;
+Atabey governs which tools it can reach, gates risky operations behind policy and human
+approval, and verifies task results with tests and audit evidence.
+
+> **Scope of control:** these controls apply to operations that go through Atabey's MCP
+> tools. Native host tools (built-in shell/edit commands) can bypass them unless they are
+> disabled or hooked in the host configuration. See
+> [Known Limitations](https://github.com/ysf-bkr/atabey/blob/main/docs/limitations.md).
 
 
 ---
@@ -23,13 +30,13 @@ through the Model Context Protocol (MCP).
 |-----------|-------------|
 | **CLI** | 31 commands for initialization, orchestration, status, compliance and memory |
 | **Engines** | 9 engines: routing, risk, quality, evaluation, health, planning, agent-executor, agent-loop, crud-governance |
-| **Agents** | 13 specialized agent definitions with a 3-tier hierarchy (Supreme / Core / Recon) |
+| **Role Profiles** | 13 role definitions (prompt + task blueprint) with a 3-tier hierarchy (Supreme / Core / Recon) — not 13 independent LLM agents |
 | **Runtime** | Headless CLI adapters, DAG dispatcher, git-worktree isolation, signed evidence bundles |
 | **Memory** | 3-layer memory: vector (TF-IDF/OpenAI), project, specialty |
 | **Skills** | 15 core skills in `skills/<slug>/SKILL.md` format, mapped across 7 platform adapters |
 | **Providers** | 7 platform adapters: Claude (default), Cursor, Codex, Antigravity, Grok, Local LLM, OpenCode |
 | **Contracts** | Zod-schema task contracts and API contracts |
-| **Standards** | 33 governance standard templates |
+| **Standards** | 36 governance standard templates |
 
 ---
 
@@ -54,9 +61,12 @@ npx atabey status
 
 ---
 
-## 🎯 13 Specialized Agents
+## 🎯 13 Role Profiles (Reference)
 
-| Agent | Tier | Capability | Role |
+> These are **role definitions injected into your single host assistant**, not 13 parallel
+> LLM processes. Your host AI takes on each profile sequentially.
+
+| Profile | Tier | Capability | Role |
 |-------|------|:----------:|------|
 | **@manager** | Supreme | 10/10 | Orchestration, governance, quality gate |
 | **@security** | Supreme | 10/10 | Security audit, vulnerability scanning |
@@ -95,22 +105,18 @@ npx atabey status
 
 | Layer | Storage | Technology | Purpose |
 |-------|---------|------------|---------|
-| **Vector Memory** | SQLite | TF-IDF / OpenAI embeddings + cosine similarity | Semantic search across project knowledge |
+| **Vector Memory** | SQLite | Local TF-IDF embeddings (cosine similarity); optional OpenAI `text-embedding-3-small` when `OPENAI_API_KEY` is set | Semantic search across project knowledge |
 | **Project Memory** | Markdown | `PROJECT_MEMORY.md` | Central project state, synchronized every session |
 | **Specialty Memory** | Markdown | `.atabey/memory/specialties/{agent}.md` | Per-agent learned conventions from past tasks |
 
-```
-Task → Evaluation Engine → Score (0-100)
-  ├── Success → extractSuccessLesson() → updateSpecialtyMemory()
-  └── Failure → compliance/lint/test lesson → updateSpecialtyMemory()
-       ↓
-  Next session: readLearnedConventions() → injected into agent prompt
-```
+> **Local by default, not unconditionally local:** if you configure `OPENAI_API_KEY`,
+> embedding requests send the embedded text to the OpenAI API. Without a key, Atabey stays
+> on-machine and falls back to the local TF-IDF vectorizer (384-dim).
 
 
 ---
 
-## 🎯 15 Core Skills
+## 🎯 15 Core Skills (Reference)
 
 | Skill | Tools | Description |
 |-------|-------|-------------|
@@ -146,7 +152,7 @@ All 15 core skills are scaffolded for every platform; the delivery format differ
 
 ---
 
-## 📚 Knowledge Base (30+ Standards)
+## 📚 Knowledge Base (36 Standards)
 
 | Category | Standards |
 |----------|-----------|
@@ -174,10 +180,17 @@ All 15 core skills are scaffolded for every platform; the delivery format differ
 | **Local LLM / Ollama** | `.atabey` | `.atabey/agents/*.md` | `LOCAL_AI.md` | `.atabey/mcp_config.json` |
 | **OpenCode** | `.opencode` | `.opencode/agents/*.md` | `OPENCODE.md` | `opencode.json` |
 
-> `atabey init all` compiles and mirrors agents across **all platforms simultaneously** (one canonical setup — all 13 specialists, every time). Each platform gets **exactly one** native MCP config; generated entries use the portable `npx -y atabey-mcp` launcher.
+> `atabey init all` compiles and mirrors agent profiles across **all platforms simultaneously**
+> (one canonical setup — all 13 role profiles, every time). Each platform gets **exactly one**
+> native MCP config; generated entries use the portable `npx -y atabey-mcp` launcher.
 >
 > Skills are scaffolded in the discoverable `skills/<slug>/SKILL.md` directory format with YAML frontmatter.
 > Gemini CLI is **no longer supported** — `atabey init gemini` warns and falls back to Claude.
+>
+> **Enforcement is platform-dependent.** Platforms that route their tools through Atabey MCP get
+> the full pipeline. Platforms that keep native shell/edit tools need their allow-lists or hooks
+> configured to disable those tools; otherwise the host can act outside Atabey. See
+> [Known Limitations](https://github.com/ysf-bkr/atabey/blob/main/docs/limitations.md).
 
 
 ---
@@ -241,7 +254,7 @@ packages/atabey/
 │   │   ├── platforms/   # 7 platform adapters
 │   │   └── utils/       # CLI utilities (compliance, memory, pkg, config)
 │   ├── modules/
-│   │   ├── agents/      # 13 agent definitions + registry
+│   │   ├── agents/      # 13 role profile definitions + registry
 │   │   ├── audit/       # HMAC-signed audit export
 │   │   ├── contracts/   # Task/API contracts (Zod)
 │   │   ├── engines/     # 9 governance/orchestration engines
@@ -257,28 +270,35 @@ packages/atabey/
     └── full/            # Full constitution template
 ```
 
-## 5 Core Capabilities
+## What Atabey Does
 
-| # | Capability | Description |
-|---|-----------|-------------|
-| 🛠️ | **40 MCP Tools** | File system, search, messaging, governance, memory, quality, network, orchestration |
-| 🧠 | **3-Layer Memory** | Vector (TF-IDF/OpenAI), project memory, specialty (agent learning) |
-| 🤖 | **13 Role Profiles** | 3-tier hierarchy (Supreme / Core / Recon) injected into the host LLM |
-| 🎯 | **15 Core Skills** | Platform-adaptive skills for AI coding environments |
-| 📚 | **30+ Standards** | Governance, security, architecture, compliance, deployment |
+| Outcome | How it is delivered |
+|---------|---------------------|
+| **Govern** | Deny-by-default permission matrix and protected paths for tool calls that go through Atabey MCP |
+| **Gate** | Risk scoring plus human-in-the-loop approval for operations above the configured threshold |
+| **Verify** | AST/lint/contract checks, test execution and evidence bundles before a task is reported as done |
+| **Record** | Keyed HMAC audit chain that makes tampering detectable |
+| **Bound** | Loop detection, per-provider token ceilings and execution timeouts |
+
+Under the hood: 40 MCP tools, 13 role profiles, 15 core skills and 36 standard templates.
+These are implementation inventory, not the product promise. The reference sections below
+list them; the product promise is the governed, verified workflow they support.
 
 
 ## Security & Compliance
 
-### Rule-based, fail-closed governance
+### Rule-based governance
+
 - AST-based compliance scanning + strict TypeScript (**`any` is forbidden**, no `console.*` in production code)
-- **Fail-closed PolicyGate** + deny-by-default RBAC permission matrix (protected paths: `.env*`, `.git/`, `.ssh/`, `.atabey/*`, keys)
+- **Deny-by-default RBAC** permission matrix and protected paths (`.env*`, `.git/`, `.ssh/`, `.atabey/*`, keys)
+- **Risk gating** with mandatory human approval when the risk score reaches the configured threshold (default ≥ 60)
 - **Prompt-injection mitigation** (OWASP LLM01 aligned) on both input and tool response
 - **Secret-leak redaction** on tool output + AES-256-GCM local secret vault
-- **HMAC-SHA256** tamper-evident audit chain
+- **HMAC-SHA256** audit chain — tampering is detectable, not impossible
 - SSRF-guarded HTTP proxy + Host header DNS-rebinding protection on localhost
-- **TLS 1.3 + optional mTLS** on the unified HTTP/SSE transport
-- Human-in-the-Loop: risk score ≥ 60 requires human approval
+- **TLS 1.3 + optional mTLS** when the HTTP/SSE transport is configured with certificates
+- **Fail-closed only when enforcement is enabled**: with no auth token and TLS off, the HTTP
+  server is open access (local-dev default). See [Security Policy](https://github.com/ysf-bkr/atabey/blob/main/SECURITY.md).
 
 ### KVKK / GDPR technical alignment
 
@@ -290,7 +310,8 @@ packages/atabey/
 | Audit Trail (tamper-evident log chain) | Art. 12 | Art. 30 | ✅ |
 | Data Classification | Art. 6 | Art. 9 | ✅ |
 
-> Technical compliance tooling — not legal certification. Pair with your DPO / counsel.
+> These are technical controls, not a legal compliance declaration or certification.
+> Whether your deployment is compliant depends on your configuration and usage; pair with your DPO / counsel.
 
 
 ## Token Efficiency
@@ -320,8 +341,8 @@ Tune limits with `MCP_MAX_TOKENS_PER_MINUTE`, `MCP_MAX_TOKENS_PER_HOUR`, `MCP_MA
 
 | Package | Role | Links |
 |---------|------|-------|
-| **atabey** | Core engine — CLI, agents, engines, orchestrator | [npm](https://www.npmjs.com/package/atabey) · [source](https://github.com/ysf-bkr/atabey/tree/main/packages/atabey) |
-| **atabey-mcp** | MCP server — 40 tools & governance pipeline | [npm](https://www.npmjs.com/package/atabey-mcp) · [source](https://github.com/ysf-bkr/atabey/tree/main/packages/atabey-mcp) |
+| **atabey** | Core runtime — CLI, project setup, agents, engines and task verification | [npm](https://www.npmjs.com/package/atabey) · [source](https://github.com/ysf-bkr/atabey/tree/main/packages/atabey) |
+| **atabey-mcp** | MCP server — tool surface & governance pipeline | [npm](https://www.npmjs.com/package/atabey-mcp) · [source](https://github.com/ysf-bkr/atabey/tree/main/packages/atabey-mcp) |
 | **atabey-shared** | Shared utilities — constants, storage, PII, audit, locks | [npm](https://www.npmjs.com/package/atabey-shared) · [source](https://github.com/ysf-bkr/atabey/tree/main/packages/shared) |
 
 > Full bilingual documentation (TR + EN): **[github.com/ysf-bkr/atabey](https://github.com/ysf-bkr/atabey#readme)**

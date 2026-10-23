@@ -1,7 +1,7 @@
 {
   "name": "atabey-shared",
   "version": "0.1.7",
-  "description": "Shared utility modules for Atabey — Local AI Control Plane & Discipline Layer",
+  "description": "Shared infrastructure for the Atabey monorepo",
   "author": "Yusuf BEKAR",
   "license": "AGPL-3.0",
   "repository": {
@@ -15,12 +15,14 @@
   "keywords": [
     "mcp",
     "model-context-protocol",
-    "ai-agents",
+    "local-ai-governance",
+    "coding-agent",
     "claude-code",
     "cursor-ide",
-    "gemini-cli",
     "governance",
-    "orchestration",
+    "policy",
+    "audit",
+    "verification",
     "typescript"
   ],
   "type": "module",

@@ -1,32 +1,41 @@
-# Atabey — Local AI Control Plane & Discipline Layer
+# Atabey — Local Governance & Verification for AI Coding Agents
 
-> **Language / Dil:** [English](#atabey--local-ai-control-plane--discipline-layer) · [Türkçe](#turkce)
+> **Language / Dil:** [English](#atabey--local-governance--verification-for-ai-coding-agents) · [Türkçe](#turkce)
 
-*v0.1.7 · Lightweight Local Control Plane · 100% strict TypeScript · Cross-platform (macOS, Linux, Windows)*
+*v0.1.7 · Local-first · 100% strict TypeScript · Cross-platform (macOS, Linux, Windows)*
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![npm](https://img.shields.io/npm/v/atabey)](https://www.npmjs.com/package/atabey)
 [![MCP](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io)
 
-**Atabey** is a **rule-based governance, safety boundaries, and role discipline layer for AI coding assistants** (Local AI Control Plane & Discipline Layer). Running directly on your local machine, it sits between your codebase and your local AI coding tools (Claude Code, Cursor, Codex, Grok, Local LLMs) to **discipline, bound, and coordinate** them via MCP (Model Context Protocol).
+**Atabey** is a **local governance and verification layer for AI coding agents**. Running on
+your machine, it sits between your codebase and the AI coding tools you already use (Claude
+Code, Cursor, Codex, Grok, OpenCode, local LLMs) and connects over MCP (Model Context Protocol).
 
-It is not an oversized enterprise SaaS or distributed cloud platform. Its core purpose is simple: **bring order to local AI coding chaos**.
+It is **not an LLM** and it does not write your code. Your AI tool writes the code; Atabey
+governs which tools it can reach, gates risky operations behind policy and human approval,
+and verifies task results with tests and audit evidence.
 
-| Layer | Role |
-|-------|------|
-| **Your AI IDE/CLI** | Writes code, reasons, and executes commands (Claude, Cursor, Codex) |
-| **Atabey Local MCP** | Intercepts operations · enforces boundaries · prevents infinite loops · manages memory |
-| **13 Role Profiles** | Dynamic prompt personas (@backend, @architect, @quality, @security...) |
-| **`.atabey/` Project Hub** | Local SQLite memory, policy matrix, audit trail, and rollback snapshots |
+| Layer | Responsibility |
+|-------|----------------|
+| **AI coding host** | Runs the model, writes code and calls tools (Claude, Cursor, Codex, …) |
+| **Atabey MCP** | Exposes tool access, risk gates, approvals and audit records |
+| **Atabey CLI / runtime** | Project setup, planned task execution and verification flows |
+| **`.atabey/` project state** | Local SQLite memory, policy matrix, audit trail and rollback snapshots |
 
-> [!NOTE]
-> **Designed for Local Development:**
-> Atabey runs 100% locally on your machine. You don't need cloud infrastructure or heavy orchestration clusters. Just run `npx atabey mcp start` (or connect your AI interface via `.mcp.json`) and let Atabey discipline your AI coding assistants.
+> [!IMPORTANT]
+> **Scope of control:** Atabey's controls apply to operations that go through its MCP tools.
+> Native host tools (built-in shell/edit commands) can bypass them unless they are disabled or
+> hooked in the host configuration. "Guaranteed safety" depends on platform and configuration —
+> see [Known Limitations](docs/limitations.md).
 
 > **Philosophy:** "Order from Chaos"
 >
-> - **What Atabey does:** Keeps your AI coding assistants focused, blocks destructive commands (`rm -rf`, overwriting `.env`), rolls back broken edits, prevents runaway token loops, and tracks project memory.
-> - **What Atabey does not do:** It is not a separate LLM runtime or external cloud service. Your AI writes the code; Atabey provides the guardrails and discipline.
+> - **What Atabey does:** governs tool access for selected operations, requests human approval
+>   at configured risk thresholds, can roll back some file changes when post-validation fails,
+>   bounds loops and token budgets, and records an audit trail.
+> - **What Atabey does not do:** it is not an LLM runtime or cloud service, and it does not
+>   make your code correct or secure on its own. Human review remains required.
 
 ---
 
@@ -73,17 +82,18 @@ You (@backend): "Create a user login service with JWT authentication"
 - [Orchestration Flow](#orchestration-flow)
 - [Quick Start](#quick-start)
 - [MCP Connection (IDE/CLI)](#mcp-connection-idecli)
-- [5 Core Capabilities Overview](#5-core-capabilities-overview)
+- [What Atabey Does](#what-atabey-does)
 - [How Atabey Plugs Into Your AI](#how-atabey-plugs-into-your-ai)
 - [Supported Platforms](#supported-platforms)
 - [Installation](#installation)
 - [Per-AI Setup (Single Canonical Setup)](#per-ai-setup-single-canonical-setup)
-- [13 Specialized Role Profiles](#13-specialized-role-profiles)
+- **Reference: roles, tools, skills and standards**
+  - [13 Role Profiles](#13-role-profiles)
+  - [40 MCP Tools](#40-mcp-tools)
+  - [15 Core Skills](#15-core-skills)
+  - [Knowledge Base (36 Standards)](#knowledge-base-36-standards)
 - [Multi-Agent Workflow Scenarios & Code Examples](#multi-agent-workflow-scenarios--code-examples)
-- [40 MCP Tools](#40-mcp-tools)
-- [15 Core Skills](#15-core-skills)
 - [3-Layer Memory System](#3-layer-memory-system)
-- [Knowledge Base (30+ Standards)](#knowledge-base-30-standards)
 - [Multi-Layer Governance Pipeline](#multi-layer-governance-pipeline)
 - [Core Features](#core-features)
 - [MCP Server & Control Plane](#mcp-server--headless-control-plane)
@@ -212,8 +222,8 @@ npm run atabey:setup # or run manually
 ```
 
 > **One canonical setup.** There are no freelancer/team/enterprise profiles anymore:
-> `atabey init` always scaffolds **all 13 specialists** with the strictest
-> governance posture (fail-closed sandbox, required auth). You only choose
+> `atabey init` always scaffolds **all 13 role profiles** with the strictest
+> governance posture the platform allows (sandbox and auth enforced when configured). You only choose
 > **which AI** to compile for: `claude` (default), `cursor`, `codex`, `grok`,
 > `local`, `antigravity-cli`, `opencode` — or `all`.
 >
@@ -326,17 +336,18 @@ Open your AI interface and simply type:
 
 ---
 
-## 5 Core Capabilities Overview
+## What Atabey Does
 
-Atabey is built on **5 core capabilities** that work together seamlessly:
+| Outcome | How it is delivered |
+|---------|---------------------|
+| **Govern** | Deny-by-default permission matrix and protected paths for tool calls that go through Atabey MCP |
+| **Gate** | Risk scoring plus human-in-the-loop approval above the configured threshold |
+| **Verify** | AST/lint/contract checks, test execution and evidence bundles before a task is reported as done |
+| **Record** | Keyed HMAC audit chain that makes tampering detectable |
+| **Bound** | Loop detection, per-provider token ceilings and execution timeouts |
 
-| # | Capability | Description |
-|---|-----------|-------------|
-| 🛠️ | **40 MCP Tools** | File system, search, messaging, governance, memory, quality, network, orchestration |
-| 🧠 | **3-Layer Memory** | Vector Memory (TF-IDF/OpenAI), Project Memory, Specialty Memory (agent learning) |
-| 🤖 | **13 Specialized Role Profiles** | 3-tier hierarchy (Supreme/Core/Recon) injected dynamically into host LLMs |
-| 🎯 | **15 Core Skills** | Platform-adaptive skills for AI coding environments |
-| 📚 | **30+ Knowledge Standards** | Governance, security, architecture, compliance, deployment standards |
+The rest of this README documents the machinery behind these outcomes: 40 MCP tools,
+13 role profiles, 15 core skills, 36 standards and a 3-layer memory system.
 
 ---
 
@@ -363,18 +374,20 @@ Atabey is built on **5 core capabilities** that work together seamlessly:
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-Atabey is **not a separate execution engine**. It is a context-aware governance and policy middleware that validates, bounds, and coordinates the tool execution of AI coding assistants:
-- **13 Specialized Agent Contexts** (injected templates to structure AI reasoning)
-- **Deterministic Quality Gates** (AST analysis + lint + governance validation)
-- **Risk Gate & Heuristic Scanning** (blocking dangerous commands, requiring human approval)
-- **Persistent Vector Memory** (TF-IDF + OpenAI embeddings, cosine similarity search)
-- **Audit trails** (every action logged, supporting KVKK/GDPR technical alignment)
+Atabey is **not a separate execution engine**. It is governance and policy middleware that
+validates, bounds and records the tool calls your AI coding assistant makes through MCP:
+- **13 Role Profiles** — injected templates that structure the host AI's reasoning
+- **Deterministic Quality Gates** — AST analysis + lint + governance validation
+- **Risk Gate & Heuristic Scanning** — blocks selected dangerous commands and requests human approval
+- **Persistent Vector Memory** — local TF-IDF by default; optional OpenAI embeddings
+- **Audit trails** — records operations that pass through Atabey, with technical (not legal) compliance controls
 
 ---
 
 ## Supported Platforms
 
-Atabey AL supports **7 platforms** with automatic adapter configuration:
+Atabey supports **7 platforms** with automatic adapter configuration. Enforcement level
+depends on how much of each host's tool surface is routed through Atabey MCP:
 
 | Platform | MCP Transport | Agent Personas | Dynamic Skills | Governance Enforcement | HITL Approval Gate | Audit Chain | Sandbox (env-configured) |
 |----------|---------------|----------------|----------------|------------------------|---------------------|-------------|-------------------|
@@ -390,7 +403,7 @@ Atabey AL supports **7 platforms** with automatic adapter configuration:
 
 > **Sandboxing is global and env-driven** (`ATABEY_SANDBOX_RUNTIME=none|uid|seatbelt|auto`), not per-platform. On macOS, `seatbelt` uses `/usr/bin/sandbox-exec`; on Linux, POSIX `uid` drop is used. Set `ATABEY_SANDBOX_REQUIRED=true` to deny execution when isolation is unavailable.
 
-> **All-AIs Mode:** `atabey init all` compiles and mirrors agents across **ALL supported platforms simultaneously** (this replaces the old `--unified` flag).
+> **All-AIs Mode:** `atabey init all` compiles and mirrors role profiles across **ALL supported platforms simultaneously** (this replaces the old `--unified` flag).
 
 ---
 
@@ -467,8 +480,8 @@ Compiles the agent set into every platform's native format under the unified
 
 | Feature | What You Get |
 |---------|-------------|
-| **Agents** | All 13 specialists (Supreme + Core + Recon) — always |
-| **Governance** | Quality gate + risk engine + contract validation + fail-closed sandbox posture |
+| **Role Profiles** | All 13 profiles (Supreme + Core + Recon) — always |
+| **Governance** | Quality gate + risk engine + contract validation; sandbox is fail-closed when `ATABEY_SANDBOX_REQUIRED=true` |
 | **MCP config** | Exactly ONE native config file per platform (no duplicates) |
 | **Skills** | `skills/<slug>/SKILL.md` directory format with YAML frontmatter (auto-discoverable) |
 | **Memory** | Bootstrap trace **T-001** opened automatically (active task from the first minute) |
@@ -504,12 +517,16 @@ npx atabey init claude --yes --focus mobile-fullstack --backend go --frontend ne
 
 ---
 
-## 13 Specialized Role Profiles
+## 13 Role Profiles
 
-> One canonical setup: all 13 specialists are scaffolded on every `atabey init` — there are no per-profile agent subsets anymore.
+> One canonical setup: all 13 role profiles are scaffolded on every `atabey init` — there are no per-profile subsets or licensing tiers.
 
 > [!NOTE]
-> **Execution Model:** Atabey's specialized agents are virtual profiles powered by dynamically injected system role definitions and context templates. They do not run as 13 parallel, independent LLM API instances. Instead, your single host AI assistant (e.g., Claude Code, Cursor) takes on these roles sequentially, routed by the TF-IDF engine, while Atabey enforces boundaries, state machine constraints, and quality checks during role switches.
+> **Execution model:** these are **role definitions**, not 13 independent LLM agents. Atabey
+> injects the selected profile's prompt and task blueprint into your single host assistant
+> (e.g., Claude Code, Cursor), which then works sequentially. Boundaries are enforced at the
+> MCP tool layer, not by the persona itself. See
+> [Known Limitations](docs/limitations.md#2-agent-reality-13-role-profiles-not-13-independent-agents).
 
 | Role Profile | Tier | Domain | Scope / Responsibility |
 |--------------|------|--------|------------------------|
@@ -526,7 +543,10 @@ npx atabey init claude --yes --focus mobile-fullstack --backend go --frontend ne
 | **@devops** | Core | DevOps | CI/CD, pipelines, infrastructure |
 | **@explorer** | Recon | Exploration | Codebase discovery, symbol indexing |
 | **@git** | Recon | VCS | Branch hygiene, commits, PR preparation |
-| **@human** | — | HITL | Human approval checkpoint |
+| **@human** | — | HITL | Human approval checkpoint (not a role profile) |
+
+> `@human` is the human-in-the-loop checkpoint, not a 14th role profile. The 13 profiles are
+> the registry entries in `packages/atabey/src/modules/agents/registry/`.
 
 ### Agent Hierarchy
 ```
@@ -663,6 +683,10 @@ npx atabey audit export --verify
 
 ## 40 MCP Tools
 
+> Reference inventory. The count is verified against
+> `packages/atabey-mcp/src/mcp/tools/definitions.ts`; the product promise is the governed
+> workflow these tools support, not the number itself.
+
 ### File System (5)
 `read_file`, `write_file`, `replace_text`, `batch_surgical_edit`, `patch_file`
 
@@ -695,6 +719,8 @@ npx atabey audit export --verify
 ---
 
 ## 15 Core Skills
+
+> Reference inventory, verified against `packages/atabey/src/modules/skills/definitions.ts`.
 
 | Skill | Tools | Description |
 |-------|-------|-------------|
@@ -737,7 +763,7 @@ Task → Evaluation Engine → Score (0-100)
 
 ---
 
-## Knowledge Base (30+ Standards)
+## Knowledge Base (36 Standards)
 
 | Category | Standards |
 |----------|-----------|
@@ -769,7 +795,7 @@ CallToolRequest
                        (raw args reach the handler, so file content is never corrupted)
  3. [AGENT ROUTING]    Active agent resolution + silent routing
  4. [BYPASS GUARD]     scanUnauditedWorkspaceEdits() — detects host-native tool edits
- 5. [POLICY GATE]      denyIfMutatingBlocked() — fail-closed
+ 5. [POLICY GATE]      denyIfMutatingBlocked() — denies when the check cannot run
  6. [RBAC]             enforceToolPermissionMatrix() — deny-by-default path permissions
  7. [INJECTION SCAN]   PromptInjectionProtection on inputs & written content
  8. [TOKENS]           cl100k_base BPE token counting
@@ -787,6 +813,9 @@ CallToolRequest
     ↓
   Return governed result
 ```
+
+This pipeline covers calls made **through Atabey MCP**. Native host tools that never call
+Atabey are outside it — see [Known Limitations](docs/limitations.md#3-host-native-tool-bypass-risk-out-of-band-execution).
 
 ---
 
@@ -936,8 +965,8 @@ Deterministic rules: AST compliance parsing, strict TypeScript type validation (
 - Type safety enforced in governance pipeline
 
 ### Transport Security (TLS 1.3 + mTLS)
-Every network-facing channel — the unified MCP server (HTTP/SSE) and the WebSocket live feed — is served through one HTTP(S) factory, so encryption is applied uniformly:
-- **TLS 1.3 by default** (`ATABEY_TLS_MIN_VERSION=TLSv1.3`), with modern cipher defaults.
+The unified MCP server (HTTP/SSE) and the WebSocket live feed share one HTTP(S) factory, so **when certificates are configured** encryption is applied to both:
+- **TLS 1.3** as the minimum version (`ATABEY_TLS_MIN_VERSION=TLSv1.3`), with modern cipher defaults. TLS is not enabled unless you provide a certificate/key pair.
 - **mTLS**: set `ATABEY_MTLS_REQUIRED=true` + `ATABEY_TLS_CA_FILE` to require and verify client certificates.
 - **Fail-closed policy**: `ATABEY_TLS_REQUIRED=true` refuses to start without TLS; binding plaintext to a non-loopback host is rejected unless `ATABEY_ALLOW_INSECURE_BIND=true`.
 - WebSocket upgrades carry an auth token (`?token=`) or client cert when auth/mTLS is on.
@@ -958,11 +987,14 @@ export MCP_TRANSPORT=unified
 - Versioned, checksummed schema migrations; startup `PRAGMA quick_check`/`integrity_check`.
 - Atomic online backup/restore with SHA-256 manifests (`atabey db backup|restore|verify`).
 
-### PII Masking (KVKK/GDPR Technical Alignment)
-- All logs scanned for Personally Identifiable Information
-- Sensitive data automatically masked (20+ patterns)
-- Designed to assist with Turkish KVKK (Law No. 6698) and EU GDPR controls
+### PII Masking (Technical Data-Protection Controls)
+- Logs that pass through Atabey are scanned for Personally Identifiable Information
+- Sensitive data matching 20+ patterns is masked
+- Intended to assist with Turkish KVKK (Law No. 6698) and EU GDPR controls
 - **Right to Erasure** (KVKK Art. 7 / GDPR Art. 17) technical support
+
+> These are technical controls, not a legal compliance guarantee. Masking applies to the
+> channels Atabey processes; data written directly by host-native tools is outside that scope.
 
 ### Human-in-the-Loop
 - Risk score ≥ 60 requires human approval
@@ -1106,7 +1138,9 @@ npm run test:coverage       # Coverage report
 
 ## Benchmarking
 
-Measure Atabey's real-world value (governed vs. baseline AI coding) with the reproducible protocol in [docs/benchmark-protocol.md](docs/benchmark-protocol.md):
+Measure Atabey's real-world value (governed vs. baseline AI coding) with the reproducible protocol in [docs/benchmark-protocol.md](docs/benchmark-protocol.md).
+
+> **Status: protocol defined, execution pending.** No comparative results have been published yet. The commands below run the protocol; they do not imply that a benchmark has already been completed.
 
 ```bash
 npm run benchmark -- --list # List scenarios (BM-1..BM-5)
@@ -1178,25 +1212,34 @@ Business inquiries: **ybekar@msn.com**
 
 ## Atabey nedir?
 
-**Atabey**, **AI kodlama asistanları için kural tabanlı yönetişim, güvenlik sınırları ve rol disiplini katmanıdır** (Local AI Control Plane & Discipline Layer). Doğrudan kendi yerel geliştirme makinenizde çalışarak Claude Code, Cursor, Codex, Grok, Antigravity veya yerel LLM gibi araçlarınızın üzerine MCP (Model Context Protocol) ile bağlanır.
+**Atabey**, **AI kodlama ajanları için yerel yönetişim ve doğrulama katmanıdır**. Kendi
+makinenizde çalışır; Claude Code, Cursor, Codex, Grok, OpenCode veya yerel LLM gibi
+araçlarınızla MCP (Model Context Protocol) üzerinden bağlanır.
 
-Büyük, hantal ve karmaşık bir bulut SaaS platformu değildir. Temel görevi nettir: **Lokal bilgisayarınızdaki AI kodlama kaosunu disipline etmek ve kontrol altında tutmak.**
+Atabey bir **LLM değildir** ve kodunuzu kendisi yazmaz. Kodu bağlı AI aracınız yazar;
+Atabey hangi araçlara erişebileceğini yönetir, riskli işlemleri politika ve insan onayıyla
+sınırlar, görev sonuçlarını testler ve denetim kayıtlarıyla doğrular.
 
-| Katman | Rol |
-|--------|-----|
-| **AI IDE/CLI’niz** | Kod yazar, akıl yürütür, komutları yürütür (Claude, Cursor, Codex) |
-| **Atabey Yerel MCP** | Eylemleri denetler · tehlikeli komutları engeller · döngüleri durdurur · bellek tutar |
-| **13 Rol Profili** | İhtiyaca göre devreye giren sistem şablonları (@backend, @architect, @quality, @security...) |
-| **`.atabey/` Proje Merkezi** | Yerel SQLite belleği, dosya izin matrisi, denetim izi ve otomatik geri alma yedekleri |
+| Katman | Sorumluluk |
+|--------|------------|
+| **AI kodlama aracınız** | Modeli çalıştırır, kodu üretir, araçları çağırır (Claude, Cursor, Codex…) |
+| **Atabey MCP** | Araç erişimi, risk kontrolleri, onaylar ve denetim kayıtları |
+| **Atabey CLI / runtime** | Proje kurulumu, planlı görev yürütme ve doğrulama akışları |
+| **`.atabey/` proje durumu** | Yerel SQLite belleği, izin matrisi, denetim izi ve geri alma yedekleri |
 
-> [!NOTE]
-> **Yerel Geliştirme İçin Tasarlandı:**
-> Atabey %100 kendi bilgisayarınızda çalışır. Ayrı bir sunucu, bulut altyapısı veya karmaşık orkestrasyon kümesi gerektirmez. Terminalden `npx atabey mcp start` demeniz veya AI aracınıza `.mcp.json` üzerinden bağlamanız yeterlidir.
+> [!IMPORTANT]
+> **Kontrolün kapsamı:** Atabey'in kontrolleri yalnızca Atabey MCP araçlarından geçen
+> işlemler için geçerlidir. Host'un yerleşik kabuk/düzenleme araçları, yapılandırmayla
+> kapatılmadıkça bu kontrolleri atlayabilir. "Garantili güvenlik" platforma ve yapılandırmaya
+> bağlıdır — bkz. [Bilinen Sınırlar](docs/limitations.md).
 
 > **Felsefe:** “Kaostan Nizam” / *Order from Chaos*
 >
-> - **Atabey ne yapar:** AI asistanlarınızın projenin hassas dosyalarını (`.env`, `.git`) bozmasını engeller, riskli kabuk komutlarında insan onayı ister, hatalı toplu düzenlemeleri otomatik geri alır (auto-rollback), sonsuz döngüleri ve token israfını keser.
-> - **Atabey ne değildir:** Bağımsız bir LLM modeli veya bulut servisi değildir. Kodu AI asistanınız yazar; Atabey ise onu dizginleyen yerel başmühendis ve güvenlik kontrol noktasıdır.
+> - **Atabey ne yapar:** Seçili MCP işlemlerinde araç erişimini yönetir, yapılandırılmış risk
+>   eşiklerinde insan onayı ister, doğrulama başarısız olduğunda bazı dosya değişikliklerini
+>   geri alabilir, döngü ve token bütçelerini sınırlar, denetim kaydı tutar.
+> - **Atabey ne değildir:** Bağımsız bir LLM veya bulut servisi değildir; kodunuzu tek başına
+>   doğru veya güvenli hale getirmez. İnsan incelemesi gerekir.
 
 > **Atabey’in Sınırları ve Kapsamı:**
 > - **Kapsam İçi:** Politika ve yetki matrisi, risk analizi, token kotası, HMAC imzalı denetim izi, görev ve ajan yaşam döngüsü, insan onayı (HITL).
@@ -1306,15 +1349,18 @@ Sohbette:
 
 ---
 
-## 5 temel yetenek
+## Atabey ne yapar?
 
-| # | Yetenek | Açıklama |
-|---|---------|----------|
-| 🛠️ | **40 MCP Tool** | Dosya sistemi, arama, mesajlaşma, yönetişim, bellek, kalite, ağ, orkestrasyon |
-| 🧠 | **3 katmanlı bellek** | Vector (TF-IDF/OpenAI), Project Memory, Specialty Memory |
-| 🤖 | **13 uzman rol profili** | Supreme / Core / Recon hiyerarşisi |
-| 🎯 | **15 core skill** | 7 AI platformuna uyarlanan skill setleri |
-| 📚 | **30+ knowledge standard** | Yönetişim, güvenlik, mimari, test, deployment |
+| Sonuç | Nasıl sağlanır |
+|-------|----------------|
+| **Yönetir** | Atabey MCP'den geçen araç çağrılarında varsayılan-red izin matrisi ve korumalı yollar |
+| **Sınırlar** | Risk puanlaması ve yapılandırılmış eşik üstünde insan onayı |
+| **Doğrular** | AST/lint/kontrat kontrolleri, test çalıştırma ve kanıt paketleri |
+| **Kaydeder** | Tahrifatı tespit edilebilir kılan HMAC denetim zinciri |
+| **Sınırlandırır** | Döngü tespiti, token tavanları ve yürütme zaman aşımı |
+
+> **Envanter (referans):** 40 MCP aracı, 13 rol profili, 15 core skill, 36 standart şablonu
+> ve 3 katmanlı bellek. Bunlar ürünün vaadi değil, vaadi destekleyen altyapıdır.
 
 ---
 

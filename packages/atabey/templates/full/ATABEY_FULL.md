@@ -370,8 +370,7 @@ The `atabey-mcp` package provides MCP (Model Context Protocol) server integratio
 ### 2. Supported Platform Integrations
 | Platform | Integration | Config File |
 |----------|------------|-------------|
-| **Claude Code** | `.claude/agents/` — 13 agents | `mcp.json` |
-| **Gemini CLI** | `.gemini/agents/` — full compatibility | `gemini config` |
+| **Claude Code** | `.claude/agents/` — 13 role profiles | `.mcp.json` |
 | **Cursor** | `.cursor/rules/` — agent rules | `.cursor/mcp.json` |
 | **Antigravity CLI** | `.agents/` — custom agent specs | `mcp.json` |
 | **Codex CLI (OpenAI)** | `.agents/` — instruction format | `mcp.json` |
@@ -387,9 +386,9 @@ node node_modules/atabey-mcp/dist/atabey-mcp/src/mcp/index.js
 
 ---
 
-## [MCP] HEADLESS LOCAL CONTROL PLANE
+## [MCP] HEADLESS MCP SERVER
 
-Atabey operates as a headless Local AI Control Plane via MCP (Model Context Protocol).
+Atabey exposes its governance layer as a headless MCP (Model Context Protocol) server.
 
 ### 1. Startup & Status
 ```bash

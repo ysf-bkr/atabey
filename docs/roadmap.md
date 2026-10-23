@@ -1,15 +1,17 @@
 # 🗺️ Atabey — Project Roadmap
 
-**Atabey** is an **AI Engineering Control Plane** ("Chief Engineer & Verification Layer") sitting above AI coding tools and models (Claude Code, Cursor, Codex, Grok, Local LLMs). Rather than acting as a prompt-to-toy-app builder, Atabey governs existing (brownfield) repositories across **4 Core Pillars**:
+**Atabey** is a **local governance and verification layer for AI coding agents**. It sits
+alongside the AI coding tools and models you already use (Claude Code, Cursor, Codex, Grok,
+local LLMs) and adds controls around existing (brownfield) repositories across **4 pillars**:
 1. **Remember (Project Brain & Code Graph):** Symbol/import/API graph + ADR memory to eliminate full-repo re-scanning.
-2. **Bound (Security, Privacy & Token Limits):** Secret vault, PII masking, fail-closed `PolicyGate`, HITL approval gate, and per-provider token/rate ceilings.
+2. **Bound (Security, Privacy & Token Limits):** Secret vault, PII masking, deny-on-failure `PolicyGate`, HITL approval gate, and per-provider token/rate ceilings.
 3. **Coordinate (Isolated Execution):** DAG wave dispatcher (`AgentDispatcher`) + isolated Git worktrees and sandboxes (`AgentRuntime`) executing a focused **Plan → Code → Verify** workflow.
 4. **Verify & Prove (Deterministic Quality Gate):** Real TypeScript AST compliance, automated test execution, HMAC-SHA256 audit chain, and verifiable `EvidenceBundle` reports.
 
 ---
 
 ## 📈 Completed: `PHASE_0` & Core Hardening
-- [x] **Core Governance & Security:** Fail-closed `PolicyGate`, universal tool permission matrix, AES-256-GCM `SecretManager` vault, TLS 1.3 + mTLS transport, and keyed HMAC-SHA256 immutable audit chain.
+- [x] **Core Governance & Security:** `PolicyGate` that denies when its check cannot run, universal tool permission matrix, AES-256-GCM `SecretManager` vault, TLS 1.3 + mTLS transport (when configured), and a keyed HMAC-SHA256 tamper-evident audit chain.
 - [x] **Stateless MCP Server (40 Tools):** Consolidated, strictly typed MCP tool surface across Claude Code, Cursor, Antigravity, OpenCode, Codex, and Grok with 36 synchronized enterprise standards.
 - [x] **Static Compliance & Token Limits:** TypeScript Compiler API AST scanner (`ast-scan.ts`), pre-write validation, real `cl100k_base` BPE tokenizer (`js-tiktoken`), and a multi-provider token pricing catalog (informational).
 - [x] **Unified HTTP/SSE Control Plane:** JSON API + real-time WebSocket event stream (agents, Hermes, approvals, token telemetry); HITL approval via CLI/API. (The bundled React web UI was removed in favour of the headless API.)

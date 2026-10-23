@@ -423,7 +423,7 @@ async function main() {
 
 function showHelp() {
     process.stdout.write(`
-[ATABEY] v${getPackageVersion()} — Local AI Control Plane & Discipline Layer
+[ATABEY] v${getPackageVersion()} — Local Governance & Verification for AI Coding Agents
 
 Usage:
   atabey <command> [options]

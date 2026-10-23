@@ -32,7 +32,7 @@ Atabey is a deterministic control plane. The core threat assumption is:
 │  │ 7. Discipline & Loop Detection (Persistent Cooldowns)  │  │
 │  │ 8. Risk Engine & Human-in-the-Loop (HITL) Gate         │  │
 │  │ 9. Atomic File Locks & Multi-file Auto-Rollback Engine │  │
-│  │ 10. HMAC-SHA256 Signed Immutable Audit Log             │  │
+│  │ 10. HMAC-SHA256 Signed Tamper-Evident Audit Log        │  │
 │  └────────────────────────────────────────────────────────┘  │
 └──────────────────────────────┬───────────────────────────────┘
                                │

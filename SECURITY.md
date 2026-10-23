@@ -9,11 +9,27 @@ We actively support and patch the following versions of Atabey:
 | >= 0.1.0 | ✅ Yes    | Active stable release series |
 | < 0.1.0  | ❌ No     | Deprecated pre-release versions |
 
+## Scope of the Security Model
+
+Atabey governs operations that are routed through its **MCP tools**. Enforcement is not
+universal:
+
+- **Host-native tools bypass MCP.** Built-in `Bash`/`Edit`/`Write` tools in the host can act
+  outside Atabey unless the host configuration disables them or adds hooks. Out-of-band edits
+  are detected post-hoc via SHA-256 workspace diffing, but detection is not prevention.
+- **Transport differences matter.** HTTP/SSE and WebSocket support bearer-token auth and TLS.
+  **Stdio has no HTTP auth layer**; identity comes from `MCP_USER` / git config. Restrict access
+  at the OS/user level for stdio deployments.
+- **A local attacker with file access can read the SQLite database and key material.** The audit
+  chain makes tampering *detectable*, not impossible. Export to external storage for stronger guarantees.
+
+See [docs/limitations.md](docs/limitations.md) and [docs/auth.md](docs/auth.md) for details.
+
 ## Transport Security
 
 - **Encrypted transports:** the unified MCP server and the Hermes WSS Bus all run through a single HTTP(S) factory. Set `ATABEY_TLS_CERT_FILE` + `ATABEY_TLS_KEY_FILE` to serve over **TLS 1.3** (minimum version configurable via `ATABEY_TLS_MIN_VERSION`).
 - **mTLS:** `ATABEY_MTLS_REQUIRED=true` with `ATABEY_TLS_CA_FILE` requires and verifies client certificates.
-- **Fail-closed:** `ATABEY_TLS_REQUIRED=true` refuses to start without TLS; plaintext binding to a non-loopback host is rejected unless `ATABEY_ALLOW_INSECURE_BIND=true`.
+- **Fail-closed when required:** `ATABEY_TLS_REQUIRED=true` refuses to start without TLS; plaintext binding to a non-loopback host is rejected unless `ATABEY_ALLOW_INSECURE_BIND=true`.
 - **DNS Rebinding & Host Validation:** all HTTP/SSE endpoints strictly validate incoming `Host` headers (`localhost`, `127.0.0.1`, `::1` or `ATABEY_ALLOWED_HOST`) to protect developers against browser-based DNS rebinding and cross-origin attacks.
 - **Auth gate:** set `MCP_AUTH_TOKEN` (and optionally `MCP_AUTH_REQUIRED=true`) to require `Authorization: Bearer <token>` on HTTP/SSE; WebSocket upgrades accept `?token=`. HTTP API routes and the WS feed enforce this gate.
 - **Secrets:** store credentials with `atabey secrets` (AES-256-GCM vault); sensitive env vars are stripped from spawned subprocesses.

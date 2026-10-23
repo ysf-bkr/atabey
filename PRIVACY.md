@@ -1,11 +1,16 @@
 # Privacy & Compliance — Atabey
 
-## KVKK & GDPR Compliance Declaration
+## KVKK & GDPR Technical Controls
 
-Atabey is designed with **Privacy by Design** and **Privacy by Default** principles, compliant with:
+Atabey is designed with **Privacy by Design** and **Privacy by Default** principles and
+provides technical controls intended to assist with:
 
 - **KVKK** (Turkish Personal Data Protection Law No. 6698) — Articles 4, 5, 7, 11, 12
 - **GDPR** (EU General Data Protection Regulation) — Articles 5, 17, 32
+
+> These controls are technical enablers, **not a legal compliance declaration or
+> certification**. Whether a deployment is compliant depends on how it is configured and
+> used; assess that with your DPO or legal counsel.
 
 ---
 

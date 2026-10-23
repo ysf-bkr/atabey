@@ -1,10 +1,12 @@
-# Atabey — Local AI Control Plane & Discipline Layer (Core Engine)
+# Atabey — Local Governance & Verification for AI Coding Agents (Core Runtime)
 
 [![Version](https://img.shields.io/badge/Version-v{{VERSION}}-blue.svg)](https://github.com/ysf-bkr/atabey)
 [![npm](https://img.shields.io/npm/v/atabey)](https://www.npmjs.com/package/atabey)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
-**Atabey Core Engine** is the CLI and orchestration layer of the Atabey framework: the multi-agent system, governance engines, routing engine, risk assessment, quality gates, evaluation & learning, contract management, phase management, memory systems, skill definitions and provider integrations.
+**Atabey Core** is the CLI and runtime package of the Atabey framework. It handles project
+setup, task orchestration, risk assessment, quality gates, contract management, memory,
+skill definitions and provider integrations.
 
 <!-- include: ../fragments/what-is-atabey.md -->
 
@@ -16,13 +18,13 @@
 |-----------|-------------|
 | **CLI** | 31 commands for initialization, orchestration, status, compliance and memory |
 | **Engines** | 9 engines: routing, risk, quality, evaluation, health, planning, agent-executor, agent-loop, crud-governance |
-| **Agents** | 13 specialized agent definitions with a 3-tier hierarchy (Supreme / Core / Recon) |
+| **Role Profiles** | 13 role definitions (prompt + task blueprint) with a 3-tier hierarchy (Supreme / Core / Recon) — not 13 independent LLM agents |
 | **Runtime** | Headless CLI adapters, DAG dispatcher, git-worktree isolation, signed evidence bundles |
 | **Memory** | 3-layer memory: vector (TF-IDF/OpenAI), project, specialty |
 | **Skills** | 15 core skills in `skills/<slug>/SKILL.md` format, mapped across 7 platform adapters |
 | **Providers** | 7 platform adapters: Claude (default), Cursor, Codex, Antigravity, Grok, Local LLM, OpenCode |
 | **Contracts** | Zod-schema task contracts and API contracts |
-| **Standards** | 33 governance standard templates |
+| **Standards** | 36 governance standard templates |
 
 ---
 
@@ -47,9 +49,12 @@ npx atabey status
 
 ---
 
-## 🎯 13 Specialized Agents
+## 🎯 13 Role Profiles (Reference)
 
-| Agent | Tier | Capability | Role |
+> These are **role definitions injected into your single host assistant**, not 13 parallel
+> LLM processes. Your host AI takes on each profile sequentially.
+
+| Profile | Tier | Capability | Role |
 |-------|------|:----------:|------|
 | **@manager** | Supreme | 10/10 | Orchestration, governance, quality gate |
 | **@security** | Supreme | 10/10 | Security audit, vulnerability scanning |
@@ -88,7 +93,7 @@ npx atabey status
 
 ---
 
-## 🎯 15 Core Skills
+## 🎯 15 Core Skills (Reference)
 
 | Skill | Tools | Description |
 |-------|-------|-------------|
@@ -124,7 +129,7 @@ All 15 core skills are scaffolded for every platform; the delivery format differ
 
 ---
 
-## 📚 Knowledge Base (30+ Standards)
+## 📚 Knowledge Base (36 Standards)
 
 | Category | Standards |
 |----------|-----------|
@@ -203,7 +208,7 @@ packages/atabey/
 │   │   ├── platforms/   # 7 platform adapters
 │   │   └── utils/       # CLI utilities (compliance, memory, pkg, config)
 │   ├── modules/
-│   │   ├── agents/      # 13 agent definitions + registry
+│   │   ├── agents/      # 13 role profile definitions + registry
 │   │   ├── audit/       # HMAC-signed audit export
 │   │   ├── contracts/   # Task/API contracts (Zod)
 │   │   ├── engines/     # 9 governance/orchestration engines

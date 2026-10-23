@@ -1,6 +1,6 @@
 ## Multi-Layer Governance Pipeline
 
-Every MCP tool call passes through this **fail-closed** pipeline:
+Every **MCP tool call** passes through this pipeline:
 
 ```
 CallToolRequest
@@ -19,7 +19,10 @@ CallToolRequest
 12. [INJECTION PROTECTION] sanitizeResponse()
 13. [PII MASKING]      maskToolResult() → mask before returning to AI
     ↓
- Return governed result
+  Return governed result
 ```
 
-A control that cannot run **denies** the operation rather than passing it silently.
+A control that cannot run **denies the MCP operation** rather than passing it silently.
+
+> This pipeline covers Atabey MCP tools. Native host tools that never call Atabey are
+> outside it — see [Known Limitations](https://github.com/ysf-bkr/atabey/blob/main/docs/limitations.md).
