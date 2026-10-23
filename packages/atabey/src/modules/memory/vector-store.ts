@@ -1,4 +1,5 @@
 import { Storage } from "../../shared/storage.js";
+import { inferProvider, type EmbeddingProvider } from "./vector-space.js";
 import { MemoryEntry, MemorySearchResult, MemoryCategory } from "./types.js";
 
 /**
@@ -128,7 +129,21 @@ export class VectorStore {
         }
     }
 
-    public static async search(queryVector: number[], limit: number = 5, category?: MemoryCategory): Promise<MemorySearchResult[]> {
+    /**
+     * Cosine-similarity search.
+     *
+     * Only vectors produced by the same embedding provider are scored. Comparing
+     * an OpenAI vector with a TF-IDF vector produces numerically valid but
+     * semantically meaningless scores, so mismatched rows are skipped instead.
+     * Legacy rows without an `embeddingProvider` tag are classified by
+     * `inferProvider()` (zero-padding detection).
+     */
+    public static async search(
+        queryVector: number[],
+        limit: number = 5,
+        category?: MemoryCategory,
+        queryProvider?: EmbeddingProvider,
+    ): Promise<MemorySearchResult[]> {
         const db = Storage.getDB();
         let query = `SELECT * FROM ${this.TABLE_NAME}`;
         const params: string[] = [];
@@ -151,12 +166,23 @@ export class VectorStore {
         }> = [];
 
         const qLen = queryVector.length;
+        const expectedProvider: EmbeddingProvider = queryProvider ?? inferProvider(queryVector);
         for (const row of rows) {
             if (!row.vector) continue;
             const floatCount = row.vector.byteLength / 4;
             if (floatCount !== qLen) continue;
 
             const entryFloats = new Float32Array(row.vector.buffer, row.vector.byteOffset, floatCount);
+            const rowVector = Array.from(entryFloats);
+            let rowProvider: EmbeddingProvider;
+            try {
+                const meta = JSON.parse(row.metadata) as { embeddingProvider?: EmbeddingProvider };
+                rowProvider = meta.embeddingProvider ?? inferProvider(rowVector);
+            } catch {
+                rowProvider = inferProvider(rowVector);
+            }
+            if (rowProvider !== expectedProvider) continue;
+
             const score = this.cosineSimilarity(queryVector, entryFloats);
             if (Number.isNaN(score)) continue;
 

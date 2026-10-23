@@ -1,6 +1,6 @@
 import path from "path";
 import { AtomicFileLock } from "atabey-shared/file-lock.js";
-import { ToolResult, AcquireLockArgs, ReleaseLockArgs } from "../types.js";
+import { ToolResult, AcquireLockInput, ReleaseLockArgs } from "../types.js";
 import { resolveFrameworkDir } from "atabey-mcp/utils/security.js";
 
 /**
@@ -24,7 +24,7 @@ function createLocker(projectRoot: string): AtomicFileLock {
 /**
  * Handles acquiring a stateful lock on a resource with Deadlock Resolution.
  */
-export async function handleAcquireLock(projectRoot: string, args: AcquireLockArgs): Promise<ToolResult> {
+export async function handleAcquireLock(projectRoot: string, args: AcquireLockInput): Promise<ToolResult> {
     const { resource, agent, ttl = 300 } = args; // Default TTL 5 minutes
     const lock = new AtomicFileLock({
         projectRoot,

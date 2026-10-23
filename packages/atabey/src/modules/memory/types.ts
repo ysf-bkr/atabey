@@ -1,3 +1,4 @@
+import type { EmbeddingProvider } from "./vector-space.js";
 import { TraceID } from "../../shared/types.js";
 
 export type MemoryCategory = "ARCHITECTURE" | "DECISION" | "CODE_SNIPPET" | "RULE" | "TASK_HISTORY";
@@ -12,6 +13,12 @@ export interface MemoryEntry {
         filePath?: string;
         tags: string[];
         createdAt: string;
+        /**
+         * Which embedder produced `vector`. Vectors from different providers are
+         * not comparable; older rows may omit this field and are classified by
+         * inspecting the vector itself.
+         */
+        embeddingProvider?: EmbeddingProvider;
     };
 }
 

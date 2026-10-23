@@ -3,7 +3,7 @@
 // Re-export all argument types from schemas.ts (single source of truth via z.infer<>)
 // This allows handler files to import from "../types.js" without changes.
 export type {
-    AcquireLockArgs,
+    AcquireLockInput,
     BatchSurgicalEditArgs,
     GetProjectGapsArgs,
     GetProjectMapArgs,
@@ -12,7 +12,7 @@ export type {
     LogAgentActionArgs,
     PatchFileArgs,
     ReadFileArgs,
-    RegisterAgentArgs,
+    RegisterAgentInput,
     ReleaseLockArgs,
     ReplaceTextArgs,
     RunTestsArgs,

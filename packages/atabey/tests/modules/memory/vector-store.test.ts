@@ -120,6 +120,58 @@ describe("VectorStore", () => {
         expect(results[0].score).toBeGreaterThanOrEqual(results[1].score);
     });
 
+    it("never compares vectors produced by different embedding providers", async () => {
+        // Local TF-IDF vectors are padded to 1536 so they share a length with
+        // OpenAI vectors. Length equality must not be mistaken for comparability.
+        const tfidf = new Array(1536).fill(0);
+        for (let i = 0; i < 384; i++) tfidf[i] = 0.1;
+        const openai = new Array(1536).fill(0.1);
+
+        await VectorStore.addEntry({
+            id: "prov-tfidf",
+            content: "local embedding entry",
+            vector: tfidf,
+            metadata: {
+                category: "ARCHITECTURE",
+                tags: [],
+                createdAt: new Date().toISOString(),
+                embeddingProvider: "tfidf",
+            },
+        });
+        await VectorStore.addEntry({
+            id: "prov-openai",
+            content: "remote embedding entry",
+            vector: openai,
+            metadata: {
+                category: "ARCHITECTURE",
+                tags: [],
+                createdAt: new Date().toISOString(),
+                embeddingProvider: "openai",
+            },
+        });
+
+        const tfidfResults = await VectorStore.search(tfidf, 10, undefined, "tfidf");
+        expect(tfidfResults.map(r => r.entry.id)).toEqual(["prov-tfidf"]);
+
+        const openaiResults = await VectorStore.search(openai, 10, undefined, "openai");
+        expect(openaiResults.map(r => r.entry.id)).toEqual(["prov-openai"]);
+    });
+
+    it("classifies legacy untagged rows by inspecting the vector", async () => {
+        const paddedLegacy = new Array(1536).fill(0);
+        paddedLegacy[0] = 0.4;
+        await VectorStore.addEntry({
+            id: "legacy-padded",
+            content: "legacy local entry",
+            vector: paddedLegacy,
+            metadata: { category: "ARCHITECTURE", tags: [], createdAt: new Date().toISOString() },
+        });
+
+        // No provider argument: inferred as tfidf from the zero-padded tail.
+        const results = await VectorStore.search(paddedLegacy, 10);
+        expect(results.map(r => r.entry.id)).toContain("legacy-padded");
+    });
+
     it("should support FTS5 text search by keyword", async () => {
         await VectorStore.addEntry({
             id: "fts-1",

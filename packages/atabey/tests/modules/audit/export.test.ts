@@ -34,10 +34,40 @@ describe("signed audit export", () => {
         expect(verifyAuditExport(exp)).toBe(true);
     });
 
-    it("detects tampering", () => {
+    it("detects tampering with an entry", () => {
         const exp = buildAuditExport();
         exp.entries[0].summary = "tampered";
         expect(verifyAuditExport(exp)).toBe(false);
+    });
+
+    it("detects tampering with the reported entry count", () => {
+        const exp = buildAuditExport();
+        const original = exp.count;
+        exp.count = original + 5;
+        expect(verifyAuditExport(exp)).toBe(false);
+    });
+
+    it("rejects a bundle whose count disagrees with its entries", () => {
+        const exp = buildAuditExport();
+        exp.count = 0;
+        expect(verifyAuditExport(exp)).toBe(false);
+    });
+
+    it("detects tampering with generatedAt", () => {
+        const exp = buildAuditExport();
+        exp.generatedAt = "2020-01-01T00:00:00.000Z";
+        expect(verifyAuditExport(exp)).toBe(false);
+    });
+
+    it("rejects malformed bundles instead of throwing", () => {
+        expect(verifyAuditExport(null as unknown as ReturnType<typeof buildAuditExport>)).toBe(false);
+        expect(verifyAuditExport({ generatedAt: "x", count: 1, entries: undefined } as unknown as ReturnType<typeof buildAuditExport>)).toBe(false);
+    });
+
+    it("survives a JSON round-trip (export → file → verify)", () => {
+        const exp = buildAuditExport();
+        const parsed = JSON.parse(auditExportToJson(exp));
+        expect(verifyAuditExport(parsed)).toBe(true);
     });
 
     it("renders JSON and CSV with the signature", () => {

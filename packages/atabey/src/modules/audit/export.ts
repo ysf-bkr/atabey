@@ -17,9 +17,18 @@ export interface AuditExport {
     signature: string;
 }
 
-function canonical(generatedAt: string, entries: LogRow[]): string {
+/**
+ * Canonical form covered by contentHash + signature.
+ *
+ * `v: 2` and `count` are included so that tampering with the reported entry
+ * count invalidates the signature. Bundles exported before v0.1.7 (which did
+ * not cover `count`) will fail verification — re-export them.
+ */
+function canonical(generatedAt: string, count: number, entries: LogRow[]): string {
     return JSON.stringify({
+        v: 2,
         generatedAt,
+        count,
         entries: entries.map((e) => ({
             id: e.id,
             timestamp: e.timestamp,
@@ -40,7 +49,7 @@ export function buildAuditExport(options: { limit?: number } = {}): AuditExport 
     const sliced = options.limit ? all.slice(0, options.limit) : all;
     const entries = [...sliced].reverse();
     const generatedAt = new Date().toISOString();
-    const payload = canonical(generatedAt, entries);
+    const payload = canonical(generatedAt, entries.length, entries);
     return {
         generatedAt,
         count: entries.length,
@@ -51,7 +60,10 @@ export function buildAuditExport(options: { limit?: number } = {}): AuditExport 
 }
 
 export function verifyAuditExport(e: AuditExport): boolean {
-    const payload = canonical(e.generatedAt, e.entries);
+    // Guard against malformed bundles (missing/invalid fields) instead of throwing.
+    if (!e || typeof e.generatedAt !== "string" || !Array.isArray(e.entries)) return false;
+    if (typeof e.count !== "number" || e.count !== e.entries.length) return false;
+    const payload = canonical(e.generatedAt, e.count, e.entries);
     return sha256Hex(payload) === e.contentHash && chainDigest(payload) === e.signature;
 }
 

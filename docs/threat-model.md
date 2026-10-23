@@ -1,7 +1,7 @@
 # Atabey Threat Model
 
 **Version:** v0.1.7  
-**Date:** 2026-10-22  
+**Date:** 2026-10-24  
 **Scope:** MCP tool surface, local `.atabey/` state, shell execution, host bypass vectors, agent lifecycle  
 **Methodology:** STRIDE & Defense-in-Depth
 
@@ -9,7 +9,8 @@
 
 ## 1. Security Philosophy & Trust Boundaries
 
-Atabey is a deterministic control plane. The core threat assumption is:
+Atabey is a local governance and verification layer for AI coding agents. The core threat
+assumption is:
 > **The host LLM and all incoming inputs are untrusted.**  
 > The model is susceptible to indirect prompt injection, hallucinations, context manipulation, and tool abuse.
 
@@ -25,7 +26,7 @@ Atabey is a deterministic control plane. The core threat assumption is:
 │  ┌────────────────────────────────────────────────────────┐  │
 │  │ 1. Client Profile Filter (Tool allow-list)             │  │
 │  │ 2. Out-of-Band Workspace Edit Detector                 │  │
-│  │ 3. Fail-Closed Policy Gate (Mutating tools check)      │  │
+│  │ 3. Policy Gate (denies mutating calls it cannot clear) │  │
 │  │ 4. Deny-by-Default RBAC Permission Matrix              │  │
 │  │ 5. Input & Response Prompt Injection Sanitizer         │  │
 │  │ 6. Token Budget Gate & cl100k BPE Estimation           │  │
@@ -116,14 +117,14 @@ Essential boundaries that users and security teams must acknowledge:
 
 ### 5.2 Per-asset STRIDE with phase gaps
 
-| Threat | Example | Current mitigation | Gap (Phase) |
-|--------|---------|-------------------|-------------|
-| **S**poofing | Fake agent name | Weak client meta + env `ATABEY_ACTIVE_AGENT` | Strong identity (P2) |
-| **T**ampering | Rewrite audit logs | Local files/SQLite | Hash chain (P1) |
-| **R**epudiation | Deny high-risk action | Audit logs best-effort | Immutable audit (P1/P4) |
-| **I**nformation disclosure | Read `.env` / secrets | PII mask on responses; path tools | Secret path deny list (P0–P1) |
-| **D**enial of service | Loop tool spam | Loop detector, discipline limits | Persistent cooldowns (P0) |
-| **E**levation of privilege | Recon agent writes / shell | Tier matrix, allow-list shell | Universal policy gate (P0), sandbox (P1) |
+| Threat | Example | Implemented mitigation | Residual gap |
+|--------|---------|------------------------|--------------|
+| **S**poofing | Fake agent name | Plain `ATABEY_ACTIVE_AGENT` by default; HMAC-signed `ATABEY_AGENT_TOKEN` when `ATABEY_AGENT_SECRET` is set, and fail-closed when `ATABEY_AGENT_IDENTITY_REQUIRED=true` | Env identity is forgeable unless identity enforcement is enabled |
+| **T**ampering | Rewrite audit logs | HMAC-SHA256 hash chain + out-of-DB tip anchor; tampering is detectable | Anyone with the DB **and** key file can rewrite history — export externally for stronger guarantees |
+| **R**epudiation | Deny high-risk action | Chain-complete audit rows for Atabey-mediated actions (action, agent, trace, timestamp) | But if the action bypassed Atabey (native host tool) nothing is recorded |
+| **I**nformation disclosure | Read `.env` / secrets | PII/secret masking on tool output; protected-path deny list; OS sandbox (`seatbelt`/`uid`) when configured | `sandbox.mode: none` inherits the host user's privileges |
+| **D**enial of service | Loop tool spam | Loop detector, discipline limits, token ceilings, cooldowns | Cooldowns are per-project state; a fresh DB resets them |
+| **E**levation of privilege | Recon agent writes / shell | Tier matrix, allow-list shell, deny-by-default permission matrix, supreme-registration guard | Native host tools and `sandbox.mode: none` bypass MCP-layer controls |
 
 ---
 

@@ -16,12 +16,14 @@ provides technical controls intended to assist with:
 
 ## 📋 Data Inventory
 
-| Data Type | Collected | Storage | Retention | Purpose |
-|-----------|-----------|---------|-----------|---------|
-| **Chat messages** | ✅ | SQLite (`messages`) | 30 days | Agent communication (Hermes) |
-| **Audit logs** | ✅ | SQLite (`audit_log`) | 30–730 days (by category) | Governance & traceability |
-| **Agent execution logs** | ✅ | SQLite (`logs`) | 30 days | Performance monitoring |
-| **Task plans** | ✅ | SQLite (`tasks`) | 30 days | Task orchestration |
+| Data Type | Collected | Storage | Retention (actual) | Purpose |
+|-----------|-----------|---------|--------------------|---------|
+| **Chat messages** | ✅ | SQLite (`messages`) | 30 days (automatic cleanup) | Agent communication (Hermes) |
+| **Audit logs** | ✅ | SQLite (`audit_log`) | 30 days by default; up to **90 days** max (see below) | Governance & traceability |
+| **Agent execution logs** | ✅ | SQLite (`logs`) | 30 days (automatic cleanup) | Performance monitoring |
+| **Task plans** | ✅ | SQLite (`tasks`) | Until erased (no automatic expiry) | Task orchestration |
+| **Token cost rows** | ✅ | SQLite (`costs`) | Until erased (no automatic expiry) | Usage accounting |
+| **HITL approvals** | ✅ | SQLite (`approvals`) | Until erased (no automatic expiry) | Human approval records |
 | **Project memory** | ✅ | SQLite + `.md` | Project lifetime | Agent context |
 | **Vector embeddings** | ✅ | SQLite | Project lifetime | Semantic search |
 | **API keys** | ❌ Not collected by telemetry | Env vars, or the local encrypted vault (`atabey secrets`, AES-256-GCM) | Until rotated/deleted | Provider auth |
@@ -63,18 +65,34 @@ audit.log({ details: { phone: "+90 555 123 4567" } });
 
 ### 2. Data Retention (KVKK Art. 5 / GDPR Art. 5)
 
-| Category | Retention | Justification |
-|----------|-----------|---------------|
-| OPERATIONAL | 30 days | KVKK Art. 5 — Limited purpose |
-| USER_DATA | 90 days | KVKK Art. 5 — Contract fulfillment |
-| API_CALL | 180 days | KVKK Art. 5 — Legal obligation |
-| SECURITY | 365 days | KVKK Art. 5 — Security audit |
-| COMPLIANCE | 730 days | KVKK Art. 5 — Regulatory compliance |
+Cleanup runs hourly and deletes **audit rows, messages and execution logs** whose retention
+window has elapsed. Tasks, cost rows and approval records are **not** expired automatically;
+they are removed by trace-level or full erasure (section 3), or by deleting `.atabey/`.
 
-Automatic cleanup runs every hour. Configure via environment:
+| Data | Effective retention |
+|------|---------------------|
+| Messages | 30 days |
+| Execution logs | 30 days |
+| Audit records | 30 days default, configurable, hard cap **90 days** |
+| Tasks, costs, approvals | No automatic expiry — erase explicitly |
+
 ```bash
-export ATABEY_DATA_RETENTION_DAYS=60  # Override default (30)
+# Audit retention (default 30 days). Values above 90 are clamped to 90.
+export ATABEY_DATA_RETENTION_DAYS=60
 ```
+
+> `RETENTION_POLICIES` in `retention.ts` lists longer reference targets per data category for
+> reporting. Those targets are **not** applied by the audit writer: audit rows are clamped to
+> `MAX_RETENTION_DAYS` (90), so 180/365/730-day retention is not available today. Treat the
+> following as a target catalogue, not a guarantee:
+>
+> | Category | Reference target | Applied automatically? |
+> |----------|------------------|------------------------|
+> | OPERATIONAL | 30 days | ✅ messages & logs |
+> | USER_DATA | 90 days | ⚠️ audit default only |
+> | API_CALL | 180 days | ❌ not enforced |
+> | SECURITY | 365 days | ❌ not enforced |
+> | COMPLIANCE | 730 days | ❌ not enforced |
 
 ### 3. Right to Erasure (KVKK Art. 7 / GDPR Art. 17)
 
@@ -104,6 +122,21 @@ DataRetention.eraseAllData("KVKK-RIGHT-TO-ERASURE");
 > database** (`.atabey/audit-hmac.key`, or `ATABEY_AUDIT_HMAC_KEY`), plus an
 > out-of-DB tip anchor to detect tail truncation. Legitimate erasure refreshes
 > the anchor so removal is distinguishable from tampering.
+
+### 3b. Third-Party Transfer: Optional OpenAI Embeddings
+
+Atabey is local by default, with one deliberate exception:
+
+- If `OPENAI_API_KEY` is set (environment or a `.env` file in the project root), **the text
+  being embedded is sent to `https://api.openai.com/v1/embeddings`** (`text-embedding-3-small`).
+  This applies to indexing and to search queries.
+- Without a key, no embedding request leaves the machine; Atabey uses the local TF-IDF
+  vectorizer instead.
+- To keep everything local: do not set `OPENAI_API_KEY`. Existing entries created with OpenAI
+  vectors are not comparable with local ones, so re-index (`atabey index`) after switching.
+
+If you operate under KVKK/GDPR, evaluate this transfer (processor relationship, data location,
+retention at the provider) before enabling the key.
 
 ### 4. Data Portability (KVKK Art. 11 / GDPR Art. 20)
 

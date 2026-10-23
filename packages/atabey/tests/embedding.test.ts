@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { generateEmbedding, generateEmbeddings, isOpenAIEmbedding } from "../src/modules/memory/embedding.js";
+import {
+    generateEmbedding,
+    generateEmbeddingWithMeta,
+    generateEmbeddings,
+    isOpenAIEmbedding,
+} from "../src/modules/memory/embedding.js";
 
 describe("Embedding Service", () => {
     const originalEnv = process.env;
@@ -74,6 +79,40 @@ describe("Embedding Service", () => {
         // Should have fallen back to TF-IDF (first 384 dimensions contain non-zero data, rest are 0)
         const paddedPart = vector.slice(384);
         expect(paddedPart.every(val => val === 0)).toBe(true);
+    });
+
+    it("does not classify a zero-padded TF-IDF vector as an OpenAI embedding", async () => {
+        delete process.env.OPENAI_API_KEY;
+        const vector = await generateEmbedding("some local text");
+        expect(vector).toHaveLength(1536);
+        expect(isOpenAIEmbedding(vector)).toBe(false);
+    });
+
+    it("reports which provider produced the vector", async () => {
+        delete process.env.OPENAI_API_KEY;
+        const local = await generateEmbeddingWithMeta("local text");
+        expect(local.provider).toBe("tfidf");
+        expect(isOpenAIEmbedding(local.vector)).toBe(false);
+
+        process.env.OPENAI_API_KEY = "sk-test-key-12345";
+        vi.mocked(fetch).mockResolvedValue({
+            ok: true,
+            status: 200,
+            json: async () => ({ data: [{ embedding: new Array(1536).fill(0.5) }] }),
+        } as Response);
+
+        const remote = await generateEmbeddingWithMeta("remote text");
+        expect(remote.provider).toBe("openai");
+        expect(isOpenAIEmbedding(remote.vector)).toBe(true);
+    });
+
+    it("reports the tfidf provider when OpenAI fails mid-request", async () => {
+        process.env.OPENAI_API_KEY = "sk-test-key-12345";
+        vi.mocked(fetch).mockRejectedValue(new Error("network down"));
+
+        const result = await generateEmbeddingWithMeta("fallback text");
+        expect(result.provider).toBe("tfidf");
+        expect(isOpenAIEmbedding(result.vector)).toBe(false);
     });
 
     it("should support batch embedding generation", async () => {

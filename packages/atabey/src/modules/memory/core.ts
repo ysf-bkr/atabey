@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { TraceID } from "../../shared/types.js";
-import { generateEmbedding } from "./embedding.js";
+import { generateEmbeddingWithMeta } from "./embedding.js";
 import { MemoryCategory, MemoryEntry, MemorySearchResult } from "./types.js";
 import { VectorStore } from "./vector-store.js";
 
@@ -37,7 +37,10 @@ export class CoreMemory {
         const id = crypto.createHash("sha256").update(params.content + (params.filePath || "")).digest("hex");
 
         // Use provided vector or generate via embedding service
-        const vector = params.vector || await generateEmbedding(params.content);
+        const embedding = params.vector
+            ? { vector: params.vector, provider: undefined }
+            : await generateEmbeddingWithMeta(params.content);
+        const vector = embedding.vector;
 
         const entry: MemoryEntry = {
             id,
@@ -48,7 +51,8 @@ export class CoreMemory {
                 traceId: params.traceId,
                 filePath: params.filePath,
                 tags: params.tags || [],
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
+                ...(embedding.provider ? { embeddingProvider: embedding.provider } : {}),
             }
         };
 
@@ -65,8 +69,15 @@ export class CoreMemory {
         limit?: number;
         queryVector?: number[];
     }): Promise<MemorySearchResult[]> {
-        const vector = options.queryVector || await generateEmbedding(query);
-        return VectorStore.search(vector, options.limit || 5, options.category);
+        const embedding = options.queryVector
+            ? { vector: options.queryVector, provider: undefined }
+            : await generateEmbeddingWithMeta(query);
+        return VectorStore.search(
+            embedding.vector,
+            options.limit || 5,
+            options.category,
+            embedding.provider,
+        );
     }
 
     /**

@@ -47,9 +47,50 @@ which claims were narrowed so the docs match the implementation.
   `orchestration` demoted in favour of governance/verification terms).
 - Stale Freelancer/Team/Enterprise columns and “all 13 specialists” framing in docs.
 
+### Fixed — CI-blocking issues
+- **`atabey check` failed on its own repository** (and therefore the CI step
+  `npm run atabey:check`): the hardcoded-secret heuristic let its regex span newlines, so the
+  empty templates in the `.env.example` scaffold (`"# OPENAI_API_KEY="`) were reported as a
+  hardcoded key. The value class now excludes `\r\n` in both scanners (`atabey` CLI and
+  `atabey-mcp`), so real one-line secrets are still flagged. Regression tests added.
+- **Coverage gates failed** in `atabey-shared` and `atabey-mcp`. Tests were added rather than
+  thresholds lowered: HITL approvals + cost ledger, atomic fs helpers, PII/list_dir/health
+  handlers, and control-plane RBAC/locking. Thresholds were then ratcheted up to the new
+  measured baseline (shared 70/80/59/68, mcp 58/66/50/57, atabey 61/72/50/60).
+
+### Added — documented audit verification actually exists
+- **`atabey audit export --verify [--in <file>]`** is implemented. README advertised this flag
+  but the command ignored it (no verification ran). It now verifies the SHA-256 content hash and
+  the keyed HMAC signature, rejects a bundle whose `count` disagrees with its entries, and exits
+  non-zero on failure. `--format csv --verify` is rejected with an explanation.
+- The signed payload now covers `count` (canonical `v: 2`). Previously `count` sat outside the
+  hash, so a tampered count still verified. Bundles exported before this change must be
+  re-exported.
+
+### Fixed — memory correctness
+- **Mixed-provider vectors were compared.** TF-IDF vectors are zero-padded to 1536 to fit the
+  schema, so they matched the OpenAI length and were scored against OpenAI vectors with cosine
+  similarity — numerically valid, semantically meaningless. Vectors are now tagged with
+  `embeddingProvider`, the store only scores same-provider rows, legacy rows are classified by
+  inspecting the padding, and routing skips the semantic blend when providers differ.
+  `isOpenAIEmbedding()` no longer treats "length 1536" alone as proof of an OpenAI vector.
+- **`agent-loop` marked delegations `PROCESSED` at enqueue time**, hiding execution failures.
+  Successful runs now set `PROCESSED`, failures set `FAILED`, and a process death mid-run leaves
+  the message `PENDING` for retry (at-least-once).
+
+### Fixed — inventory drift
+- CLI command count corrected to **33** (was 31 / "30+").
+- `PRIVACY.md` retention table now matches the code: messages/logs 30 days, audit 30 default
+  with a **90-day hard cap**, tasks/costs/approvals without automatic expiry. The
+  `RETENTION_POLICIES` 180/365/730-day targets are documented as unenforced.
+- `PRIVACY.md` now documents the optional OpenAI embedding transfer explicitly.
+- Type-only fix: handlers with schema defaults (`acquire_lock`, `register_agent`) accept
+  `z.input` types, so omitting a defaulted field type-checks and the runtime default is reachable.
+
 ### Verified
-- `npm run build`, `npx tsc --noEmit`, `npm test` (802 tests), `npm run lint`, `npm run knip`,
-  `npm run readme:check`.
+- `npm run build`, `npx tsc --noEmit`, `npm test` (124 files / 863 tests), `npm run test:coverage`
+  (all three workspaces above their thresholds), `npm run lint`, `npx knip`,
+  `npm run readme:check`, `npx atabey check` (exit 0).
 
 ### Memory Round-Trip Fixes, `atabey update`, OTLP Observability
 

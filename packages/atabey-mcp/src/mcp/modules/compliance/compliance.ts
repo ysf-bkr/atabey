@@ -128,9 +128,13 @@ export function verifyCorporateCompliance(content: string, filePath: string): vo
 
     // 8. Hardcoded Secrets & PII Guard
     const piiKeywords = [
-        { regex: /API_KEY\s*=\s*['"][^'"]+['"]/i, msg: "Hardcoded API Key" },
-        { regex: /SECRET\s*=\s*['"][^'"]+['"]/i, msg: "Hardcoded Secret" },
-        { regex: /PASSWORD\s*=\s*['"][^'"]+['"]/i, msg: "Hardcoded Password" },
+        // Value must stay on one line: without \r\n in the class the regex could
+        // span lines and flag innocuous empty templates such as the
+        // `"# OPENAI_API_KEY=",` line in the .env.example scaffold, where the next
+        // quote on a later line completed a bogus "value".
+        { regex: /API_KEY\s*=\s*['"][^'"\r\n]+['"]/i, msg: "Hardcoded API Key" },
+        { regex: /SECRET\s*=\s*['"][^'"\r\n]+['"]/i, msg: "Hardcoded Secret" },
+        { regex: /PASSWORD\s*=\s*['"][^'"\r\n]+['"]/i, msg: "Hardcoded Password" },
         { regex: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/, msg: "PII Detected: Email Address" },
         { regex: /\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b/, msg: "PII Detected: Credit Card Pattern" }
     ];

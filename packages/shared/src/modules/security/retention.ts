@@ -16,14 +16,20 @@ import { databaseHolder } from "../storage/database.js";
 import { clearChainAnchor, writeChainAnchor } from "../observability/audit-chain.js";
 
 /**
- * Data retention categories and default durations (days)
+ * Reference retention targets per data category (days).
+ *
+ * NOTE: this catalogue is reported through `DataRetention.getStats()`; it does
+ * not drive deletion. Automatic cleanup only expires messages and logs (30
+ * days) and audit rows (per-row `retentionDays`, default 30, hard-capped by
+ * `Audit.MAX_RETENTION_DAYS` = 90). The longer targets below (180/365/730) are
+ * therefore not enforced today — keep PRIVACY.md in sync if that changes.
  */
 export const RETENTION_POLICIES: Record<string, number> = {
-    OPERATIONAL: 30,    // Operational logs: 30 days
-    USER_DATA: 90,      // User data: 90 days (KVKK Art. 5)
-    API_CALL: 180,      // API call records: 180 days
-    SECURITY: 365,      // Security logs: 1 year
-    COMPLIANCE: 730,    // Compliance records: 2 years
+    OPERATIONAL: 30,    // Operational logs: 30 days (enforced)
+    USER_DATA: 90,      // User data: 90 days (audit cap only)
+    API_CALL: 180,      // API call records: 180 days (not enforced)
+    SECURITY: 365,      // Security logs: 1 year (not enforced)
+    COMPLIANCE: 730,    // Compliance records: 2 years (not enforced)
 };
 
 /**

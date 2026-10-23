@@ -88,6 +88,15 @@ A fundamental architectural boundary:
 
 ## 6. Storage, Queue, and Memory
 
+- **Retention is narrower than the category table suggests.** Automatic cleanup expires
+  messages and execution logs (30 days) and audit rows (30 days default, 90 max). Tasks, cost
+  rows and approval records have no automatic expiry and require explicit erasure. See
+  [PRIVACY.md](../PRIVACY.md).
+- **Embedding providers are not comparable.** With `OPENAI_API_KEY` set, embedded text leaves
+  the machine; without it, local TF-IDF is used. Vectors from different providers are never
+  scored against each other, so entries indexed under the other provider are skipped until you
+  re-index.
+
 - Atabey utilizes local SQLite (`better-sqlite3`).
 - To prevent database deadlocks during multi-agent concurrency, Atabey enforces explicit file locking (`withLock`) and TTL reclaim mechanisms.
 - Hermes messaging bus operates with in-memory / SQLite backings; SQLite databases require periodic compaction and vacuum strategies.

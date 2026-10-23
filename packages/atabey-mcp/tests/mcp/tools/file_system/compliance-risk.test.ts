@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import fs from "fs";
 import path from "path";
 import os from "os";
-import { isHighRiskOperation, verifyRiskAndAwaitApproval } from "../../../../src/mcp/utils/compliance.js";
+import { isHighRiskOperation, verifyCorporateCompliance, verifyRiskAndAwaitApproval } from "../../../../src/mcp/utils/compliance.js";
 
 describe("Policy Engine - High Risk Assessment & Human Approval", () => {
     let tempDir: string;
@@ -96,5 +96,23 @@ describe("Policy Engine - High Risk Assessment & Human Approval", () => {
         // Verify status is reverted to EXECUTING
         const updatedStatus = JSON.parse(fs.readFileSync(statusPath, "utf8"));
         expect(updatedStatus.backend.state).toBe("EXECUTING");
+    });
+});
+
+describe("MCP compliance scanner: hardcoded secret heuristic", () => {
+    it("ignores empty env templates that span lines", () => {
+        const source = [
+            'writeTextFile(p, [',
+            '    "# MCP_AUTH_TOKEN=",',
+            '    "# OPENAI_API_KEY=",',
+            '    "# DB_PASSWORD=",',
+            '].join("\\n"));',
+        ].join("\n");
+        expect(() => verifyCorporateCompliance(source, "src/scaffold.ts")).not.toThrow();
+    });
+
+    it("still detects a real one-line secret", () => {
+        expect(() => verifyCorporateCompliance('OPENAI_API_KEY = "sk-live-abcdef123456"', "src/a.ts"))
+            .toThrow(/Hardcoded API Key/);
     });
 });

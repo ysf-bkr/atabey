@@ -56,13 +56,13 @@ export default defineConfig({
             provider: "v8",
             reporter: ["text", "json", "html", "json-summary"],
             thresholds: {
-                // Ratchet baseline (current ≈ lines 71.7 / funcs 82.6 / branches 58.3 / stmts 69.0
-                // after the 2026-10-20 audit: direct AtabeyStorage unit tests added).
-                // Raise these as coverage improves.
-                lines: 68,
-                functions: 78,
-                branches: 56,
-                statements: 66,
+                // Ratchet baseline updated 2026-10-24 after adding tests for the
+                // approvals/costs storage facade and the atomic fs primitives.
+                // Measured: lines 71.11 / funcs 81.02 / branches 60.51 / stmts 68.28.
+                lines: 70,
+                functions: 80,
+                branches: 59,
+                statements: 67.5,
             },
         },
     },

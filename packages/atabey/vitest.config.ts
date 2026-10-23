@@ -8,13 +8,15 @@ export default defineConfig({
             provider: "v8",
             reporter: ["text", "json", "html", "json-summary"],
             thresholds: {
-                // Ratchet baseline (current ≈ lines 60.9 / funcs 70.3 / branches 48.6 / stmts 60.1
-                // after the 2026-10-20 audit: Turkish routing tests + CLI smoke tests).
-                // Raise these as coverage improves.
-                lines: 58,
-                functions: 66,
-                branches: 45,
-                statements: 57,
+                // Ratchet baseline updated 2026-10-24 (measured: lines 61.70 /
+                // funcs 73.29 / branches 51.28 / stmts 61.20) after embedding
+                // provider-tagging and audit-verification tests were added. The
+                // thresholds sit ~0.5-1pt below the measurements to absorb v8/Node
+                // variance in CI.
+                lines: 60.5,
+                functions: 72,
+                branches: 50,
+                statements: 60,
             },
         },
     },

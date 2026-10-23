@@ -28,7 +28,7 @@ approval, and verifies task results with tests and audit evidence.
 
 | Capability | Description |
 |-----------|-------------|
-| **CLI** | 31 commands for initialization, orchestration, status, compliance and memory |
+| **CLI** | 33 commands for initialization, orchestration, status, compliance and memory |
 | **Engines** | 9 engines: routing, risk, quality, evaluation, health, planning, agent-executor, agent-loop, crud-governance |
 | **Role Profiles** | 13 role definitions (prompt + task blueprint) with a 3-tier hierarchy (Supreme / Core / Recon) — not 13 independent LLM agents |
 | **Runtime** | Headless CLI adapters, DAG dispatcher, git-worktree isolation, signed evidence bundles |
@@ -111,7 +111,14 @@ npx atabey status
 
 > **Local by default, not unconditionally local:** if you configure `OPENAI_API_KEY`,
 > embedding requests send the embedded text to the OpenAI API. Without a key, Atabey stays
-> on-machine and falls back to the local TF-IDF vectorizer (384-dim).
+> on-machine and falls back to the local TF-IDF vectorizer (384-dim, zero-padded to 1536 for
+> storage).
+>
+> **Providers are not interchangeable.** OpenAI and TF-IDF vectors live in different semantic
+> spaces, so Atabey tags every stored vector with its provider and never scores across
+> providers. After switching the key on or off, re-index (`atabey index`) to get comparable
+> results; entries from the other provider are skipped rather than ranked with meaningless
+> similarity scores.
 
 
 ---
@@ -221,7 +228,7 @@ atabey lint                  Run ESLint
 atabey db <status|migrate|verify|backup|restore>   SQLite schema, integrity & backups
 atabey secrets <list|set|get|delete|scan>          AES-256-GCM secret vault & leak scan
 atabey api <scan|list|drift|json>                  API endpoint catalog & contract drift
-atabey audit export|erase                          Signed audit export / KVKK-GDPR erasure
+atabey audit export [--verify --in <file>]|erase    Signed audit export & verification / erasure
 atabey worktree <create|list|remove> [name]        Isolated agent worktrees
 atabey index [dir]           Index the codebase for RAG
 atabey coverage              Test coverage reports
@@ -250,7 +257,7 @@ atabey quickstart            Generate an example task file
 packages/atabey/
 ├── src/
 │   ├── cli/
-│   │   ├── commands/    # 31 CLI commands
+│   │   ├── commands/    # 33 CLI commands
 │   │   ├── platforms/   # 7 platform adapters
 │   │   └── utils/       # CLI utilities (compliance, memory, pkg, config)
 │   ├── modules/

@@ -15,15 +15,16 @@ export default defineConfig({
             provider: "v8",
             reporter: ["text", "json", "html", "json-summary"],
             thresholds: {
-                // Ratchet baseline re-measured 2026-10-20 after the audit fixes
-                // (current ≈ lines 58.8 / funcs 66.3 / branches 50.3 / stmts 57.4
-                // with the governance middleware integration tests included).
-                // The previous baseline (lines 68) predated the modules/ restructure.
-                // Raise these as coverage improves.
-                lines: 57,
-                functions: 65,
-                branches: 49,
-                statements: 56,
+                // Ratchet baseline updated 2026-10-24 after adding handler tests for
+                // the control plane (RBAC escalation guard + lock ownership), the
+                // simple tool handlers and the atomic fs helpers.
+                // Measured: lines 59.05 / funcs 66.66 / branches 50.66 / stmts 57.67.
+                // Values sit ~0.5pt below the measurement so v8 coverage jitter on a
+                // different Node version cannot turn a green suite red.
+                lines: 57.5,
+                functions: 65.5,
+                branches: 49.5,
+                statements: 56.5,
             },
         },
     },

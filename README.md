@@ -99,7 +99,7 @@ You (@backend): "Create a user login service with JWT authentication"
 - [3-Layer Memory System](#3-layer-memory-system)
 - [Multi-Layer Governance Pipeline](#multi-layer-governance-pipeline)
 - [Core Features](#core-features)
-- [MCP Server & Control Plane](#mcp-server--headless-control-plane)
+- [MCP Server & Headless API](#mcp-server--headless-api)
 - [CLI Reference](#cli-reference)
 - [Architecture](#architecture)
 - [Security](#security)
@@ -394,7 +394,7 @@ depends on how much of each host's tool surface is routed through Atabey MCP:
 
 | Platform | MCP Transport | Agent Personas | Dynamic Skills | Governance Enforcement | HITL Approval Gate | Audit Chain | Sandbox (env-configured) |
 |----------|---------------|----------------|----------------|------------------------|---------------------|-------------|-------------------|
-| **Claude Code** ⭐ | Stdio + SSE | Native (`.claude/agents/*.md`) | Full (15 Skills) | **Full** — PreToolUse hook blocks built-in Edit/Write/Bash writes and forces Atabey MCP tools | Webhooks + Passcode | HMAC-SHA256 Chained | none / uid / seatbelt |
+| **Claude Code** ⭐ | Stdio + SSE | Native (`.claude/agents/*.md`) | Full (15 Skills) | **Full** — `atabey init` writes a `PreToolUse` hook + `permissions.deny` for Edit/Write; Bash is blocked by pattern match, so exotic shell writes can still slip through | Webhooks + Passcode | HMAC-SHA256 Chained | none / uid / seatbelt |
 | **Cursor IDE** | Stdio | Rules (`.cursor/rules/*.mdc`) | MDC Ruleset | **Partial** — governed tools via MCP; built-in editor tools rely on rules compliance | Interactive CLI + passcode | HMAC-SHA256 Chained | none / uid / seatbelt |
 | **Codex CLI / Copilot** | Stdio | Workspace (`copilot-instructions.md`) | Injected Prompt | **Partial** — governed tools via MCP | CLI Passcode | HMAC-SHA256 Chained | none / uid / seatbelt |
 | **Antigravity CLI** | Stdio + SSE | `agent.json` + Subagents | Native Toolset | **Strong** — native tool gating | Real-time WebSocket | HMAC-SHA256 Chained | none / uid / seatbelt |
@@ -402,7 +402,7 @@ depends on how much of each host's tool surface is routed through Atabey MCP:
 | **Local LLM / Ollama** | Stdio + SSE | Unified Hub (`.atabey/agents/*.md`) | Markdown Specs | **Strong** — all tools route through Atabey | Terminal Gate | HMAC-SHA256 Chained | none / uid / seatbelt |
 | **OpenCode** | Stdio | Native (`.opencode/agents/*.md`) | Native Toolset | **Strong** — native permission/agent config | Interactive CLI + passcode | HMAC-SHA256 Chained | none / uid / seatbelt |
 
-> **Governance Enforcement column:** "Full" means built-in host tools are deterministically intercepted (Claude Code `PreToolUse` hooks + `permissions.deny` scaffolded by `atabey init claude`). "Strong" means the platform routes effectively all work through Atabey MCP tools. "Partial" means the host retains native edit/shell tools that Atabey cannot deterministically block — out-of-band edits are still detected post-hoc via SHA-256 hash diffing (`ATABEY_ENFORCE_UNAUDITED_WRITES`) and policy violations are reported. When deterministic blocking is required on a Partial platform, restrict the host's own file-write permissions in its settings.
+> **Governance Enforcement column:** "Full" means built-in host tools are deterministically intercepted (Claude Code `PreToolUse` hooks + `permissions.deny` scaffolded by `atabey init claude`). "Strong" means the platform routes effectively all work through Atabey MCP tools. "Partial" means the host retains native edit/shell tools that Atabey cannot deterministically block — out-of-band edits are still detected post-hoc via SHA-256 hash diffing (on by default; disable with `ATABEY_ENFORCE_UNAUDITED_WRITES=false`) and policy violations are reported. When deterministic blocking is required on a Partial platform, restrict the host's own file-write permissions in its settings.
 
 > **Sandboxing is global and env-driven** (`ATABEY_SANDBOX_RUNTIME=none|uid|seatbelt|auto`), not per-platform. On macOS, `seatbelt` uses `/usr/bin/sandbox-exec`; on Linux, POSIX `uid` drop is used. Set `ATABEY_SANDBOX_REQUIRED=true` to deny execution when isolation is unavailable.
 
@@ -435,7 +435,7 @@ npx atabey init all --yes
 # Verify installation
 npx atabey status
 
-# (Optional) Start MCP control plane
+# (Optional) Start the headless MCP server
 npx atabey mcp start
 ```
 
@@ -516,7 +516,8 @@ npx atabey init claude --yes --focus mobile-fullstack --backend go --frontend ne
 | **Native `go`** | `apps/native/` | `go.mod`, `main.go` — FFI tier |
 
 > **`--focus` gating:** `fullstack` → backend + frontend · `backend` → backend only · `frontend` → frontend only · `mobile` → mobile + native · `mobile-fullstack` → backend + mobile + native.
-> The **native/platform tier is Rust or Go only** (TypeScript is forbidden here — see [native-standards](#native--platform-layer-standards)).
+> The **native/platform tier is Rust or Go only** (TypeScript is forbidden here — see
+> [`native-standards.md`](packages/atabey/templates/standards/native-standards.md)).
 
 ---
 
@@ -677,9 +678,11 @@ You: @security "Scan all API routes for unauthenticated endpoints"
 You: @backend "Patch authentication middleware"
 # Calls MCP tool: patch_file (auto-rollback snapshot saved in .atabey/rollbacks/)
 
-# 3. Export cryptographically signed Evidence Bundle
-npx atabey audit export --verify
-# Outputs HMAC-SHA256 signed audit ledger with tamper-evident proof
+# 3. Export a signed audit bundle, then verify it
+npx atabey audit export --out audit.json        # contentHash + HMAC signature per bundle
+npx atabey audit export --verify --in audit.json
+# Verifies the SHA-256 content hash and HMAC signature; exits 1 on any modification.
+# Detects changes to entries, generatedAt and the entry count.
 ```
 
 ---
@@ -751,9 +754,13 @@ Each skill adapts to the target platform (Claude → native tool names, Grok →
 
 | Layer | Storage | Technology | Purpose |
 |-------|---------|------------|---------|
-| **Vector Memory** | SQLite | TF-IDF / OpenAI embeddings + Cosine similarity | Semantic search across project knowledge |
+| **Vector Memory** | SQLite | Local TF-IDF embeddings (optional OpenAI when `OPENAI_API_KEY` is set) + cosine similarity | Semantic search across project knowledge |
 | **Project Memory** | Markdown | `PROJECT_MEMORY.md` | Central project state, synchronized every session |
 | **Specialty Memory** | Markdown | `.atabey/memory/specialties/{agent}.md` | Per-agent learned conventions from past tasks |
+
+> **Provider note:** OpenAI and TF-IDF vectors are not comparable. Each stored vector is
+> tagged with its provider and only same-provider vectors are scored, so switch keys and
+> re-index (`atabey index`) rather than mixing them.
 
 **Memory Flow:**
 ```
@@ -853,10 +860,10 @@ Two transport modes: Stdio (per-developer) and HTTP/SSE (shared server for entir
 
 ---
 
-## MCP Server & Headless Control Plane
+## MCP Server & Headless API
 
 ```bash
-npx atabey mcp start  # Starts headless MCP control plane
+npx atabey mcp start  # Starts the headless MCP server
 ```
 
 | Service | Protocol / Transport | Purpose |
@@ -901,7 +908,7 @@ atabey index [dir]              Index codebase for RAG
 atabey db <status|migrate|verify|backup|restore|compact>   SQLite schema, integrity, backups & compaction
 atabey secrets <list|set|get|delete|scan>          AES-256-GCM secret vault & leak scan
 atabey api <scan|list|drift|json>                  API endpoint catalog & contract drift
-atabey audit export|erase                          Signed audit export / KVKK-GDPR erasure
+atabey audit export [--verify --in <file>]|erase    Signed audit export & verification / erasure
 atabey worktree <create|list|remove> [name]        Isolated agent worktrees
 atabey coverage                 Test coverage reports
 atabey quickstart               Generate example task file
@@ -941,7 +948,7 @@ atabey quickstart               Generate example task file
 │                    40 Tools · Multi-Layer Governance                │
 │                    Zod Validation · PII Masking                  │
 ├──────────────────────────────────────────────────────────────────┤
-│                    src/cli/  30+ Commands                         │
+│                    src/cli/  33 Commands                          │
 │                    src/modules/  Engines + Agents + Memory       │
 │                    src/shared/  Types + Storage + Audit          │
 ├────────────────┬───────────────────────────┬──────────────────────┤
@@ -1519,8 +1526,10 @@ Siz: @security "Açık endpoint'leri ve yetkilendirme açıklarını tara"
 # 2. Cerrahi yama uygula (otomatik geri alma yedeği alınır)
 Siz: @backend "Kimlik doğrulama middleware açığını kapat"
 
-# 3. HMAC-SHA256 imzalı denetim zincirini dışa aktar ve doğrula
-npx atabey audit export --verify
+# 3. HMAC-SHA256 imzalı denetim paketini dışa aktar ve doğrula
+npx atabey audit export --out audit.json        # contentHash + HMAC imzası
+npx atabey audit export --verify --in audit.json
+# SHA-256 içerik özetini ve HMAC imzasını doğrular; değişiklik varsa 1 ile çıkar.
 ```
 
 ---
@@ -1539,9 +1548,13 @@ npx atabey audit export --verify
 
 ## 3 katmanlı bellek
 
-1. **Vector Memory** — TF-IDF veya OpenAI embedding + cosine
+1. **Vector Memory** — yerel TF-IDF (varsayılan) veya `OPENAI_API_KEY` varsa OpenAI embedding + cosine
 2. **Project Memory** — `PROJECT_MEMORY.md`
 3. **Specialty Memory** — ajan bazlı öğrenilmiş dersler
+
+> **Sağlayıcı notu:** OpenAI ve TF-IDF vektörleri karşılaştırılabilir değildir. Her vektör
+> sağlayıcısıyla etiketlenir ve yalnızca aynı sağlayıcıdan gelen vektörler skorlanır. Anahtarı
+> değiştirdikten sonra karıştırmak yerine yeniden indeksleyin (`atabey index`).
 
 ---
 

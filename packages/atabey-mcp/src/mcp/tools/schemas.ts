@@ -271,9 +271,15 @@ export type GetProjectGapsArgs = z.infer<typeof GetProjectGapsSchema>;
 export type GetTaskContextArgs = z.infer<typeof GetTaskContextSchema>;
 export type SendAgentMessageArgs = z.infer<typeof SendAgentMessageSchema>;
 export type LogAgentActionArgs = z.infer<typeof LogAgentActionSchema>;
-export type AcquireLockArgs = z.infer<typeof AcquireLockSchema>;
 export type ReleaseLockArgs = z.infer<typeof ReleaseLockSchema>;
-export type RegisterAgentArgs = z.infer<typeof RegisterAgentSchema>;
+
+/**
+ * Input (pre-parse) variants for schemas that apply defaults. Handlers are also
+ * callable directly in tests and from the CLI, where those fields may be
+ * omitted; the inferred output type would incorrectly require them.
+ */
+export type AcquireLockInput = z.input<typeof AcquireLockSchema>;
+export type RegisterAgentInput = z.input<typeof RegisterAgentSchema>;
 export type CheckPortsArgs = z.infer<typeof CheckPortsSchema>;
 export type RunTestsArgs = z.infer<typeof RunTestsSchema>;
 export type UpdateProjectMemoryArgs = z.infer<typeof UpdateProjectMemorySchema>;

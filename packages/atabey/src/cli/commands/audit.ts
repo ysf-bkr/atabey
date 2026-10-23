@@ -1,11 +1,21 @@
 import fs from "fs";
 import path from "path";
-import { auditExportToCsv, auditExportToJson, buildAuditExport } from "../../modules/audit/export.js";
+import {
+    auditExportToCsv,
+    auditExportToJson,
+    buildAuditExport,
+    verifyAuditExport,
+    type AuditExport,
+} from "../../modules/audit/export.js";
 import { UI } from "../utils/ui.js";
 
 /**
  * `atabey audit export [--format json|csv] [--out <file>] [--limit <n>]`
  * Exports the HMAC-signed audit trail.
+ *
+ * `atabey audit export --verify [--in <file>]`
+ * Verifies the signature of a freshly built bundle, or of an existing JSON
+ * bundle written by a previous export. Exits non-zero when verification fails.
  *
  * `atabey audit erase <traceId>`
  * `atabey audit erase --all --confirm KVKK-RIGHT-TO-ERASURE`
@@ -20,7 +30,7 @@ export async function auditCommand(args: string[]): Promise<void> {
     }
 
     if (sub !== "export") {
-        UI.error(`Unknown audit subcommand: "${sub}". Use: export [--format json|csv] [--out <file>] [--limit <n>] | erase <traceId> | erase --all --confirm KVKK-RIGHT-TO-ERASURE`);
+        UI.error(`Unknown audit subcommand: "${sub}". Use: export [--format json|csv] [--out <file>] [--limit <n>] [--verify [--in <file>]] | erase <traceId> | erase --all --confirm KVKK-RIGHT-TO-ERASURE`);
         return;
     }
 
@@ -33,6 +43,44 @@ export async function auditCommand(args: string[]): Promise<void> {
     const out = flag("--out");
     const limitRaw = flag("--limit");
     const limit = limitRaw ? parseInt(limitRaw, 10) : 1000;
+    const verify = args.includes("--verify");
+    const inputFile = flag("--in");
+
+    // ── Verify-only path: check an existing bundle, or self-check a fresh one ──
+    if (verify) {
+        if (format === "csv") {
+            UI.error("[AUDIT] --verify requires JSON. CSV exports carry the hash as comments and cannot be re-verified.");
+            process.exit(64);
+        }
+
+        let bundle: AuditExport;
+        if (inputFile) {
+            try {
+                bundle = JSON.parse(fs.readFileSync(path.resolve(inputFile), "utf8")) as AuditExport;
+            } catch (e) {
+                UI.error(`[AUDIT] Cannot read export "${inputFile}": ${(e as Error).message}`);
+                process.exit(1);
+            }
+        } else {
+            bundle = buildAuditExport({ limit: Number.isFinite(limit) && limit > 0 ? limit : undefined });
+        }
+
+        if (!bundle || !Array.isArray(bundle.entries) || typeof bundle.count !== "number" || bundle.count !== bundle.entries.length) {
+            UI.error(
+                `[AUDIT] Bundle is inconsistent: count=${bundle?.count ?? "missing"} vs ` +
+                `${Array.isArray(bundle?.entries) ? bundle.entries.length : "missing"} entries.`,
+            );
+            process.exit(1);
+        }
+
+        const ok = verifyAuditExport(bundle);
+        if (ok) {
+            UI.success(`[AUDIT] Signature verified: ${bundle.count} entries, contentHash=${bundle.contentHash.slice(0, 16)}…`);
+            return;
+        }
+        UI.error(`[AUDIT] Signature MISMATCH for ${bundle.count} entries — the bundle was modified or the HMAC key differs.`);
+        process.exit(1);
+    }
 
     const exported = buildAuditExport({ limit: Number.isFinite(limit) && limit > 0 ? limit : undefined });
     const content = format === "csv" ? auditExportToCsv(exported) : auditExportToJson(exported);

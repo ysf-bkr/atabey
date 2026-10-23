@@ -5,7 +5,7 @@ import { logger } from "../../shared/logger.js";
 import { AtabeyStorage } from "../../shared/storage.js";
 import { asAgentID, asTraceID } from "../../shared/types.js";
 import { ALL_AGENTS } from "../agents/definitions.js";
-import { generateEmbedding as embedText } from "../memory/embedding.js";
+import { generateEmbedding as embedText, isOpenAIEmbedding } from "../memory/embedding.js";
 
 export interface RoutingCandidate {
     agent: string;
@@ -159,7 +159,11 @@ export class RoutingEngine {
                     " " + candidate.role + " " + candidate.displayName;
                 const agentVector = await embedText(specialtyText);
 
-                const similarity = this.cosineSimilarity(taskVector, agentVector);
+                // Only blend embeddings from the same provider. A mid-run OpenAI
+                // failure can leave one vector local (padded TF-IDF) and the other
+                // remote; comparing them would produce a meaningless similarity.
+                const sameProvider = isOpenAIEmbedding(taskVector) === isOpenAIEmbedding(agentVector);
+                const similarity = sameProvider ? this.cosineSimilarity(taskVector, agentVector) : 0;
 
                 // Retrieve TF-IDF score for this specific candidate
                 const candidateTfIdfScore = this.scoreSingleCandidate(

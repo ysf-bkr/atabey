@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { ToolResult, RegisterAgentArgs } from "../types.js";
+import { ToolResult, RegisterAgentInput } from "../types.js";
 import { resolveFrameworkDir } from "atabey-mcp/utils/security.js";
 import { logger } from "../../../shared/logger.js";
 
@@ -28,7 +28,7 @@ const SUPREMES_WHITELIST = ["@manager", "@security"];
  * Handles agent registration with the Control Plane.
  * Validates tier/role to prevent privilege escalation via MCP tool injection.
  */
-export async function handleRegisterAgent(projectRoot: string, args: RegisterAgentArgs): Promise<ToolResult> {
+export async function handleRegisterAgent(projectRoot: string, args: RegisterAgentInput): Promise<ToolResult> {
     const { agent, role, capability = 5, specialties } = args;
     const frameworkDir = resolveFrameworkDir(projectRoot);
     const registryDir = path.join(projectRoot, frameworkDir, "registry");
