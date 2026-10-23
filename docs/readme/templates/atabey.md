@@ -147,6 +147,7 @@ All 15 core skills are scaffolded for every platform; the delivery format differ
 ## 📋 CLI Reference
 
 ```bash
+atabey update                 Refresh scaffold after upgrade (preserves memory)
 atabey init [ai]             Initialize Atabey for one AI (claude default) or all
 atabey mcp start|install     MCP server management
 atabey status                Show agent statuses and token usage

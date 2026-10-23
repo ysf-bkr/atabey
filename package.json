@@ -1,6 +1,6 @@
 {
   "name": "atabey-monorepo",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Atabey — Local AI Control Plane & Discipline Layer",
   "author": "Yusuf BEKAR",
   "license": "AGPL-3.0",
@@ -80,7 +80,7 @@
   },
   "frameworkRepo": true,
   "atabey": {
-    "version": "0.1.6",
+    "version": "0.1.7",
     "frameworkRepo": true,
     "initializedAt": "2026-10-15T15:52:14.950Z"
   }

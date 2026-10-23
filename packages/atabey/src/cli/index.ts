@@ -6,6 +6,7 @@ import { approveCommand } from "./commands/approve.js";
 import { checkCommand } from "./commands/check.js";
 import { coverageCommand } from "./commands/coverage.js";
 import { initCommand } from "./commands/init.js";
+import { updateCommand } from "./commands/update.js";
 import { mcpCommand } from "./commands/mcp.js";
 import { updateProjectMemoryCommand } from "./commands/memory.js";
 import { orchestrateCommand, sendMessage } from "./commands/orchestrate.js";
@@ -36,6 +37,10 @@ function getActiveTraceId(): string {
 
 const COMMANDS: Record<string, { run: (args: string[]) => Promise<void>; description: string }> = {
     // Core
+    update: {
+        run: async () => { await updateCommand(); },
+        description: "Refresh the governance scaffold after a package upgrade (preserves memory, knowledge, RBAC)",
+    },
     init: {
         run: async (args) => {
             // Adapter = first positional arg, skipping values consumed by flags
@@ -426,6 +431,8 @@ Usage:
   atabey "natural language"    (auto-routed to @manager)
 
 Core Commands:
+  update                                                 Refresh scaffold after package upgrade
+                                                         (preserves memory, knowledge, RBAC)
   init [ai]                                              Initialize for one AI (claude default)
   init all                                               Initialize for ALL supported AIs
   init [ai] [--backend go --frontend next --native rust]  Choose stack (--yes)

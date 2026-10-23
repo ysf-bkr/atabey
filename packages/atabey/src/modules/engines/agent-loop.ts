@@ -105,11 +105,6 @@ export class AgentLoop {
                 continue;
             }
 
-            // Mark as PROCESSED immediately to prevent duplicate processing
-            if (msg.id !== undefined) {
-                AtabeyStorage.updateMessageStatus(msg.id as number, "PROCESSED");
-            }
-
             // Parse task from message content (may be JSON or plain text)
             let taskDescription = msg.content;
             try {
@@ -124,22 +119,36 @@ export class AgentLoop {
                 task: taskDescription.substring(0, 80),
             });
 
-            jobs.push(
-                queue.enqueue(async () => {
-                    try {
-                        await AgentExecutor.executeForAgent(
-                            agentName,
-                            taskDescription,
-                            String(msg.traceId),
-                        );
-                    } catch (err: unknown) {
-                        logger.error(`[AGENT_LOOP] Failed to execute task for ${agentName}`, {
-                            error: (err as Error).message,
-                            traceId: String(msg.traceId),
-                        });
-                    }
-                }),
-            );
+            // [FIX] Mark as PROCESSED only AFTER the job is successfully
+            // enqueued. The old order (mark first, enqueue second) lost work
+            // whenever enqueue threw or the process died in between: the
+            // message could never be retried despite never having run.
+            try {
+                jobs.push(
+                    queue.enqueue(async () => {
+                        try {
+                            await AgentExecutor.executeForAgent(
+                                agentName,
+                                taskDescription,
+                                String(msg.traceId),
+                            );
+                        } catch (err: unknown) {
+                            logger.error(`[AGENT_LOOP] Failed to execute task for ${agentName}`, {
+                                error: (err as Error).message,
+                                traceId: String(msg.traceId),
+                            });
+                        }
+                    }),
+                );
+                if (msg.id !== undefined) {
+                    AtabeyStorage.updateMessageStatus(msg.id as number, "PROCESSED");
+                }
+            } catch (err: unknown) {
+                logger.error(`[AGENT_LOOP] Enqueue failed — message ${msg.id} stays PENDING for retry`, {
+                    error: (err as Error).message,
+                    traceId: String(msg.traceId),
+                });
+            }
         }
 
         // Wait for this cycle's jobs (queue still limits concurrency globally)

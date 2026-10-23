@@ -19,4 +19,12 @@ export class StorageMetadata extends StorageCosts {
         const row = this.getDB().prepare("SELECT value FROM metadata WHERE key = ?").get(key) as { value: string } | undefined;
         return row ? row.value : null;
     }
+
+    /** All metadata key/value pairs — used to render custom memory sections. */
+    public static getAllMetadata(): Record<string, string> {
+        const rows = this.getDB().prepare("SELECT key, value FROM metadata").all() as Array<{ key: string; value: string }>;
+        const out: Record<string, string> = {};
+        for (const r of rows) out[r.key] = r.value;
+        return out;
+    }
 }

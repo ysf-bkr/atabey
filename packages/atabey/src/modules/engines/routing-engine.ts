@@ -5,7 +5,7 @@ import { logger } from "../../shared/logger.js";
 import { AtabeyStorage } from "../../shared/storage.js";
 import { asAgentID, asTraceID } from "../../shared/types.js";
 import { ALL_AGENTS } from "../agents/definitions.js";
-import { CoreMemory } from "../memory/core.js";
+import { generateEmbedding as embedText } from "../memory/embedding.js";
 
 export interface RoutingCandidate {
     agent: string;
@@ -146,7 +146,7 @@ export class RoutingEngine {
         const tfidfResult = this.resolveWithDetails(taskDescription);
 
         try {
-            const taskVector = CoreMemory.generateEmbedding(taskDescription);
+            const taskVector = await embedText(taskDescription); // honors OPENAI_API_KEY, falls back to local TF-IDF
             const candidates = this.getCandidates();
 
             let bestAgent = tfidfResult.agent;
@@ -157,7 +157,7 @@ export class RoutingEngine {
                 // Build a combined specialty text for this agent to embed
                 const specialtyText = Object.keys(candidate.specialties).join(" ") +
                     " " + candidate.role + " " + candidate.displayName;
-                const agentVector = CoreMemory.generateEmbedding(specialtyText);
+                const agentVector = await embedText(specialtyText);
 
                 const similarity = this.cosineSimilarity(taskVector, agentVector);
 

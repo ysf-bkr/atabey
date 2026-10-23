@@ -1,6 +1,6 @@
 {
   "name": "atabey-mcp",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Atabey — Local AI Control Plane & Discipline Layer — MCP Server",
   "author": "Yusuf BEKAR",
   "license": "AGPL-3.0",
@@ -54,8 +54,8 @@
     "prepublishOnly": "node ../../scripts/build-readmes.mjs && npm run build"
   },
   "dependencies": {
-    "atabey": "^0.1.6",
-    "atabey-shared": "^0.1.6",
+    "atabey": "^0.1.7",
+    "atabey-shared": "^0.1.7",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "better-sqlite3": "^13.0.2",
     "chalk": "^5.6.2",

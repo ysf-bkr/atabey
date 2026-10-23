@@ -195,10 +195,10 @@ export class SecretManager {
 
     private static withVaultLock<T>(vaultDir: string, fn: () => T): T {
         const lock = new AtomicFileLock({ locksDir: path.join(vaultDir, "locks"), timeoutMs: 5000 });
-        let acquired = false;
         const owner = `vault-${process.pid}-${Date.now()}`;
         const start = Date.now();
-        while (!acquired && Date.now() - start < 5000) {
+        let acquired = false;
+        while (Date.now() - start < 5000) {
             const attempt = lock.tryAcquire("secrets.vault.json", owner, "vault-mutation");
             if (attempt.acquired) {
                 acquired = true;
@@ -207,12 +207,18 @@ export class SecretManager {
             const waitUntil = Date.now() + 50;
             while (Date.now() < waitUntil) { /* spin */ }
         }
+        if (!acquired) {
+            // [FIX] Fail closed. Running the mutation without the lock let
+            // concurrent vault writes clobber each other (lost updates,
+            // last-writer-wins). The caller should retry the operation.
+            throw new Error(
+                "Vault lock could not be acquired within 5000ms — another secrets operation is in flight. Retry shortly.",
+            );
+        }
         try {
             return fn();
         } finally {
-            if (acquired) {
-                lock.release("secrets.vault.json", owner);
-            }
+            lock.release("secrets.vault.json", owner);
         }
     }
 

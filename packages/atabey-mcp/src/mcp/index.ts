@@ -14,6 +14,7 @@ import { fileURLToPath } from "url";
 import { HermesBus } from "./utils/wss-bus.js";
 
 import { assertTransportSecurity, createHttpOrHttpsServer, describeTls, resolveTlsConfig, tlsScheme } from "atabey-shared/tls.js";
+import { getMasterToken } from "./modules/security/auth.js";
 import { logger } from "../shared/logger.js";
 import { handleCallToolWithGovernance } from "./middleware/governance.js";
 import { RESOURCES, handleReadResource } from "./resources/index.js";
@@ -351,9 +352,14 @@ function createUnifiedServer() {
         const boundPort = typeof bound === "object" && bound !== null ? bound.port : PORT;
 
         // Hermes WSS Bus attaches once the port is bound (see note above).
-        const hermesBus = new HermesBus({ server: httpServer, path: "/bus" });
+        // [SECURITY] The bus inherits the auth master token (ATABEY_BUS_TOKEN
+        // override, else the MCP master token from env / .atabey/auth.key) so
+        // the /bus side channel is never anonymously reachable when HTTP auth
+        // credentials exist.
+        const busToken = process.env.ATABEY_BUS_TOKEN?.trim() || getMasterToken();
+        const hermesBus = new HermesBus({ server: httpServer, path: "/bus", token: busToken });
         process.stderr.write(
-            `[atabey-mcp] Hermes WSS Bus attached at /bus (online: ${hermesBus.getStats().online.length})\n`,
+            `[atabey-mcp] Hermes WSS Bus attached at /bus (online: ${hermesBus.getStats().online.length}, auth: ${busToken ? "token" : "open"})\n`,
         );
 
         process.stderr.write("\n");

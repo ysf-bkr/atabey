@@ -66,9 +66,13 @@ export function resolveFrameworkDir(projectRoot: string): string {
             const atabeyConfig = pkg["atabey"] as Record<string, unknown> | undefined;
             if (atabeyConfig && typeof atabeyConfig["frameworkDir"] === "string") {
                 // Ensure the path is relative if it's within the project, otherwise use as-is.
-                const resolvedDir = path.resolve(projectRoot, atabeyConfig["frameworkDir"]);
-                if (resolvedDir.startsWith(path.resolve(projectRoot))) {
-                    return path.relative(projectRoot, resolvedDir);
+                // [FIX] Segment-based containment: a naive `startsWith` let
+                // SIBLING paths (e.g. /root/my-app-evil for root /root/my-app)
+                // pass as "inside" the project.
+                const rootAbs = path.resolve(projectRoot);
+                const resolvedDir = path.resolve(rootAbs, atabeyConfig["frameworkDir"]);
+                if (resolvedDir === rootAbs || resolvedDir.startsWith(rootAbs + path.sep)) {
+                    return path.relative(rootAbs, resolvedDir);
                 }
                 return atabeyConfig["frameworkDir"];
             }

@@ -1,6 +1,6 @@
 # Atabey — Local AI Control Plane & Discipline Layer (Core Engine)
 
-[![Version](https://img.shields.io/badge/Version-v0.1.6-blue.svg)](https://github.com/ysf-bkr/atabey)
+[![Version](https://img.shields.io/badge/Version-v0.1.7-blue.svg)](https://github.com/ysf-bkr/atabey)
 [![npm](https://img.shields.io/npm/v/atabey)](https://www.npmjs.com/package/atabey)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
@@ -185,6 +185,7 @@ All 15 core skills are scaffolded for every platform; the delivery format differ
 ## 📋 CLI Reference
 
 ```bash
+atabey update                 Refresh scaffold after upgrade (preserves memory)
 atabey init [ai]             Initialize Atabey for one AI (claude default) or all
 atabey mcp start|install     MCP server management
 atabey status                Show agent statuses and token usage

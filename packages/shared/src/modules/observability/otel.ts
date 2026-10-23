@@ -94,6 +94,30 @@ export function emitSpan(projectRoot: string, span: {
 
 async function pushOtlp(endpoint: string, record: SpanRecord): Promise<void> {
     const url = endpoint.replace(/\/$/, "") + "/v1/traces";
+
+    // Auth headers for managed backends. Two configuration styles:
+    //   1. Standard OTLP:     OTEL_EXPORTER_OTLP_HEADERS="key1=value1,key2=value2"
+    //   2. Langfuse convenience: ATABEY_LANGFUSE_PUBLIC_KEY + ATABEY_LANGFUSE_SECRET_KEY
+    //      (basic auth against the Langfuse OTLP endpoint — covers Langfuse Cloud
+    //      and self-hosted; Datadog/Arize use style 1 with their API keys.)
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    const rawHeaders = process.env.OTEL_EXPORTER_OTLP_HEADERS?.trim();
+    if (rawHeaders) {
+        for (const pair of rawHeaders.split(",")) {
+            const idx = pair.indexOf("=");
+            if (idx > 0) headers[pair.slice(0, idx).trim()] = pair.slice(idx + 1).trim();
+        }
+    }
+    const langfuseKey = process.env.ATABEY_LANGFUSE_PUBLIC_KEY?.trim();
+    const langfuseSecret = process.env.ATABEY_LANGFUSE_SECRET_KEY?.trim();
+    let target = url;
+    if (langfuseKey && langfuseSecret) {
+        headers["Authorization"] = "Basic " + Buffer.from(`${langfuseKey}:${langfuseSecret}`).toString("base64");
+        if (!/langfuse/i.test(endpoint)) {
+            target = "https://cloud.langfuse.com/api/public/otel/v1/traces";
+        }
+    }
+
     const body = JSON.stringify({
         resourceSpans: [{
             resource: { attributes: [{ key: "service.name", value: { stringValue: "atabey" } }] },
@@ -116,9 +140,9 @@ async function pushOtlp(endpoint: string, record: SpanRecord): Promise<void> {
             }] }],
         }],
     });
-    await fetch(url, {
+    await fetch(target, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body,
     }).catch(() => { /* collector may be unreachable */ });
 }

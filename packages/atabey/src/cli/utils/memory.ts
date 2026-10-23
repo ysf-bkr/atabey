@@ -203,11 +203,17 @@ export function initDocumentStore(frameworkDir?: string) {
     indexKnowledgeBaseIntoVectorMemory(frameworkDir || getFrameworkDir()).catch(() => {});
 }
 
-export function readState() {
-    const phase = Storage.getMetadata("phase") || "PHASE_0";
-    const traceId = Storage.getMetadata("traceId") || "T-000";
-    const managerState = Storage.getMetadata("managerState") || "ACTIVE";
-    return { phase, traceId, managerState };
+export function readState(): { phase: string; traceId: string; managerState: string } & Record<string, string> {
+    // Read ALL metadata so custom memory sections (update_project_memory /
+    // specialty writes) survive the round trip — the old 3-field version made
+    // the markdown "custom sections" renderer dead code.
+    const all = Storage.getAllMetadata();
+    return {
+        phase: all.phase || "PHASE_0",
+        traceId: all.traceId || "T-000",
+        managerState: all.managerState || "ACTIVE",
+        ...all,
+    };
 }
 
 export function readStatus() {
@@ -263,9 +269,21 @@ export function updateDocumentStore(type: "state" | "task" | "history" | "status
     ensureDir(storePath);
 
     switch (type) {
-        case "state":
+        case "state": {
             writeJsonFile(path.join(storePath, "state.json"), data);
+            // Keep the SQLite metadata store in sync — readState() reads from
+            // Storage, so a file-only write would never surface in status
+            // output or the synced PROJECT_MEMORY.md.
+            const state = data as Record<string, unknown>;
+            for (const [k, v] of Object.entries(state)) {
+                try {
+                    Storage.setMetadata(k, String(v));
+                } catch {
+                    /* best-effort metadata sync */
+                }
+            }
             break;
+        }
         case "status": {
             const status = data as Record<string, { state: string; task: string, lastUpdated?: string }>;
             for (const [agent, info] of Object.entries(status)) {

@@ -11,6 +11,50 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## [0.1.7] — 2026-10-23 — Memory Round-Trip Fixes, `atabey update`, OTLP Observability
+
+### Fixed (found via full end-to-end npm-install testing)
+- **Split-brain (CLI vs MCP database):** the framework-directory resolver let a
+  monorepo root override the NEAREST `.atabey`. A consumer project inside a
+  workspace had its CLI writes land in the parent repo's database while the MCP
+  server (respecting `ATABEY_PROJECT_ROOT`) read the child's — "indexed 84
+  files" but every `search_knowledge` came back empty. Nearest `.atabey` now
+  wins; workspace subpackages without their own `.atabey` still resolve upward.
+- **`update_project_memory` MCP tool was a silent no-op:** it shelled out to a
+  CLI subcommand that does not exist (`atabey update_project_memory` — the real
+  command is `atabey memory update`) and the failure was swallowed while the
+  tool reported success. It now calls the in-process memory API.
+- **Memory state round-trip:** `updateDocumentStore("state")` wrote only
+  `state.json` while `readState()` read from SQLite metadata — writes never
+  surfaced in `status` or the synced `PROJECT_MEMORY.md`. State writes now sync
+  to the metadata store, and `readState()` returns ALL metadata so custom
+  memory sections render (the old 3-field version made the markdown
+  custom-section renderer dead code). Verified live: update → read →
+  PROJECT_MEMORY.md all agree.
+
+### Added
+- **`atabey update`:** non-destructive scaffold refresh after a package
+  upgrade. Regenerates compiled output (constitution, standards, agents,
+  skills, shims, platform MCP configs, gitignore rules) while preserving the
+  living state — memory, imported knowledge, permission matrix, auth key.
+  Reports the scaffold version delta; never scaffolds the app skeleton,
+  re-ingests, or prompts.
+- **Observability (OTLP):** span export now supports auth headers via
+  `OTEL_EXPORTER_OTLP_HEADERS` and a Langfuse convenience pair
+  (`ATABEY_LANGFUSE_PUBLIC_KEY` / `ATABEY_LANGFUSE_SECRET_KEY` — basic auth
+  against the Langfuse OTLP endpoint). Datadog and Arize ingest the same OTLP
+  stream with their API keys; local JSONL spans remain the zero-config
+  default. `Storage.getAllMetadata()` added for full-state reads.
+
+### Verified
+- Live consumer project (inside a workspace): `index` → 84 entries in the
+  project's OWN database (parent untouched at 288); `search_knowledge` finds
+  the project source; memory update/read/markdown-sync round-trip green;
+  `atabey update` preserves user data and keeps `check` green.
+- Full suite: 118 files / 802 tests, eslint, knip, readme:check.
+
+---
+
 ## [0.1.6] — 2026-10-22 — Single Setup, Per-AI Compile & Platform Hardening
 
 ### Breaking Changes
@@ -140,6 +184,42 @@ All notable changes to this project are documented in this file.
   always returns fallback defaults, so the old null check was dead code and a
   bare directory printed phantom `PHASE_0/T-000` state. Status now checks the
   init marker (`.atabey/config.json`) and exits 1 with a clear error.
+
+### Security & Reliability (second audit round)
+- **Hermes WSS bus is no longer an unauthenticated side channel:** the bus
+  inherits the auth master token (`ATABEY_BUS_TOKEN` override, else the MCP
+  master token from env / `.atabey/auth.key`), so `/bus` is never anonymously
+  reachable when HTTP auth credentials exist. Startup logs now report
+  `auth: token|open`.
+- **Delegation loss fixed:** the agent loop marked messages PROCESSED *before*
+  enqueueing them — a failed enqueue or a crash in between lost the work
+  permanently. Messages are now marked only after a successful enqueue;
+  enqueue failures leave them PENDING for retry.
+- **Vault lock is fail-closed:** secret mutations that cannot acquire the
+  vault lock within 5s now throw instead of running unlocked (concurrent
+  writes previously clobbered each other with lost updates).
+- **CodeGraph no longer wipes indexes on truncated scans:** when the file-scan
+  cap (default 5000) is hit, the removal pass is skipped and a warning is
+  logged — previously unscanned-but-indexed files were deleted as "removed".
+- **Path containment is segment-based:** the framework-dir check used a naive
+  `startsWith`, letting sibling paths (`/root/my-app-evil` for root
+  `/root/my-app`) pass as inside the project.
+- **Outbound proxy actually works:** `outboundRequest` accepted `proxyUrl` but
+  silently connected directly. It now routes plain-HTTP targets via
+  absolute-form requests and HTTPS targets via CONNECT tunnels (with proxy
+  basic-auth support).
+- **Vector memory category stays in sync:** the upsert now updates the
+  searchable `category` column (previously only content/vector/metadata were
+  updated, so category-filtered searches could return stale results).
+- **Routing engine honors OPENAI_API_KEY:** semantic routing now uses the
+  async embedding generator (OpenAI when configured, local TF-IDF fallback)
+  instead of the sync local-only path the documentation contradicted.
+- **clean:legacy fails loudly:** the legacy deprecation script exits 1 and
+  lists failed packages instead of printing "Done!" after errors.
+- Root tsconfig excludes local test fixtures (`test-app/`, `test-lab/`,
+  `test-init/`) so scaffolded consumer apps never leak into type checks.
+- README role table no longer shows the removed Freelancer/Team/Enterprise
+  columns.
 
 ### Deferred (documented, not fixed in this release)
 - Unifying the 3 `frameworkDir` resolvers and the duplicated compliance engine.

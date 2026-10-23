@@ -19,5 +19,5 @@
       "atabey-shared/*": ["./packages/shared/*"]
     }
   },
-  "exclude": ["node_modules", "dist", "packages/atabey-mcp/dashboard"]
+  "exclude": ["node_modules", "dist", "packages/atabey-mcp/dashboard", "test-app", "test-lab", "test-init", ".tmp-test"]
 }

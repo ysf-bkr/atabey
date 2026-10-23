@@ -13,6 +13,7 @@ console.log(` Target packages: ${packages.join(", ")}`);
 console.log(`======================================================\n`);
 
 console.log(`Deprecating all legacy versions older than ${currentVersion} on NPM...`);
+const failures = [];
 for (const pkg of packages) {
   try {
     console.log(`\n-> Deprecating ${pkg}@"<${currentVersion}"...`);
@@ -22,7 +23,12 @@ for (const pkg of packages) {
     console.log(`✓ ${pkg} legacy versions (<${currentVersion}) marked as deprecated.`);
   } catch (err) {
     console.error(`✗ Failed to deprecate ${pkg}:`, err.message);
+    failures.push(pkg);
   }
 }
 
+if (failures.length > 0) {
+  console.error(`\nFAILED for: ${failures.join(", ")} — npm metadata was NOT updated for those packages. Fix the errors above and re-run.`);
+  process.exit(1);
+}
 console.log(`\nDone! All versions prior to ${currentVersion} have been deprecated.`);

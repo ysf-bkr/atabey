@@ -10,6 +10,7 @@
 
 import http from "http";
 import https from "https";
+import nodeTls from "tls";
 import { URL } from "url";
 import { resolveOutboundTlsOptions } from "../security/tls.js";
 
@@ -53,7 +54,6 @@ export function outboundRequest(input: OutboundRequestInput): Promise<OutboundRe
         }
 
         const isHttps = parsed.protocol === "https:";
-        const mod = isHttps ? https : http;
         const tls = isHttps ? resolveOutboundTlsOptions() : null;
         const maxBytes = input.maxBytes ?? 5 * 1024 * 1024;
 
@@ -78,7 +78,7 @@ export function outboundRequest(input: OutboundRequestInput): Promise<OutboundRe
             if (tls.options.servername) requestOptions.servername = tls.options.servername;
         }
 
-        const req = mod.request(requestOptions, (res) => {
+        const handleResponse = (res: http.IncomingMessage) => {
             const chunks: Buffer[] = [];
             let size = 0;
             res.on("data", (chunk: Buffer) => {
@@ -99,15 +99,85 @@ export function outboundRequest(input: OutboundRequestInput): Promise<OutboundRe
                 });
             });
             res.on("error", reject);
-        });
+        };
 
-        const timeoutMs = input.timeoutMs ?? 30000;
-        req.setTimeout(timeoutMs, () => {
-            req.destroy(new Error(`Outbound request timed out after ${timeoutMs}ms`));
-        });
-        req.on("error", reject);
+        const finishRequest = (req: http.ClientRequest) => {
+            const timeoutMs = input.timeoutMs ?? 30000;
+            req.setTimeout(timeoutMs, () => {
+                req.destroy(new Error(`Outbound request timed out after ${timeoutMs}ms`));
+            });
+            req.on("error", reject);
+            if (input.body !== undefined) req.write(input.body);
+            req.end();
+        };
 
-        if (input.body !== undefined) req.write(input.body);
-        req.end();
+        // ── Proxy routing (previously accepted but silently ignored) ──────
+        if (input.proxyUrl) {
+            let proxy: URL;
+            try {
+                proxy = new URL(input.proxyUrl);
+            } catch {
+                reject(new Error(`Invalid proxy URL: ${input.proxyUrl}`));
+                return;
+            }
+            if (proxy.protocol !== "http:" && proxy.protocol !== "https:") {
+                reject(new Error(`Proxy protocol '${proxy.protocol}' not supported (only http/https proxies).`));
+                return;
+            }
+            const proxyHeaders: Record<string, string> = {};
+            if (proxy.username || proxy.password) {
+                const creds = `${decodeURIComponent(proxy.username)}:${decodeURIComponent(proxy.password)}`;
+                proxyHeaders["Proxy-Authorization"] = "Basic " + Buffer.from(creds).toString("base64");
+            }
+            const proxyPort = Number(proxy.port) || (proxy.protocol === "https:" ? 443 : 80);
+            const proxyMod = proxy.protocol === "https:" ? https : http;
+
+            if (!isHttps) {
+                // Plain HTTP target: forward the absolute-form URI via the proxy.
+                const req = proxyMod.request({
+                    protocol: proxy.protocol,
+                    hostname: proxy.hostname,
+                    port: proxyPort,
+                    path: input.url,
+                    method: requestOptions.method,
+                    headers: { ...proxyHeaders, ...(requestOptions.headers as Record<string, string>) },
+                }, handleResponse);
+                finishRequest(req);
+                return;
+            }
+
+            // HTTPS target: establish a CONNECT tunnel, then run TLS over it.
+            const connectReq = proxyMod.request({
+                protocol: proxy.protocol,
+                hostname: proxy.hostname,
+                port: proxyPort,
+                method: "CONNECT",
+                path: `${parsed.hostname}:${parsed.port || 443}`,
+                headers: proxyHeaders,
+            });
+            connectReq.once("connect", (res: http.IncomingMessage, socket: import("net").Socket) => {
+                if (res.statusCode !== 200) {
+                    socket.destroy();
+                    reject(new Error(`Proxy CONNECT failed with status ${res.statusCode}`));
+                    return;
+                }
+                const req = https.request({
+                    ...requestOptions,
+                    agent: false,
+                    createConnection: () => nodeTls.connect({
+                        socket,
+                        servername: parsed.hostname,
+                        ...(tls?.options ?? {}),
+                    }),
+                }, handleResponse);
+                finishRequest(req);
+            });
+            connectReq.once("error", reject);
+            connectReq.end();
+            return;
+        }
+
+        const mod = isHttps ? https : http;
+        finishRequest(mod.request(requestOptions, handleResponse));
     });
 }

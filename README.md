@@ -2,7 +2,7 @@
 
 > **Language / Dil:** [English](#atabey--local-ai-control-plane--discipline-layer) · [Türkçe](#turkce)
 
-*v0.1.6 · Lightweight Local Control Plane · 100% strict TypeScript · Cross-platform (macOS, Linux, Windows)*
+*v0.1.7 · Lightweight Local Control Plane · 100% strict TypeScript · Cross-platform (macOS, Linux, Windows)*
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![npm](https://img.shields.io/npm/v/atabey)](https://www.npmjs.com/package/atabey)
@@ -506,25 +506,27 @@ npx atabey init claude --yes --focus mobile-fullstack --backend go --frontend ne
 
 ## 13 Specialized Role Profiles
 
+> One canonical setup: all 13 specialists are scaffolded on every `atabey init` — there are no per-profile agent subsets anymore.
+
 > [!NOTE]
 > **Execution Model:** Atabey's specialized agents are virtual profiles powered by dynamically injected system role definitions and context templates. They do not run as 13 parallel, independent LLM API instances. Instead, your single host AI assistant (e.g., Claude Code, Cursor) takes on these roles sequentially, routed by the TF-IDF engine, while Atabey enforces boundaries, state machine constraints, and quality checks during role switches.
 
-| Role Profile | Tier | Domain | Scope / Responsibility | Freelancer | Team | Enterprise |
-|--------------|------|--------|------------------------|:----------:|:----:|:----------:|
-| **@manager** | Supreme | Orchestration | Task decomposition, governance, quality gate | ✅ | ✅ | ✅ |
-| **@security** | Supreme | Security | Security audit, vulnerability scanning | ✅ | ✅ | ✅ |
-| **@architect** | Core | Architecture | System design, contracts, structural integrity | ❌ | ✅ | ✅ |
-| **@backend** | Core | Backend | API, server-side logic, data access, tests | ✅ | ✅ | ✅ |
-| **@frontend** | Core | Frontend | UI, components, responsive design | ✅ | ✅ | ✅ |
-| **@quality** | Core | Quality | Compliance, lint, test coverage, gating | ✅ | ✅ | ✅ |
-| **@database** | Core | Database | Schemas, migrations, query optimization | ❌ | ✅ | ✅ |
-| **@analyst** | Recon | Analysis | Requirements, domain analysis, strategy | ❌ | ✅ | ✅ |
-| **@mobile** | Core | Mobile | React Native and cross-platform apps | ❌ | ❌ | ✅ |
-| **@native** | Recon | Native | Native platform integration (Rust/Go only) | ❌ | ❌ | ✅ |
-| **@devops** | Core | DevOps | CI/CD, pipelines, infrastructure | ❌ | ✅ | ✅ |
-| **@explorer** | Recon | Exploration | Codebase discovery, symbol indexing | ❌ | ❌ | ✅ |
-| **@git** | Recon | VCS | Branch hygiene, commits, PR preparation | ❌ | ❌ | ✅ |
-| **@human** | — | HITL | Human approval checkpoint | ✅ | ✅ | ✅ |
+| Role Profile | Tier | Domain | Scope / Responsibility |
+|--------------|------|--------|------------------------|
+| **@manager** | Supreme | Orchestration | Task decomposition, governance, quality gate |
+| **@security** | Supreme | Security | Security audit, vulnerability scanning |
+| **@architect** | Core | Architecture | System design, contracts, structural integrity |
+| **@backend** | Core | Backend | API, server-side logic, data access, tests |
+| **@frontend** | Core | Frontend | UI, components, responsive design |
+| **@quality** | Core | Quality | Compliance, lint, test coverage, gating |
+| **@database** | Core | Database | Schemas, migrations, query optimization |
+| **@analyst** | Recon | Analysis | Requirements, domain analysis, strategy |
+| **@mobile** | Core | Mobile | React Native and cross-platform apps |
+| **@native** | Recon | Native | Native platform integration (Rust/Go only) |
+| **@devops** | Core | DevOps | CI/CD, pipelines, infrastructure |
+| **@explorer** | Recon | Exploration | Codebase discovery, symbol indexing |
+| **@git** | Recon | VCS | Branch hygiene, commits, PR preparation |
+| **@human** | — | HITL | Human approval checkpoint |
 
 ### Agent Hierarchy
 ```
@@ -838,6 +840,7 @@ npx atabey mcp start  # Starts headless MCP control plane
 ## CLI Reference
 
 ```bash
+atabey update                    Refresh scaffold after a package upgrade (preserves memory/knowledge/RBAC)
 atabey init [ai]                Initialize Atabey for one AI (claude default) or all
 atabey mcp start|install        MCP server management
 atabey orchestrate              Start orchestration loop
@@ -1075,6 +1078,14 @@ Two requirements must hold:
 2. **YAML frontmatter:** every generated agent `.md` starts with a
    `name:` / `description:` frontmatter block — discovery UIs ignore files
    without it. Regenerating with v0.1.6+ adds it automatically.
+
+### CLI writes and MCP reads disagree (split brain — "indexed N files" but search is empty)
+
+Fixed in v0.1.7: the framework-directory resolver now lets the NEAREST `.atabey`
+win over a monorepo root further up. Previously a consumer project initialized
+inside a workspace (e.g. `test-app/` inside another Atabey repo) had its CLI
+writes land in the parent repo's database while the MCP server read the child's.
+If you hit this with an older version, re-run `atabey index` after updating.
 
 ### Skills are not discovered
 

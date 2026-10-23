@@ -2,6 +2,7 @@ import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import { AtabeyStorage } from "../../shared/storage.js";
+import { logger } from "../../shared/logger.js";
 
 const SOURCE_EXT = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]);
 const IGNORE_DIRS = new Set([
@@ -116,10 +117,17 @@ function hashContent(content: string): string {
     return crypto.createHash("sha1").update(content).digest("hex");
 }
 
-function walkSourceFiles(root: string, maxFiles: number): string[] {
+function walkSourceFiles(root: string, maxFiles: number): { files: string[]; truncated: boolean } {
     const out: string[] = [];
     const stack: string[] = [""];
-    while (stack.length > 0 && out.length < maxFiles) {
+    let truncated = false;
+    while (stack.length > 0) {
+        if (out.length >= maxFiles) {
+            // More source remained but the scan cap was hit — the caller must
+            // NOT treat missing paths as deleted (see index()).
+            truncated = true;
+            break;
+        }
         const rel = stack.pop() as string;
         const abs = rel ? path.join(root, rel) : root;
         let entries: fs.Dirent[];
@@ -134,12 +142,15 @@ function walkSourceFiles(root: string, maxFiles: number): string[] {
                 if (IGNORE_DIRS.has(e.name)) continue;
                 stack.push(childRel);
             } else if (e.isFile() && SOURCE_EXT.has(path.extname(e.name))) {
-                if (out.length >= maxFiles) break;
+                if (out.length >= maxFiles) {
+                    truncated = true;
+                    break;
+                }
                 out.push(childRel);
             }
         }
     }
-    return out;
+    return { files: out, truncated };
 }
 
 /**
@@ -153,7 +164,14 @@ function walkSourceFiles(root: string, maxFiles: number): string[] {
 export class CodeGraph {
     public static index(projectRoot: string, options: { maxFiles?: number } = {}): IndexResult {
         const maxFiles = options.maxFiles ?? 5000;
-        const current = walkSourceFiles(projectRoot, maxFiles);
+        const walk = walkSourceFiles(projectRoot, maxFiles);
+        const current = walk.files;
+        // [FIX] A truncated scan must never delete stored records: unscanned
+        // files would look "removed" and valid index entries would be wiped.
+        const truncated = walk.truncated;
+        if (truncated) {
+            logger.warn(`[CODE_GRAPH] Scan cap (${maxFiles} files) reached — removal pass skipped to protect the index. Raise the cap for full repos.`);
+        }
         const currentSet = new Set(current);
         const storedSet = new Set(AtabeyStorage.getAllCodeFilePaths());
 
@@ -175,10 +193,12 @@ export class CodeGraph {
         }
 
         let removed = 0;
-        for (const rel of storedSet) {
-            if (!currentSet.has(rel)) {
-                AtabeyStorage.deleteCodeFile(rel);
-                removed++;
+        if (!truncated) {
+            for (const rel of storedSet) {
+                if (!currentSet.has(rel)) {
+                    AtabeyStorage.deleteCodeFile(rel);
+                    removed++;
+                }
             }
         }
 

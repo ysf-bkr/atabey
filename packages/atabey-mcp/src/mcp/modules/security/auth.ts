@@ -375,6 +375,12 @@ export function getConfiguredUsers(): string[] {
     return Array.from(list);
 }
 
+/** The resolved master token (env or .atabey/auth.key), or null. Used to
+ *  protect side channels (e.g. the Hermes WSS bus) with the same credential. */
+export function getMasterToken(): string | null {
+    return masterToken;
+}
+
 export function getAuthStatus(): AuthStatus {
     if (!initialized) initAuth();
     let dbUserCount: number;

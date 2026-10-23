@@ -50,6 +50,7 @@ export class VectorStore {
             ON CONFLICT(id) DO UPDATE SET
                 content = excluded.content,
                 vector = excluded.vector,
+                category = excluded.category,
                 metadata = excluded.metadata
         `).run(
             entry.id,
