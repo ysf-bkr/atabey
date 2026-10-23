@@ -11,10 +11,10 @@ All notable changes to this project are documented in this file.
 
 ---
 
-## [Unreleased] — Positioning & Documentation Consistency
+## [0.1.7] — 2026-10-23 — Positioning, Documentation & Dead-Code Cleanup
 
-No runtime behavior change. This entry records what was reworded and what claims were
-narrowed so the docs match the implementation.
+No runtime behavior change in this part of the release. It records what was reworded and
+which claims were narrowed so the docs match the implementation.
 
 ### Changed — product positioning
 - Unified the product statement as **“local governance and verification layer for AI coding
@@ -48,11 +48,10 @@ narrowed so the docs match the implementation.
 - Stale Freelancer/Team/Enterprise columns and “all 13 specialists” framing in docs.
 
 ### Verified
-- `npm run build`, `npm test` (387 tests), `npm run lint`, `npm run knip`, `npm run readme:check`.
+- `npm run build`, `npx tsc --noEmit`, `npm test` (802 tests), `npm run lint`, `npm run knip`,
+  `npm run readme:check`.
 
----
-
-## [0.1.7] — 2026-10-23 — Memory Round-Trip Fixes, `atabey update`, OTLP Observability
+### Memory Round-Trip Fixes, `atabey update`, OTLP Observability
 
 ### Fixed (found via full end-to-end npm-install testing)
 - **Split-brain (CLI vs MCP database):** the framework-directory resolver let a

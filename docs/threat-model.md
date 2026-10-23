@@ -1,6 +1,6 @@
 # Atabey Threat Model
 
-**Version:** v0.1.6  
+**Version:** v0.1.7  
 **Date:** 2026-10-22  
 **Scope:** MCP tool surface, local `.atabey/` state, shell execution, host bypass vectors, agent lifecycle  
 **Methodology:** STRIDE & Defense-in-Depth

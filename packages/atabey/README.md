@@ -240,7 +240,7 @@ atabey quickstart            Generate an example task file
 | `--skip-index` | Flag | Skip the automatic post-init RAG + symbol-graph indexing |
 | `--yes` | Flag | Non-interactive mode |
 
-> One canonical setup: all 13 specialists, strictest governance posture — no freelancer/team/enterprise profiles.
+> One canonical setup: all 13 role profiles, with the strongest controls the target platform supports — no freelancer/team/enterprise profiles.
 
 ---
 

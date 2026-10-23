@@ -24,9 +24,9 @@ provides technical controls intended to assist with:
 | **Task plans** | ✅ | SQLite (`tasks`) | 30 days | Task orchestration |
 | **Project memory** | ✅ | SQLite + `.md` | Project lifetime | Agent context |
 | **Vector embeddings** | ✅ | SQLite | Project lifetime | Semantic search |
-| **API keys** | ❌ Never stored | Env variables only | N/A | N/A |
-| **User credentials** | ❌ Never stored | N/A | N/A | N/A |
-| **Personal data (PII)** | ❌ Automatically masked | N/A | N/A | N/A |
+| **API keys** | ❌ Not collected by telemetry | Env vars, or the local encrypted vault (`atabey secrets`, AES-256-GCM) | Until rotated/deleted | Provider auth |
+| **User credentials** | ❌ Not collected by telemetry | Local `.atabey` auth store | Until revoked | Local MCP access control |
+| **Personal data (PII)** | ⚠️ Masked only on Atabey channels | Not stored by Atabey when masking matches | N/A | Redaction before logs/audit/tool output |
 
 ---
 
@@ -34,7 +34,9 @@ provides technical controls intended to assist with:
 
 ### 1. PII Masking (KVKK Art. 12 / GDPR Art. 32)
 
-All logs and audit records are automatically scanned for Personally Identifiable Information:
+Log entries written through Atabey's logger and audit records created by Atabey are scanned
+for Personally Identifiable Information **before** they are persisted. Data that never passes
+through Atabey (for example, files written by host-native tools) is outside this scope:
 
 ```typescript
 // Automatic masking on every log entry
@@ -117,7 +119,7 @@ atabey check
 
 ### 5. Data Processing Records (KVKK Art. 4 / GDPR Art. 30)
 
-Every data processing operation is logged in the audit trail:
+Operations recorded by Atabey's logger and audit trail include:
 - **What** data was processed
 - **Who** processed it (which agent)
 - **When** it was processed (timestamp)
@@ -165,4 +167,4 @@ atabey check
 
 ---
 
-*Last updated: 19.06.2026*
+*Last updated: 23.10.2026 — v0.1.7*

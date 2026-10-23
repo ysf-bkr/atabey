@@ -56,8 +56,11 @@ You (@backend): "Create a user login service with JWT authentication"
      │  Stores in Vector Memory
      │
      ▼
-  Returns governed, reviewed, audited code
+  Returns the tool result after governance, checks and audit logging
 ```
+
+> This means the operation passed Atabey's configured controls — not that the generated
+> code is guaranteed correct, secure, or production-ready. Human review still applies.
 
 **No separate terminal needed. No CLI commands for daily use.** Just chat with your AI and use `@agent` syntax.
 
@@ -65,7 +68,7 @@ You (@backend): "Create a user login service with JWT authentication"
 
 > [!IMPORTANT]
 > **Atabey does not write code.** The code is written by the AI assistant you are connected to (such as Claude Code, Cursor, or Codex).
-> Atabey wraps your AI assistant with a powerful, deterministic software engineering discipline and governance layer:
+> Atabey adds a deterministic governance and verification layer around your AI assistant:
 >
 > 1. **Routing:** Directs instructions to the correct specialized virtual agent profile (`@backend`, `@security`, etc.).
 > 2. **Risk Engine:** Automatically scores operations for safety and halts risky actions (like mass deletions) for human approval.
@@ -100,7 +103,7 @@ You (@backend): "Create a user login service with JWT authentication"
 - [CLI Reference](#cli-reference)
 - [Architecture](#architecture)
 - [Security](#security)
-- [KVKK/GDPR Compliance](#kvkkgdpr-compliance)
+- [KVKK/GDPR Technical Alignment](#kvkkgdpr-technical-alignment)
 - [EU AI Act Alignment](#eu-ai-act-alignment)
 - [Token Efficiency](#token-efficiency)
 - [Testing](#testing)
@@ -454,8 +457,8 @@ If you encounter installation or test run issues (especially in restricted sandb
 ## Per-AI Setup (Single Canonical Setup)
 
 There is **one setup** — no freelancer/team/enterprise profiles. `atabey init`
-always scaffolds the full specialist set with the strictest governance posture.
-What you choose is **which AI platform** to compile the agent set for.
+always scaffolds all 13 role profiles with the strongest controls the target platform
+supports. What you choose is **which AI platform** to compile the profiles for.
 
 ### `atabey init <ai>` — one platform
 
@@ -969,7 +972,7 @@ The unified MCP server (HTTP/SSE) and the WebSocket live feed share one HTTP(S) 
 - **TLS 1.3** as the minimum version (`ATABEY_TLS_MIN_VERSION=TLSv1.3`), with modern cipher defaults. TLS is not enabled unless you provide a certificate/key pair.
 - **mTLS**: set `ATABEY_MTLS_REQUIRED=true` + `ATABEY_TLS_CA_FILE` to require and verify client certificates.
 - **Fail-closed policy**: `ATABEY_TLS_REQUIRED=true` refuses to start without TLS; binding plaintext to a non-loopback host is rejected unless `ATABEY_ALLOW_INSECURE_BIND=true`.
-- WebSocket upgrades carry an auth token (`?token=`) or client cert when auth/mTLS is on.
+- **HTTP/SSE auth:** `Authorization: Bearer <token>`. **Hermes `/bus` auth:** token in the first `hello` frame; it uses `ATABEY_BUS_TOKEN`, else the MCP master token. With no token configured, `/bus` is open access — like HTTP/SSE.
 
 ```bash
 export ATABEY_TLS_CERT_FILE=/etc/atabey/tls/server.crt

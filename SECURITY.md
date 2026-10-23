@@ -31,12 +31,15 @@ See [docs/limitations.md](docs/limitations.md) and [docs/auth.md](docs/auth.md) 
 - **mTLS:** `ATABEY_MTLS_REQUIRED=true` with `ATABEY_TLS_CA_FILE` requires and verifies client certificates.
 - **Fail-closed when required:** `ATABEY_TLS_REQUIRED=true` refuses to start without TLS; plaintext binding to a non-loopback host is rejected unless `ATABEY_ALLOW_INSECURE_BIND=true`.
 - **DNS Rebinding & Host Validation:** all HTTP/SSE endpoints strictly validate incoming `Host` headers (`localhost`, `127.0.0.1`, `::1` or `ATABEY_ALLOWED_HOST`) to protect developers against browser-based DNS rebinding and cross-origin attacks.
-- **Auth gate:** set `MCP_AUTH_TOKEN` (and optionally `MCP_AUTH_REQUIRED=true`) to require `Authorization: Bearer <token>` on HTTP/SSE; WebSocket upgrades accept `?token=`. HTTP API routes and the WS feed enforce this gate.
+- **Auth gate (HTTP/SSE):** set `MCP_AUTH_TOKEN` (and optionally `MCP_AUTH_REQUIRED=true`) to require `Authorization: Bearer <token>`. HTTP API routes and the SSE feed enforce this gate.
+- **Auth gate (Hermes bus `/bus`):** the bus authenticates inside the first `hello` frame (`{ "type": "hello", "agent": "...", "token": "..." }`), not via a query string. Its expected token is `ATABEY_BUS_TOKEN` if set, otherwise the MCP master token (`MCP_AUTH_TOKEN` / `.atabey/auth.key`). **If neither exists, `/bus` accepts anonymous clients**, exactly like the HTTP server in open-access mode.
 - **Secrets:** store credentials with `atabey secrets` (AES-256-GCM vault); sensitive env vars are stripped from spawned subprocesses.
 
 ### Known limitation
 
-When no token is configured and TLS is off, the server is **open access** (intended for local dev only). Always configure `MCP_AUTH_TOKEN` + TLS/mTLS before exposing it on a network.
+When no token is configured and TLS is off, **both** the HTTP/SSE server and the Hermes
+`/bus` endpoint are **open access** (intended for local dev only). Always configure
+`MCP_AUTH_TOKEN` (or `ATABEY_BUS_TOKEN`) + TLS/mTLS before exposing either on a network.
 
 See the full [Threat Model](docs/threat-model.md) for the STRIDE analysis, trust boundaries, and residual risks.
 

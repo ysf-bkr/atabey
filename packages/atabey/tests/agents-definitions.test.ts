@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ALL_AGENTS, toAntigravityJson } from "../src/modules/agents/definitions.js";
 
 describe("Agents Definitions", () => {
-    it("should have exactly 13 agents defined", () => {
+    it("should have exactly 13 role profiles defined", () => {
         expect(ALL_AGENTS).toHaveLength(13);
     });
 

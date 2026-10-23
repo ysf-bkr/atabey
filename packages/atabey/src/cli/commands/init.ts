@@ -99,7 +99,7 @@ async function runInteractiveInit(presetLanguage?: SupportedLanguage): Promise<I
         const t = TRANSLATIONS[language];
 
         process.stdout.write(`\n[START] ${t.welcome}\n`);
-        process.stdout.write("\n[SETUP] Canonical setup: all 13 specialists + full governance (single setup option).\n");
+        process.stdout.write("\n[SETUP] Canonical setup: all 13 role profiles + governance (single setup option).\n");
 
         // --- Project Focus Question ---
         process.stdout.write("\n[PROJECT FOCUS] Select Project Focus:\n");

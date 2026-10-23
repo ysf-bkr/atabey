@@ -58,6 +58,11 @@ MCP_TRANSPORT=unified MCP_PORT=5858 atabey-mcp
 # Hermes Bus: ws://localhost:5858/bus
 ```
 
+> **Auth scope:** HTTP/SSE uses `Authorization: Bearer <token>`. The Hermes `/bus` endpoint
+> authenticates with a token in its first `hello` frame and expects `ATABEY_BUS_TOKEN` (or the
+> MCP master token). When no token is configured, **both** are open access — local dev only.
+> See [Security Policy](https://github.com/ysf-bkr/atabey/blob/main/SECURITY.md).
+
 ---
 
 ## 🛠️ MCP Tools (Reference)

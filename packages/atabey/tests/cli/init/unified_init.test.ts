@@ -88,7 +88,7 @@ describe("Unified Init (`init all` — every supported AI)", () => {
         expect(fs.existsSync(path.join(tempDir, NATIVE_AGENT_PATHS.claude, "manager.md"))).toBe(true);
         expect(fs.existsSync(path.join(tempDir, NATIVE_AGENT_PATHS.cursor, "manager.mdc"))).toBe(true);
 
-        // Canonical setup scaffolds every specialist (13 agents) per adapter.
+        // Canonical setup scaffolds every role profile (13) per adapter.
         const claudeAgents = fs.readdirSync(
             path.join(tempDir, FRAMEWORK.UNIFIED_HUB_DIR, UNIFIED_ADAPTER_SLUG.claude, "agents"),
         ).filter(f => f.endsWith(".md"));

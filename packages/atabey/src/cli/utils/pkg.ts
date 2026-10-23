@@ -102,7 +102,7 @@ export function mergePackageJson(targetPath: string, sourcePath: string): void {
 
     // Add metadata
     targetPkg.atabey = {
-        version: sourcePkg.version || "0.1.5",
+        version: sourcePkg.version || "0.1.7",
         initializedAt: new Date().toISOString(),
     };
 

@@ -37,7 +37,8 @@
 | @explorer | Recon | Codebase discovery |
 | @git | Recon | Version control |
 
-> **Profile Tailoring:** Active agents in `.atabey/agents/` depend on `--profile` (`freelancer`: 3-4 essential agents, `team`: 7 agents, `enterprise`: all 13 agents).
+> **One canonical set:** `atabey init` scaffolds all 13 role profiles into `.atabey/agents/`.
+> There are no freelancer/team/enterprise subsets.
 
 ## [RULE 4] Prohibitions
 - `any` type is forbidden

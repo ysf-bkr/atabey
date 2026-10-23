@@ -119,10 +119,13 @@ export class AgentLoop {
                 task: taskDescription.substring(0, 80),
             });
 
-            // [FIX] Mark as PROCESSED only AFTER the job is successfully
-            // enqueued. The old order (mark first, enqueue second) lost work
-            // whenever enqueue threw or the process died in between: the
-            // message could never be retried despite never having run.
+            // [FIX] Status reflects the job outcome, not just enqueue success.
+            // Marking PROCESSED as soon as the job was queued hid execution
+            // failures (the message looked handled while the task never ran).
+            // A successful run marks PROCESSED; a failed one marks FAILED so it
+            // is visible and can be re-queued manually. If the process dies
+            // mid-run the message stays PENDING and is retried next cycle
+            // (at-least-once), which is preferable to silently losing work.
             try {
                 jobs.push(
                     queue.enqueue(async () => {
@@ -132,17 +135,20 @@ export class AgentLoop {
                                 taskDescription,
                                 String(msg.traceId),
                             );
+                            if (msg.id !== undefined) {
+                                AtabeyStorage.updateMessageStatus(msg.id as number, "PROCESSED");
+                            }
                         } catch (err: unknown) {
                             logger.error(`[AGENT_LOOP] Failed to execute task for ${agentName}`, {
                                 error: (err as Error).message,
                                 traceId: String(msg.traceId),
                             });
+                            if (msg.id !== undefined) {
+                                AtabeyStorage.updateMessageStatus(msg.id as number, "FAILED");
+                            }
                         }
                     }),
                 );
-                if (msg.id !== undefined) {
-                    AtabeyStorage.updateMessageStatus(msg.id as number, "PROCESSED");
-                }
             } catch (err: unknown) {
                 logger.error(`[AGENT_LOOP] Enqueue failed — message ${msg.id} stays PENDING for retry`, {
                     error: (err as Error).message,

@@ -471,7 +471,7 @@ Core Commands:
   quickstart                                             Example project
 
 Setup:
-  One canonical setup — all 13 specialists + full governance (sandbox fail-closed).
+  One canonical setup — all 13 role profiles + governance (fail-closed when enforced).
   Choose the AI platform, not the team size: claude | cursor | codex | grok |
   local | antigravity-cli | opencode | all
 
