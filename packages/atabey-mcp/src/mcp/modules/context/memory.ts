@@ -21,21 +21,6 @@ function findFrameworkDir(basePath: string): string | null {
     return null;
 }
 
-export function isFrameworkDevelopmentRepo(): boolean {
-    try {
-        const pkgPath = path.join(CWD, "package.json");
-        if (fs.existsSync(pkgPath)) {
-            const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
-            if (pkg.name === "atabey") {
-                return true;
-            }
-        }
-    } catch (err) {
-        logger.debug("Memory context operation failed (non-fatal)", err);
-    }
-    return false;
-}
-
 export function getConfigDir(): string {
     const localDir = findFrameworkDir(CWD);
     if (localDir) return localDir;

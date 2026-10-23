@@ -148,8 +148,6 @@ export const FRAMEWORK_MONOREPO_PATHS = {
     tests: "packages",
 } as const;
 
-/** @deprecated Use DEFAULT_CONSUMER_PATHS */
-
 /** Cursor rule globs per agent role (framework monorepo layout). */
 export const CURSOR_AGENT_GLOBS: Record<string, string> = {
     manager:   "**/*",
