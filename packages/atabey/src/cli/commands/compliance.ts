@@ -3,7 +3,7 @@ import { scanProjectCompliance } from "../utils/compliance.js";
 import { UI } from "../utils/ui.js";
 
 /**
- * CLI Command: atabey check:compliance [targetPath]
+ * CLI Command: atabey compliance [targetPath]
  * Runs the centralized enterprise compliance scanner on the codebase.
  */
 export async function complianceCheckCommand(targetPath: string = "src") {
