@@ -118,6 +118,12 @@ jobs:
       - name: Run Tests with Coverage
         run: npm run test:coverage
 
+      - name: Verify generated package READMEs are up to date
+        run: npm run readme:check
+
+      - name: Dead code / unused dependency scan
+        run: npm run knip
+
       - name: Run Discipline Rules Check (Atabey Compliance)
         run: npm run atabey:check
 
