@@ -33,8 +33,8 @@ approval, and verifies task results with tests and audit evidence.
 | **Role Profiles** | 13 role definitions (prompt + task blueprint) with a 3-tier hierarchy (Supreme / Core / Recon) — not 13 independent LLM agents |
 | **Runtime** | Headless CLI adapters, DAG dispatcher, git-worktree isolation, signed evidence bundles |
 | **Memory** | 3-layer memory: vector (TF-IDF/OpenAI), project, specialty |
-| **Skills** | 15 core skills in `skills/<slug>/SKILL.md` format, mapped across 7 platform adapters |
-| **Providers** | 7 platform adapters: Claude (default), Cursor, Codex, Antigravity, Grok, Local LLM, OpenCode |
+| **Skills** | 15 core skills in `skills/<slug>/SKILL.md` format, mapped across 8 platform adapters |
+| **Providers** | 8 platform adapters: Claude (default), Cursor, Codex, Copilot/VS Code, OpenCode, Grok, Antigravity, Local LLM |
 | **Contracts** | Zod-schema task contracts and API contracts |
 | **Standards** | 36 governance standard templates |
 
@@ -175,28 +175,34 @@ All 15 core skills are scaffolded for every platform; the delivery format differ
 | **Data** | typeorm-standards |
 | **Reporting** | reporting-standards, enterprise-systems-standards |
 
-## 7 Platform Adapters
+## Platform Adapters
 
-| Platform | Framework Dir | Agents Dir | Shim File | Native MCP Config |
-|----------|---------------|------------|-----------|-------------------|
-| **Claude Code** ⭐ (default) | `.claude` | `.claude/agents/*.md` | `CLAUDE.md` | `.mcp.json` |
-| **Cursor IDE** | `.cursor` | `.cursor/rules/*.mdc` | `CURSOR.md` | `.cursor/mcp.json` |
-| **Codex CLI / Copilot** | `.agents` | `.agents/instructions/*.md` | `copilot-instructions.md` | `.mcp.json` |
-| **Antigravity CLI** | `.agents` | `.agents/agents/{name}/agent.json` | `AGENTS.md` | `.agents/mcp_config.json` |
-| **Grok** | `.grok` | `.grok/agents/*.md` | `GROK.md` | `.grok/mcp_config.json` |
-| **Local LLM / Ollama** | `.atabey` | `.atabey/agents/*.md` | `LOCAL_AI.md` | `.atabey/mcp_config.json` |
-| **OpenCode** | `.opencode` | `.opencode/agents/*.md` | `OPENCODE.md` | `opencode.json` |
+Atabey writes a native MCP config for 8 adapters. "Verified" means the file location and
+schema match the vendor's published documentation (covered by tests) — **not** that the
+client connected. See [AI Tool Support](https://github.com/ysf-bkr/atabey/blob/main/docs/ai-tool-support.md).
 
-> `atabey init all` compiles and mirrors agent profiles across **all platforms simultaneously**
-> (one canonical setup — all 13 role profiles, every time). Each platform gets **exactly one**
-> native MCP config; generated entries use the portable `npx -y atabey-mcp` launcher.
+| Tool | Adapter | Config written | Status |
+|------|---------|----------------|--------|
+| Claude Code | `claude` | `.mcp.json` (`mcpServers`) + `.claude/settings.json` hook | Verified |
+| Cursor | `cursor` | `.cursor/mcp.json` (`mcpServers`) | Verified |
+| OpenAI Codex CLI | `codex` | `.codex/config.toml` (`[mcp_servers.atabey]`) | Verified |
+| GitHub Copilot / VS Code | `copilot` | `.vscode/mcp.json` (`servers`) | Verified |
+| OpenCode | `opencode` | `opencode.json` (`mcp.atabey`) | Verified |
+| Grok CLI | `grok` | `.grok/mcp_config.json` | Experimental |
+| Antigravity CLI | `antigravity-cli` | `.agents/mcp_config.json` | Experimental |
+| Local models | `local` | `.atabey/mcp_config.json` | Experimental — needs an MCP host |
+
+> `atabey init all` compiles agent profiles into every platform's native layout. Each
+> platform gets exactly one native MCP config; generated entries use the portable
+> `npx -y atabey-mcp` launcher.
 >
 > Skills are scaffolded in the discoverable `skills/<slug>/SKILL.md` directory format with YAML frontmatter.
 > Gemini CLI is **no longer supported** — `atabey init gemini` warns and falls back to Claude.
 >
 > **Enforcement is platform-dependent.** Platforms that route their tools through Atabey MCP get
 > the full pipeline. Platforms that keep native shell/edit tools need their allow-lists or hooks
-> configured to disable those tools; otherwise the host can act outside Atabey. See
+> configured to disable those tools; otherwise the host can act outside Atabey. Only Claude Code
+> gets a generated `PreToolUse` hook. See
 > [Known Limitations](https://github.com/ysf-bkr/atabey/blob/main/docs/limitations.md).
 
 
@@ -258,7 +264,7 @@ packages/atabey/
 ├── src/
 │   ├── cli/
 │   │   ├── commands/    # 33 CLI commands
-│   │   ├── platforms/   # 7 platform adapters
+│   │   ├── platforms/   # 8 platform adapters (providers/ holds the adapter registry)
 │   │   └── utils/       # CLI utilities (compliance, memory, pkg, config)
 │   ├── modules/
 │   │   ├── agents/      # 13 role profile definitions + registry
@@ -266,7 +272,7 @@ packages/atabey/
 │   │   ├── contracts/   # Task/API contracts (Zod)
 │   │   ├── engines/     # 9 governance/orchestration engines
 │   │   ├── memory/      # Vector, project, specialty memory
-│   │   ├── providers/   # 7 platform provider adapters
+│   │   ├── providers/   # 8 platform provider adapters
 │   │   ├── runtime/     # Headless CLI runtime, DAG dispatcher, worktrees
 │   │   └── skills/      # 15 core skills
 │   ├── schema/          # JSON schemas

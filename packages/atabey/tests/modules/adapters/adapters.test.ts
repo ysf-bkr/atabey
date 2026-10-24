@@ -21,7 +21,7 @@ describe("Adapters", () => {
             expect(antigravity.id).toBe("antigravity-cli");
 
             const github = resolveAdapter("github");
-            expect(github.id).toBe("codex");
+            expect(github.id).toBe("copilot");
 
             const openCodeAlias = resolveAdapter("open-code");
             expect(openCodeAlias.id).toBe("opencode");

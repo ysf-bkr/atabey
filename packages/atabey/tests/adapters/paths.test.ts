@@ -39,7 +39,7 @@ describe("Adapter Paths", () => {
 
         it("should expose a layout base for every adapter slug", () => {
             const bases = getUnifiedAgentLayoutBases();
-            expect(bases).toHaveLength(7);
+            expect(bases).toHaveLength(8);
             expect(bases.some((b) => b.includes(UNIFIED_ADAPTER_SLUG.claude))).toBe(true);
             expect(bases.some((b) => b.includes(UNIFIED_ADAPTER_SLUG.opencode))).toBe(true);
             expect(bases.some((b) => b.includes("gemini"))).toBe(false);

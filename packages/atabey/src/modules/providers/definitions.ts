@@ -2,14 +2,173 @@ import fs from "fs";
 import path from "path";
 import type { AdapterConfig, AdapterId } from "./types.js";
 import { addMcpServerToClaude, findClaudeConfigPath } from "../../cli/utils/claude.js";
-import { writeJsonFile } from "../../shared/fs.js";
+import { writeJsonFile, writeTextFile } from "../../shared/fs.js";
+import { upsertTomlTable } from "../../cli/utils/toml.js";
 import { registerGlobalAntigravityPlugins } from "./shared.js";
 import { registry } from "./registry.js";
 import { UI } from "../../cli/utils/ui.js";
 
-// ─── Register Core Adapters ──────────────────────────────────────────────────
+type McpBlock = { mcpServers: Record<string, McpEntry> };
+type McpEntry = { command?: string; args?: string[]; env?: Record<string, string>; url?: string };
 
-// [START] Claude
+function entryOf(mcpBlock: unknown): McpEntry {
+    const block = mcpBlock as McpBlock | undefined;
+    return block?.mcpServers?.atabey ?? { command: "npx", args: ["-y", "atabey-mcp"] };
+}
+
+/** Reads a JSON config file, returning {} for missing or corrupt files. */
+function readJsonConfig(filePath: string): Record<string, unknown> {
+    if (!fs.existsSync(filePath)) return {};
+    try {
+        return JSON.parse(fs.readFileSync(filePath, "utf8")) as Record<string, unknown>;
+    } catch {
+        UI.warning(`  Existing ${path.basename(filePath)} is not valid JSON — rewriting it.`);
+        return {};
+    }
+}
+
+// ─── Claude Code hook ────────────────────────────────────────────────────────
+//
+// Contract (code.claude.com/docs/en/hooks):
+//   • settings shape is event → matcher group → nested `hooks` handler array
+//   • a command handler needs `type: "command"`
+//   • input arrives on stdin with `tool_name` and `tool_input`
+//   • blocking is a JSON `hookSpecificOutput.permissionDecision: "deny"` on exit 0
+//     (exit code 1 is a *non-blocking* error and does NOT stop the tool call)
+//   • MCP tools are named `mcp__<server>__<tool>`, so Atabey's own tools must be
+//     excluded or the governance layer would block itself.
+
+const CLAUDE_HOOK_FILENAME = "pre-tool-use.cjs";
+
+function claudeHookScript(): string {
+    return `#!/usr/bin/env node
+/**
+ * [ATABEY] Claude Code PreToolUse hook.
+ *
+ * Denies built-in file mutation and shell writes so that work flows through the
+ * Atabey MCP tools, which enforce RBAC, risk gating and audit. Atabey's own MCP
+ * tools are always allowed.
+ *
+ * Denial is reported with the documented JSON decision, not an exit code:
+ * exit 1 is a non-blocking error in Claude Code and would let the call through.
+ */
+const ATABEY_TOOL_PREFIX = "mcp__atabey__";
+
+/** Built-in tools replaced by Atabey equivalents. */
+const DENIED_TOOLS = new Set(["Edit", "Write", "NotebookEdit", "MultiEdit"]);
+
+/** Shell writes that bypass the file-tool governance path. */
+const SHELL_WRITE_PATTERNS = [
+    />\\s*[\\w./~-]/,
+    /\\b(rm|rmdir|unlink)\\b/,
+    /\\b(mv|cp)\\b/,
+    /\\b(sed\\s+-i|perl\\s+-pi)\\b/,
+    /\\b(chmod|chown|chgrp)\\b/,
+    /\\b(tee|truncate|dd)\\b/,
+    /\\b(Remove-Item|Move-Item|Copy-Item|Set-Content|Out-File|New-Item)\\b/i,
+    /\\bgit\\s+(reset\\s+--hard|clean\\s+-[a-z]*f|checkout\\s+--\\s)/,
+];
+
+function deny(reason) {
+    process.stdout.write(JSON.stringify({
+        hookSpecificOutput: {
+            hookEventName: "PreToolUse",
+            permissionDecision: "deny",
+            permissionDecisionReason: reason,
+        },
+    }));
+    process.exit(0);
+}
+
+let raw = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", (chunk) => { raw += chunk; });
+process.stdin.on("end", () => {
+    let payload = {};
+    try {
+        if (raw.trim()) payload = JSON.parse(raw);
+    } catch {
+        process.exit(0); // malformed input: stay out of the way
+    }
+
+    const toolName = String(payload.tool_name || payload.tool || "").trim();
+    if (!toolName) process.exit(0);
+
+    // Never block Atabey's own MCP tools.
+    if (toolName.startsWith(ATABEY_TOOL_PREFIX)) process.exit(0);
+
+    if (DENIED_TOOLS.has(toolName)) {
+        deny(
+            "Direct use of Claude Code's built-in '" + toolName + "' tool is disabled by Atabey. " +
+            "Use the Atabey MCP file tools instead (write_file, replace_text, patch_file, batch_surgical_edit).",
+        );
+    }
+
+    if (toolName === "Bash" || toolName === "PowerShell") {
+        const input = payload.tool_input || payload.input || {};
+        const command = String(input.command || "").trim();
+        if (command && SHELL_WRITE_PATTERNS.some((pattern) => pattern.test(command))) {
+            deny(
+                "Direct shell file modification is blocked by Atabey: " + command.slice(0, 80) + ". " +
+                "Use the Atabey MCP file tools, or mcp__atabey__run_shell_command which runs under Atabey's sandbox and audit.",
+            );
+        }
+    }
+
+    process.exit(0);
+});
+`;
+}
+
+function writeClaudeHook(projectRoot: string): string {
+    const hooksDir = path.join(projectRoot, ".claude", "hooks");
+    fs.mkdirSync(hooksDir, { recursive: true });
+    writeTextFile(path.join(hooksDir, CLAUDE_HOOK_FILENAME), claudeHookScript());
+    try {
+        fs.chmodSync(path.join(hooksDir, CLAUDE_HOOK_FILENAME), 0o755);
+    } catch {
+        /* best-effort on platforms without POSIX modes */
+    }
+    return `.claude/hooks/${CLAUDE_HOOK_FILENAME}`;
+}
+
+/**
+ * Merges Atabey's PreToolUse group into an existing Claude settings object
+ * without dropping user hooks, permissions or unrelated keys.
+ */
+function mergeClaudeSettings(existing: Record<string, unknown>, hookCommand: string): Record<string, unknown> {
+    const settings = { ...existing };
+
+    // permissions: union rather than replace.
+    const perms = { ...(settings.permissions as Record<string, unknown> | undefined) };
+    const deny = new Set<string>(Array.isArray(perms.deny) ? (perms.deny as string[]) : []);
+    for (const tool of ["Edit", "Write", "NotebookEdit", "MultiEdit"]) deny.add(tool);
+    const allow = new Set<string>(Array.isArray(perms.allow) ? (perms.allow as string[]) : []);
+    allow.add("mcp__atabey__*");
+    settings.permissions = { ...perms, allow: [...allow], deny: [...deny] };
+
+    // hooks: append our matcher group, keep every existing group.
+    const hooks = { ...(settings.hooks as Record<string, unknown> | undefined) };
+    const preToolUse = Array.isArray(hooks.PreToolUse) ? [...(hooks.PreToolUse as unknown[])] : [];
+    const isAtabeyGroup = (group: unknown): boolean => {
+        const g = group as { hooks?: Array<{ command?: string }> };
+        return Array.isArray(g?.hooks) && g.hooks.some((h) => typeof h?.command === "string" && h.command.includes(CLAUDE_HOOK_FILENAME));
+    };
+    const withoutAtabey = preToolUse.filter((group) => !isAtabeyGroup(group));
+    withoutAtabey.push({
+        matcher: "Edit|Write|NotebookEdit|MultiEdit|Bash|PowerShell",
+        hooks: [{ type: "command", command: hookCommand }],
+    });
+    hooks.PreToolUse = withoutAtabey;
+    settings.hooks = hooks;
+
+    if (settings.enableAllProjectMcpServers === undefined) settings.enableAllProjectMcpServers = true;
+    return settings;
+}
+
+// ─── Adapters ───────────────────────────────────────────────────────────────
+
+// [CLAUDE] Claude Code — verified against code.claude.com/docs/en/hooks + /mcp
 registry.register(
     {
         id: "claude",
@@ -17,13 +176,14 @@ registry.register(
         shimFile: "CLAUDE.md",
         nestedDirs: ["agents", "rules"],
         agentsDir: ".claude/agents",
-        agentsExt: ".md"
+        agentsExt: ".md",
+        support: "verified",
+        supportNote: "project .mcp.json + settings.json PreToolUse hook; verified against Claude Code docs",
     },
     (projectRoot, mcpBlock, options) => {
         const configPath = findClaudeConfigPath();
         if (options?.global && configPath) {
-            const block = mcpBlock as { mcpServers: Record<string, { command?: string; args?: string[]; env?: Record<string, string> }> };
-            const mcpEntry = block.mcpServers["atabey"] || {};
+            const mcpEntry = entryOf(mcpBlock);
             const globalEntry = {
                 ...mcpEntry,
                 args: Array.isArray(mcpEntry.args)
@@ -33,100 +193,19 @@ registry.register(
             const ok = addMcpServerToClaude(configPath, "atabey", globalEntry);
             if (ok) UI.success(`Claude MCP registered → ${configPath}`);
         }
-        const frameworkDir = ".claude";
+
         writeJsonFile(path.join(projectRoot, ".mcp.json"), mcpBlock);
 
-        // PreToolUse Hook: Intercept built-in Edit/Write/Bash to enforce Atabey MCP governance
-        const hooksDir = path.join(projectRoot, frameworkDir, "hooks");
-        if (!fs.existsSync(hooksDir)) fs.mkdirSync(hooksDir, { recursive: true });
-        const hookScriptPath = path.join(hooksDir, "pre-tool-use.cjs");
-        const hookContent = `#!/usr/bin/env node
-/**
- * [ATABEY GOVERNANCE] Claude Code PreToolUse Enforcement Hook
- * Intercepts built-in tools (Edit, Write, Bash) and forces Atabey MCP tools.
- */
-let inputData = "";
-process.stdin.setEncoding("utf8");
-process.stdin.on("data", (chunk) => { inputData += chunk; });
-process.stdin.on("end", () => {
-    let payload = null;
-    try { if (inputData.trim()) payload = JSON.parse(inputData); } catch {}
-    const toolName = (payload?.tool || payload?.tool_name || process.env.CLAUDE_TOOL_NAME || "").trim();
-    if (toolName === "Edit" || toolName === "Write") {
-        process.stderr.write(
-            "\\n[ATABEY GOVERNANCE ERROR] Direct use of Claude Code built-in '" + toolName + "' tool is forbidden.\\n" +
-            "All file modifications must pass through Atabey MCP tools:\\n" +
-            "  • mcp__atabey__write_file (atomic file creation with RBAC & AST validation)\\n" +
-            "  • mcp__atabey__replace_text (surgical single-block replacement)\\n" +
-            "  • mcp__atabey__patch_file (line-range multi-line patching)\\n" +
-            "  • mcp__atabey__batch_surgical_edit (atomic multi-file transaction)\\n\\n"
-        );
-        process.exit(1);
-    }
-    if (toolName === "Bash") {
-        const cmd = String(payload?.input?.command || "").trim();
-        const writePatterns = [/>\\s*[\\w./-]/, /\\b(rm|rmdir)\\b/, /\\b(mv|cp)\\b/, /\\b(sed\\s+-i|awk)\\b/, /\\b(chmod|chown)\\b/];
-        if (writePatterns.some((p) => p.test(cmd))) {
-            process.stderr.write(
-                "\\n[ATABEY GOVERNANCE ERROR] Direct shell file modification via 'Bash' is blocked.\\n" +
-                "Command: " + cmd.substring(0, 80) + "...\\n" +
-                "Please use Atabey MCP file tools or 'mcp__atabey__run_command' which executes under sandbox gating.\\n\\n"
-            );
-            process.exit(1);
-        }
-    }
-    process.exit(0);
-});
-`;
-        fs.writeFileSync(hookScriptPath, hookContent, { mode: 0o755 });
+        const hookRelPath = writeClaudeHook(projectRoot);
 
-        const settingsPath = path.join(projectRoot, frameworkDir, "settings.json");
-        let existingSettings: Record<string, unknown> = {};
-        if (fs.existsSync(settingsPath)) {
-            try {
-                existingSettings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
-            } catch {
-                existingSettings = {};
-            }
-        }
-        const perms = (existingSettings["permissions"] as Record<string, unknown>) || {};
-        const allowList = Array.isArray(perms["allow"]) ? [...(perms["allow"] as string[])] : [];
-        if (!allowList.includes("mcp__atabey__*")) allowList.push("mcp__atabey__*");
-        perms["allow"] = allowList;
-        perms["deny"] = ["Edit", "Write"];
-        existingSettings["permissions"] = perms;
-        existingSettings["hooks"] = {
-            PreToolUse: [
-                {
-                    matcher: "Edit|Write|Bash",
-                    command: "node .claude/hooks/pre-tool-use.cjs"
-                }
-            ]
-        };
-        existingSettings["enableAllProjectMcpServers"] = true;
-        writeJsonFile(settingsPath, existingSettings);
+        const settingsPath = path.join(projectRoot, ".claude", "settings.json");
+        const merged = mergeClaudeSettings(readJsonConfig(settingsPath), `node "${hookRelPath}"`);
+        writeJsonFile(settingsPath, merged);
         UI.success("Claude Code Governance Hook & MCP → .mcp.json & .claude/settings.json");
     }
 );
 
-// [AI] Grok
-registry.register(
-    {
-        id: "grok",
-        frameworkDir: ".grok",
-        shimFile: "GROK.md",
-        nestedDirs: ["agents", "rules"],
-        agentsDir: ".grok/agents",
-        agentsExt: ".md"
-    },
-    (projectRoot, mcpBlock) => {
-        const frameworkDir = ".grok";
-        writeJsonFile(path.join(projectRoot, frameworkDir, "mcp_config.json"), mcpBlock);
-        UI.success(`Grok MCP → ${frameworkDir}/mcp_config.json`);
-    }
-);
-
-// [CURSOR] Cursor
+// [CURSOR] Cursor — verified against cursor.com/docs/context/mcp
 registry.register(
     {
         id: "cursor",
@@ -134,33 +213,104 @@ registry.register(
         shimFile: "CURSOR.md",
         nestedDirs: ["rules"],
         agentsDir: ".cursor/rules",
-        agentsExt: ".mdc"
+        agentsExt: ".mdc",
+        support: "verified",
+        supportNote: "project .cursor/mcp.json (mcpServers); verified against Cursor docs",
     },
     (projectRoot, mcpBlock) => {
-        const frameworkDir = ".cursor";
-        writeJsonFile(path.join(projectRoot, frameworkDir, "mcp.json"), mcpBlock);
-        UI.success(`Cursor IDE Project MCP → ${frameworkDir}/mcp.json`);
+        const configPath = path.join(projectRoot, ".cursor", "mcp.json");
+        const existing = readJsonConfig(configPath);
+        const servers = { ...(existing.mcpServers as Record<string, unknown> | undefined) };
+        servers.atabey = entryOf(mcpBlock);
+        writeJsonFile(configPath, { ...existing, mcpServers: servers });
+        UI.success("Cursor IDE Project MCP → .cursor/mcp.json");
     }
 );
 
-// [TIP] Codex (Copilot)
+// [CODEX] OpenAI Codex CLI — verified against developers.openai.com/codex/mcp
+// Codex reads TOML `[mcp_servers.<name>]` tables, never JSON `.mcp.json`.
 registry.register(
     {
         id: "codex",
         frameworkDir: ".agents",
-        shimFile: "copilot-instructions.md",
+        shimFile: "AGENTS.md",
         nestedDirs: ["skills", "rules", "instructions"],
         agentsDir: ".agents/instructions",
-        agentsExt: ".md"
+        agentsExt: ".md",
+        support: "verified",
+        supportNote: "project .codex/config.toml [mcp_servers.atabey]; verified against Codex docs (trusted projects only)",
     },
     (projectRoot, mcpBlock) => {
-        // Codex CLI / GitHub Copilot read the standard root `.mcp.json`.
-        writeJsonFile(path.join(projectRoot, ".mcp.json"), mcpBlock);
-        UI.success("Codex / Copilot Project MCP → .mcp.json");
+        const configDir = path.join(projectRoot, ".codex");
+        fs.mkdirSync(configDir, { recursive: true });
+        const configPath = path.join(configDir, "config.toml");
+
+        const entry = entryOf(mcpBlock);
+        const command = entry.command || "npx";
+        const args = entry.args || ["-y", "atabey-mcp"];
+
+        const existing = fs.existsSync(configPath) ? fs.readFileSync(configPath, "utf8") : "";
+        const updated = upsertTomlTable(existing, "mcp_servers.atabey", {
+            command,
+            args,
+            ...(entry.env && Object.keys(entry.env).length > 0 ? { env: entry.env } : {}),
+        });
+        writeTextFile(configPath, updated);
+        UI.success("Codex CLI MCP → .codex/config.toml [mcp_servers.atabey]");
     }
 );
 
-// [LOCAL] Local LLM (Ollama / Private AI)
+// [COPILOT] GitHub Copilot in VS Code — verified against
+// code.visualstudio.com/docs/agent-customization/mcp-servers
+// VS Code's own format uses a top-level `servers` object in .vscode/mcp.json;
+// the portable `.mcp.json` uses `mcpServers` and only works in workspace-root
+// mode when `chat.mcp.workspaceRootConfig.enabled` is turned on.
+registry.register(
+    {
+        id: "copilot",
+        frameworkDir: ".github",
+        shimFile: path.join(".github", "copilot-instructions.md"),
+        nestedDirs: ["instructions"],
+        agentsDir: ".github/instructions",
+        agentsExt: ".md",
+        support: "verified",
+        supportNote: "project .vscode/mcp.json (servers); verified against VS Code docs",
+    },
+    (projectRoot, mcpBlock) => {
+        const configPath = path.join(projectRoot, ".vscode", "mcp.json");
+        const existing = readJsonConfig(configPath);
+        const servers = { ...(existing.servers as Record<string, unknown> | undefined) };
+        const entry = entryOf(mcpBlock);
+        servers.atabey = {
+            type: "stdio",
+            command: entry.command || "npx",
+            args: entry.args || ["-y", "atabey-mcp"],
+            ...(entry.env && Object.keys(entry.env).length > 0 ? { env: entry.env } : {}),
+        };
+        writeJsonFile(configPath, { ...existing, servers });
+        UI.success("GitHub Copilot (VS Code) MCP → .vscode/mcp.json");
+    }
+);
+
+// [GROK] xAI Grok CLI — no published MCP config contract to verify against.
+registry.register(
+    {
+        id: "grok",
+        frameworkDir: ".grok",
+        shimFile: "GROK.md",
+        nestedDirs: ["agents", "rules"],
+        agentsDir: ".grok/agents",
+        agentsExt: ".md",
+        support: "experimental",
+        supportNote: "writes .grok/mcp_config.json; not verified against vendor docs",
+    },
+    (projectRoot, mcpBlock) => {
+        writeJsonFile(path.join(projectRoot, ".grok", "mcp_config.json"), mcpBlock);
+        UI.warning("Grok MCP → .grok/mcp_config.json (EXPERIMENTAL — verify in your Grok build)");
+    }
+);
+
+// [LOCAL] Local models (Ollama/vLLM/LM Studio) — a model server is not an MCP host.
 registry.register(
     {
         id: "local",
@@ -168,16 +318,17 @@ registry.register(
         shimFile: "LOCAL_AI.md",
         nestedDirs: ["agents", "rules"],
         agentsDir: ".atabey/agents",
-        agentsExt: ".md"
+        agentsExt: ".md",
+        support: "experimental",
+        supportNote: "no MCP host: Ollama/vLLM/LM Studio serve models, they do not read this file",
     },
     (projectRoot, mcpBlock) => {
-        const frameworkDir = ".atabey";
-        writeJsonFile(path.join(projectRoot, frameworkDir, "mcp_config.json"), mcpBlock);
-        UI.success(`Local LLM MCP (Ollama/Private AI) registered → ${frameworkDir}/mcp_config.json`);
+        writeJsonFile(path.join(projectRoot, ".atabey", "mcp_config.json"), mcpBlock);
+        UI.warning("Local LLM MCP → .atabey/mcp_config.json (EXPERIMENTAL — needs an MCP host; a model server is not one)");
     }
 );
 
-// [ANTIGRAVITY] Antigravity
+// [ANTIGRAVITY] Antigravity CLI — no published MCP config contract to verify against.
 registry.register(
     {
         id: "antigravity-cli",
@@ -185,19 +336,20 @@ registry.register(
         shimFile: "AGENTS.md",
         nestedDirs: ["agents", "plugins", "rules"],
         agentsDir: ".agents/agents",
-        agentsExt: ".md"
+        agentsExt: ".md",
+        support: "experimental",
+        supportNote: "writes .agents/mcp_config.json; not verified against vendor docs",
     },
     (projectRoot, mcpBlock, options) => {
-        const frameworkDir = ".agents";
-        writeJsonFile(path.join(projectRoot, frameworkDir, "mcp_config.json"), mcpBlock);
-        UI.success(`Antigravity CLI MCP → ${frameworkDir}/mcp_config.json`);
+        writeJsonFile(path.join(projectRoot, ".agents", "mcp_config.json"), mcpBlock);
+        UI.warning("Antigravity CLI MCP → .agents/mcp_config.json (EXPERIMENTAL — verify in your CLI build)");
         if (options?.global) {
             registerGlobalAntigravityPlugins(mcpBlock, projectRoot);
         }
     }
 );
 
-// [OPENCODE] OpenCode (opencode.ai)
+// [OPENCODE] OpenCode — verified against opencode.ai/config.json schema usage.
 registry.register(
     {
         id: "opencode",
@@ -205,68 +357,48 @@ registry.register(
         shimFile: "OPENCODE.md",
         nestedDirs: ["agents", "rules"],
         agentsDir: ".opencode/agents",
-        agentsExt: ".md"
+        agentsExt: ".md",
+        support: "verified",
+        supportNote: "project opencode.json (mcp.<name>); verified against OpenCode config schema",
     },
     (projectRoot, mcpBlock) => {
-        // Standard OpenCode opencode.json in project root
         const opencodePath = path.join(projectRoot, "opencode.json");
-        let existing: Record<string, unknown> = {};
-        if (fs.existsSync(opencodePath)) {
-            try {
-                existing = JSON.parse(fs.readFileSync(opencodePath, "utf8"));
-            } catch {
-                existing = {};
-            }
-        }
-
-        const block = mcpBlock as { mcpServers: Record<string, { command?: string; args?: string[]; url?: string }> };
-        const mcpEntry = block.mcpServers?.["atabey"];
-        const localCommand = mcpEntry?.command
-            ? [mcpEntry.command, ...(mcpEntry.args || [])]
-            : ["npx", "-y", "atabey-mcp"];
+        const existing = readJsonConfig(opencodePath);
 
         existing["$schema"] = "https://opencode.ai/config.json";
-        const existingMcp = (existing["mcp"] as Record<string, unknown>) || {};
-        
-        // Single unified Atabey MCP entry (local stdio by default, or remote SSE if URL configured)
-        if (mcpEntry?.url) {
-            existingMcp["atabey"] = {
-                type: "remote",
-                url: mcpEntry.url,
-                enabled: true
-            };
+        const existingMcp = { ...(existing["mcp"] as Record<string, unknown> | undefined) };
+        const entry = entryOf(mcpBlock);
+
+        if (entry.url) {
+            existingMcp["atabey"] = { type: "remote", url: entry.url, enabled: true };
         } else {
             existingMcp["atabey"] = {
                 type: "local",
-                command: localCommand,
-                environment: {
-                    ATABEY_PROJECT_ROOT: projectRoot,
-                    MCP_TRANSPORT: "stdio",
-                    ATABEY_AUTO_START_ORCHESTRATOR: "true"
-                },
-                enabled: true
+                command: [entry.command || "npx", ...(entry.args || ["-y", "atabey-mcp"])],
+                environment: entry.env || {},
+                enabled: true,
             };
         }
         delete existingMcp["atabey-local"];
         existing["mcp"] = existingMcp;
 
-
-        const instructions = Array.isArray(existing["instructions"]) ? existing["instructions"] : [];
-        if (!instructions.includes("AGENTS.md")) instructions.push("AGENTS.md");
-        if (!instructions.includes("OPENCODE.md")) instructions.push("OPENCODE.md");
+        const instructions = Array.isArray(existing["instructions"]) ? (existing["instructions"] as string[]) : [];
+        for (const file of ["AGENTS.md", "OPENCODE.md"]) {
+            if (!instructions.includes(file)) instructions.push(file);
+        }
         existing["instructions"] = instructions;
 
         writeJsonFile(opencodePath, existing);
-        UI.success("OpenCode AI Config → opencode.json (100% compliant schema)");
+        UI.success("OpenCode AI Config → opencode.json");
     }
 );
 
 /**
  * Mapped Adapter Configurations
  */
-export const ADAPTER_CONFIGS: Record<AdapterId, AdapterConfig> = registry.getConfigs();
+export const ADAPTER_CONFIGS: Record<AdapterId, AdapterConfig> = registry.getConfigs() as Record<AdapterId, AdapterConfig>;
 
 /**
  * Post-Initialization Handlers for specific adapters
  */
-export const POST_INIT_HANDLERS: Record<AdapterId, (projectRoot: string, mcpBlock: unknown, options?: { global?: boolean }) => void> = registry.getHandlers();
+export const POST_INIT_HANDLERS: Record<AdapterId, (projectRoot: string, mcpBlock: unknown, options?: { global?: boolean }) => void> = registry.getHandlers() as Record<AdapterId, (projectRoot: string, mcpBlock: unknown, options?: { global?: boolean }) => void>;

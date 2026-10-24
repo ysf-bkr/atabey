@@ -1,110 +1,107 @@
-/**
- * Phase 0.4 — durable security state (loop cooldown / discipline) survives restart.
- */
-
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+    listActiveLoopCooldowns,
+    loadDiscipline,
+    loadLoopCooldown,
+    persistDiscipline,
+    persistLoopCooldown,
+    clearPersistedLoopCooldown,
+    purgeExpiredSecurityState,
+} from "../../../src/mcp/modules/security/security-state.js";
+import { Storage } from "atabey-shared/storage.js";
 
-describe("Security state persistence (restart-safe)", () => {
-    let tmp: string;
-    let prevTestDir: string | undefined;
+/**
+ * Durable governance state.
+ *
+ * The point of this module is that a cooldown survives an MCP process restart:
+ * without it an agent could restart the server to clear a loop-block. These
+ * tests assert persistence, expiry filtering and purging against a real SQLite
+ * file in a throwaway framework dir.
+ */
+describe("security-state (durable cooldowns)", () => {
+    let dir: string;
 
     beforeEach(() => {
-        tmp = fs.mkdtempSync(path.join(os.tmpdir(), "atabey-sec-"));
-        fs.mkdirSync(path.join(tmp, ".atabey"), { recursive: true });
-        prevTestDir = process.env.ATABEY_TEST_DIR;
-        process.env.ATABEY_TEST_DIR = path.join(tmp, ".atabey");
-        process.env.ATABEY_PROJECT_ROOT = tmp;
-        process.env.MCP_LOOP_DETECTION = "true";
-        process.env.MCP_LOOP_MAX_CONSECUTIVE = "3";
-        process.env.MCP_LOOP_COOLDOWN_MS = "60000";
-    });
-
-    afterEach(async () => {
-        vi.resetModules();
-        try {
-            const { Storage } = await import("../../../src/shared/storage.js");
-            Storage.reset();
-        } catch { /* ignore */ }
-        if (prevTestDir === undefined) delete process.env.ATABEY_TEST_DIR;
-        else process.env.ATABEY_TEST_DIR = prevTestDir;
-        fs.rmSync(tmp, { recursive: true, force: true });
-    });
-
-    it("persists loop cooldown and restores after in-memory reset", async () => {
-        const loop1 = await import("../../../src/mcp/utils/loop-detector.js");
-        loop1.resetLoopDetection();
-
-        // Trigger cooldown (MAX_CONSECUTIVE=3)
-        loop1.recordAndCheck("agent-restart", "read_file", { path: "a.ts" });
-        loop1.recordAndCheck("agent-restart", "read_file", { path: "a.ts" });
-        const alert = loop1.recordAndCheck("agent-restart", "read_file", { path: "a.ts" });
-        expect(alert).not.toBeNull();
-        expect(alert?.severity).toBe("critical");
-        expect(loop1.isInCooldown("agent-restart").inCooldown).toBe(true);
-
-        // Simulate process restart: clear memory maps + re-import modules
-        loop1.resetLoopDetection(); // also clears DB — so re-save via Storage only path
-
-        // Re-trigger: we need DB row. resetLoopDetection clears DB — test direct Storage instead
-        const { Storage } = await import("../../../src/shared/storage.js");
+        dir = fs.mkdtempSync(path.join(os.tmpdir(), "atabey-secstate-"));
+        process.env.ATABEY_TEST_DIR = dir;
         Storage.reset();
-        Storage.saveLoopCooldown("agent-restart", Date.now() + 60_000, "test cooldown", 2);
-
-        vi.resetModules();
-        const loop2 = await import("../../../src/mcp/utils/loop-detector.js");
-        // Do not call resetLoopDetection (would wipe DB)
-        const blocked = loop2.recordAndCheck("agent-restart", "read_file", { path: "b.ts" });
-        expect(blocked).not.toBeNull();
-        expect(blocked?.type).toBe("rate_limit");
-        expect(blocked?.detail).toMatch(/cooldown|Restored/i);
-        expect(loop2.isInCooldown("agent-restart").inCooldown).toBe(true);
     });
 
-    it("security-state façade lists active cooldowns", async () => {
-        const { Storage } = await import("../../../src/shared/storage.js");
+    afterEach(() => {
         Storage.reset();
-        Storage.saveLoopCooldown("agent-a", Date.now() + 30_000, "loop", 1);
-        Storage.saveLoopCooldown("agent-b", Date.now() - 1000, "expired", 1); // expired
-
-        const sec = await import("../../../src/mcp/utils/security-state.js");
-        const active = sec.listActiveLoopCooldowns();
-        expect(active.some((a) => a.agent === "agent-a" || a.agent === "a")).toBe(true);
-        // expired purged or not listed
-        expect(active.every((a) => a.cooldownUntil > Date.now())).toBe(true);
+        delete process.env.ATABEY_TEST_DIR;
+        fs.rmSync(dir, { recursive: true, force: true });
     });
 
-    it("discipline cooldown hydrates from SQLite after memory empty", async () => {
-        const { Storage } = await import("../../../src/shared/storage.js");
-        Storage.reset();
-        Storage.saveDiscipline("agent-disc", {
-            totalCalls: 10,
+    it("persists a loop cooldown and reads it back", () => {
+        const until = Date.now() + 60_000;
+        persistLoopCooldown("@backend", until, "10 identical calls", 3);
+
+        const loaded = loadLoopCooldown("@backend");
+        expect(loaded).not.toBeNull();
+        expect(loaded?.agent).toBe("backend"); // storage normalises the @ prefix
+        expect(loaded?.cooldownUntil).toBe(until);
+        expect(loaded?.detail).toBe("10 identical calls");
+        expect(loaded?.cooldownCount).toBe(3);
+    });
+
+    it("returns null for an agent without a cooldown", () => {
+        expect(loadLoopCooldown("@frontend")).toBeNull();
+    });
+
+    it("clears a cooldown", () => {
+        persistLoopCooldown("@backend", Date.now() + 60_000, "loop", 1);
+        expect(clearPersistedLoopCooldown("@backend")).toBe(true);
+        expect(loadLoopCooldown("@backend")).toBeNull();
+    });
+
+    it("lists only active cooldowns, skipping expired ones", () => {
+        persistLoopCooldown("@backend", Date.now() + 60_000, "active", 1);
+        persistLoopCooldown("@frontend", Date.now() - 60_000, "expired", 1);
+
+        const active = listActiveLoopCooldowns();
+        expect(active.map((c) => c.agent)).toEqual(["backend"]);
+    });
+
+    it("persists discipline counters and reads them back", () => {
+        persistDiscipline({
+            agent: "@backend",
+            totalCalls: 42,
             violations: 2,
             lastViolation: "rate limit",
-            cooldownUntil: Date.now() + 45_000,
+            cooldownUntil: Date.now() + 30_000,
         });
 
-        vi.resetModules();
-        const disc = await import("../../../src/mcp/utils/discipline.js");
-        // enforceDiscipline should hit cooldown without prior in-memory setCooldown
-        const err = await disc.enforceDiscipline("agent-disc", "read_file", { path: "x.ts" });
-        expect(err).not.toBeNull();
-        expect(err).toMatch(/cooldown/i);
+        const stats = loadDiscipline("@backend");
+        expect(stats).not.toBeNull();
+        expect(stats?.totalCalls).toBe(42);
+        expect(stats?.violations).toBe(2);
+        expect(stats?.lastViolation).toBe("rate limit");
     });
 
-    it("purgeExpiredSecurityState removes stale loop rows", async () => {
-        const { Storage } = await import("../../../src/shared/storage.js");
-        Storage.reset();
-        Storage.saveLoopCooldown("stale", Date.now() - 5000, "old", 1);
-        Storage.saveLoopCooldown("fresh", Date.now() + 50_000, "new", 1);
+    it("returns null discipline for an unknown agent", () => {
+        expect(loadDiscipline("@nobody")).toBeNull();
+    });
 
-        const sec = await import("../../../src/mcp/utils/security-state.js");
-        const result = sec.purgeExpiredSecurityState();
-        expect(result.loopCleared).toBeGreaterThanOrEqual(1);
-        const active = sec.listActiveLoopCooldowns();
-        expect(active.some((a) => a.agent === "fresh" || a.agent === "stale" && a.cooldownUntil > Date.now())).toBe(true);
-        expect(active.every((a) => a.agent !== "stale" || a.cooldownUntil > Date.now())).toBe(true);
+    it("purges expired loop cooldowns", () => {
+        persistLoopCooldown("@backend", Date.now() + 60_000, "active", 1);
+        persistLoopCooldown("@frontend", Date.now() - 60_000, "expired", 1);
+        persistLoopCooldown("@git", Date.now() - 120_000, "expired", 1);
+
+        const result = purgeExpiredSecurityState();
+        expect(result.loopCleared).toBe(2);
+        expect(listActiveLoopCooldowns().map((c) => c.agent)).toEqual(["backend"]);
+    });
+
+    it("keeps state across a simulated process restart (Storage.reset)", () => {
+        persistLoopCooldown("@backend", Date.now() + 60_000, "survives", 1);
+
+        // Simulate an MCP restart: drop the in-process connection, then reconnect.
+        Storage.reset();
+
+        expect(loadLoopCooldown("@backend")?.detail).toBe("survives");
     });
 });

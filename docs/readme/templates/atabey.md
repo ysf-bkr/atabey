@@ -21,8 +21,8 @@ skill definitions and provider integrations.
 | **Role Profiles** | 13 role definitions (prompt + task blueprint) with a 3-tier hierarchy (Supreme / Core / Recon) — not 13 independent LLM agents |
 | **Runtime** | Headless CLI adapters, DAG dispatcher, git-worktree isolation, signed evidence bundles |
 | **Memory** | 3-layer memory: vector (TF-IDF/OpenAI), project, specialty |
-| **Skills** | 15 core skills in `skills/<slug>/SKILL.md` format, mapped across 7 platform adapters |
-| **Providers** | 7 platform adapters: Claude (default), Cursor, Codex, Antigravity, Grok, Local LLM, OpenCode |
+| **Skills** | 15 core skills in `skills/<slug>/SKILL.md` format, mapped across 8 platform adapters |
+| **Providers** | 8 platform adapters: Claude (default), Cursor, Codex, Copilot/VS Code, OpenCode, Grok, Antigravity, Local LLM |
 | **Contracts** | Zod-schema task contracts and API contracts |
 | **Standards** | 36 governance standard templates |
 
@@ -205,7 +205,7 @@ packages/atabey/
 ├── src/
 │   ├── cli/
 │   │   ├── commands/    # 33 CLI commands
-│   │   ├── platforms/   # 7 platform adapters
+│   │   ├── platforms/   # 8 platform adapters (providers/ holds the adapter registry)
 │   │   └── utils/       # CLI utilities (compliance, memory, pkg, config)
 │   ├── modules/
 │   │   ├── agents/      # 13 role profile definitions + registry
@@ -213,7 +213,7 @@ packages/atabey/
 │   │   ├── contracts/   # Task/API contracts (Zod)
 │   │   ├── engines/     # 9 governance/orchestration engines
 │   │   ├── memory/      # Vector, project, specialty memory
-│   │   ├── providers/   # 7 platform provider adapters
+│   │   ├── providers/   # 8 platform provider adapters
 │   │   ├── runtime/     # Headless CLI runtime, DAG dispatcher, worktrees
 │   │   └── skills/      # 15 core skills
 │   ├── schema/          # JSON schemas

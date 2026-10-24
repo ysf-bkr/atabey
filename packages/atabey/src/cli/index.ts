@@ -472,8 +472,10 @@ Core Commands:
 
 Setup:
   One canonical setup — all 13 role profiles + governance (fail-closed when enforced).
-  Choose the AI platform, not the team size: claude | cursor | codex | grok |
-  local | antigravity-cli | opencode | all
+  Choose the AI platform, not the team size:
+    claude | cursor | codex | copilot | opencode   (config verified vs vendor docs)
+    grok | local | antigravity-cli                 (experimental)
+  or: all
 
 MCP Integration (Primary Use):
   1. atabey init claude            (or: atabey init all)

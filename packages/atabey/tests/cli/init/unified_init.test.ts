@@ -61,7 +61,7 @@ describe("Unified Init (`init all` — every supported AI)", () => {
         // Gemini is no longer a supported platform: its shim must not be generated.
         expect(fs.existsSync(path.join(tempDir, "GEMINI.md"))).toBe(false);
 
-        // Root .mcp.json is the single root-level MCP config (VS Code / Claude / Codex standard).
+        // Root .mcp.json is Claude Code's project config (portable `mcpServers`).
         expect(fs.existsSync(path.join(tempDir, ".mcp.json"))).toBe(true);
         const mcpCfg = JSON.parse(fs.readFileSync(path.join(tempDir, ".mcp.json"), "utf8"));
         expect(mcpCfg.mcpServers.atabey.env.MCP_TRANSPORT).toBe("stdio");
@@ -70,7 +70,8 @@ describe("Unified Init (`init all` — every supported AI)", () => {
         // Legacy duplicate MCP configs must NOT exist.
         expect(fs.existsSync(path.join(tempDir, "mcp.json"))).toBe(false);
         expect(fs.existsSync(path.join(tempDir, ".claude", "mcp_config.json"))).toBe(false);
-        expect(fs.existsSync(path.join(tempDir, ".vscode", "mcp.json"))).toBe(false);
+        // .vscode/mcp.json is VS Code's own format (`servers`), not a stale duplicate.
+        expect(fs.existsSync(path.join(tempDir, ".vscode", "mcp.json"))).toBe(true);
         expect(fs.existsSync(path.join(tempDir, ".opencode", "mcp_config.json"))).toBe(false);
 
         // Platform-native MCP configs: exactly one file per platform.
@@ -78,6 +79,7 @@ describe("Unified Init (`init all` — every supported AI)", () => {
         expect(fs.existsSync(path.join(tempDir, ".cursor", "mcp.json"))).toBe(true);
         expect(fs.existsSync(path.join(tempDir, ".agents", "mcp_config.json"))).toBe(true); // Antigravity
         expect(fs.existsSync(path.join(tempDir, ".atabey", "mcp_config.json"))).toBe(true); // Local LLM
+        expect(fs.existsSync(path.join(tempDir, ".codex", "config.toml"))).toBe(true); // Codex (TOML)
         expect(fs.existsSync(path.join(tempDir, "opencode.json"))).toBe(true); // OpenCode
 
         const config = JSON.parse(fs.readFileSync(path.join(tempDir, FRAMEWORK.CORE_DIR, "config.json"), "utf8"));

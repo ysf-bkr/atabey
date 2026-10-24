@@ -10,8 +10,9 @@ export function resolveAdapter(input?: string): AdapterConfig {
     let normalized = (input || "claude").toLowerCase();
     if (normalized === "antigravity" || normalized === "agy") {
         normalized = "antigravity-cli";
-    } else if (normalized === "copilot" || normalized === "github") {
-        normalized = "codex";
+    } else if (normalized === "copilot" || normalized === "github" || normalized === "vscode") {
+        // VS Code's MCP format (top-level `servers`) is not Codex's TOML format.
+        normalized = "copilot";
     } else if (normalized === "ollama" || normalized === "vllm" || normalized === "lmstudio") {
         normalized = "local";
     } else if (normalized === "opencode" || normalized === "open-code") {

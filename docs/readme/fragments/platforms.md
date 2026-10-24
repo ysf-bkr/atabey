@@ -1,23 +1,29 @@
-## 7 Platform Adapters
+## Platform Adapters
 
-| Platform | Framework Dir | Agents Dir | Shim File | Native MCP Config |
-|----------|---------------|------------|-----------|-------------------|
-| **Claude Code** ⭐ (default) | `.claude` | `.claude/agents/*.md` | `CLAUDE.md` | `.mcp.json` |
-| **Cursor IDE** | `.cursor` | `.cursor/rules/*.mdc` | `CURSOR.md` | `.cursor/mcp.json` |
-| **Codex CLI / Copilot** | `.agents` | `.agents/instructions/*.md` | `copilot-instructions.md` | `.mcp.json` |
-| **Antigravity CLI** | `.agents` | `.agents/agents/{name}/agent.json` | `AGENTS.md` | `.agents/mcp_config.json` |
-| **Grok** | `.grok` | `.grok/agents/*.md` | `GROK.md` | `.grok/mcp_config.json` |
-| **Local LLM / Ollama** | `.atabey` | `.atabey/agents/*.md` | `LOCAL_AI.md` | `.atabey/mcp_config.json` |
-| **OpenCode** | `.opencode` | `.opencode/agents/*.md` | `OPENCODE.md` | `opencode.json` |
+Atabey writes a native MCP config for 8 adapters. "Verified" means the file location and
+schema match the vendor's published documentation (covered by tests) — **not** that the
+client connected. See [AI Tool Support](https://github.com/ysf-bkr/atabey/blob/main/docs/ai-tool-support.md).
 
-> `atabey init all` compiles and mirrors agent profiles across **all platforms simultaneously**
-> (one canonical setup — all 13 role profiles, every time). Each platform gets **exactly one**
-> native MCP config; generated entries use the portable `npx -y atabey-mcp` launcher.
+| Tool | Adapter | Config written | Status |
+|------|---------|----------------|--------|
+| Claude Code | `claude` | `.mcp.json` (`mcpServers`) + `.claude/settings.json` hook | Verified |
+| Cursor | `cursor` | `.cursor/mcp.json` (`mcpServers`) | Verified |
+| OpenAI Codex CLI | `codex` | `.codex/config.toml` (`[mcp_servers.atabey]`) | Verified |
+| GitHub Copilot / VS Code | `copilot` | `.vscode/mcp.json` (`servers`) | Verified |
+| OpenCode | `opencode` | `opencode.json` (`mcp.atabey`) | Verified |
+| Grok CLI | `grok` | `.grok/mcp_config.json` | Experimental |
+| Antigravity CLI | `antigravity-cli` | `.agents/mcp_config.json` | Experimental |
+| Local models | `local` | `.atabey/mcp_config.json` | Experimental — needs an MCP host |
+
+> `atabey init all` compiles agent profiles into every platform's native layout. Each
+> platform gets exactly one native MCP config; generated entries use the portable
+> `npx -y atabey-mcp` launcher.
 >
 > Skills are scaffolded in the discoverable `skills/<slug>/SKILL.md` directory format with YAML frontmatter.
 > Gemini CLI is **no longer supported** — `atabey init gemini` warns and falls back to Claude.
 >
 > **Enforcement is platform-dependent.** Platforms that route their tools through Atabey MCP get
 > the full pipeline. Platforms that keep native shell/edit tools need their allow-lists or hooks
-> configured to disable those tools; otherwise the host can act outside Atabey. See
+> configured to disable those tools; otherwise the host can act outside Atabey. Only Claude Code
+> gets a generated `PreToolUse` hook. See
 > [Known Limitations](https://github.com/ysf-bkr/atabey/blob/main/docs/limitations.md).

@@ -401,6 +401,17 @@ export async function initCommand(adapterName: string, options: InitOptions) {
     process.stdout.write(`\n- Brain & Memory Hub: ${coreDir}/\n`);
     process.stdout.write(`- AI Agent Commands: ${aiToolDir}/\n`);
     process.stdout.write(`- Setup: standard (${selectedAgents.length} role profiles${isUnified ? ", all AI platforms" : `, ${adapterId}`})\n`);
+
+    // Be explicit about what was and was not verified: writing a config file is
+    // not proof that the client connects.
+    const touched = isUnified ? ADAPTER_IDS.map((id) => ADAPTERS[id]) : [ADAPTERS[adapterId]];
+    const experimental = touched.filter((a) => a.support === "experimental").map((a) => a.id);
+    if (experimental.length > 0) {
+        process.stdout.write(`- Experimental adapters: ${experimental.join(", ")} — config location not verified against vendor docs.\n`);
+    }
+    process.stdout.write("- Next: restart your AI tool, confirm 'atabey' appears in its MCP server list, and call one harmless tool.\n");
+    process.stdout.write("  Verification checklist: docs/ai-tool-support.md\n");
+
     process.stdout.write(`\n${t.next_steps}\n`);
     process.stdout.write("  1. Run 'npm install' to install dependencies.\n");
     process.stdout.write("  2. Run 'atabey status' to verify the environment.\n");

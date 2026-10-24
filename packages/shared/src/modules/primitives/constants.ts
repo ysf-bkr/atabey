@@ -53,6 +53,7 @@ export const UNIFIED_ADAPTER_SLUG = {
     grok: "grok",
     cursor: "cursor",
     codex: "codex",
+    copilot: "copilot",
     local: "local",
     opencode: "opencode",
     "antigravity-cli": "antigravity",

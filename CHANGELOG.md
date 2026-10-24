@@ -87,6 +87,60 @@ which claims were narrowed so the docs match the implementation.
 - Type-only fix: handlers with schema defaults (`acquire_lock`, `register_agent`) accept
   `z.input` types, so omitting a defaulted field type-checks and the runtime default is reachable.
 
+### Fixed — AI tool configuration was silently wrong for two adapters
+
+Verified against the vendors' published docs before changing anything.
+
+- **Codex never loaded Atabey.** The adapter wrote a root `.mcp.json`, but Codex reads
+  TOML `[mcp_servers.<name>]` from `~/.codex/config.toml` or `.codex/config.toml`
+  (trusted projects only). The file looked like an integration and was never read.
+  It now writes `.codex/config.toml` through a small TOML emitter that replaces only
+  Atabey's table and preserves the rest of the user's config.
+- **GitHub Copilot / VS Code was aliased to Codex.** They use different files and
+  formats: VS Code reads JSON with a top-level `servers` object. A new `copilot` adapter
+  writes `.vscode/mcp.json`; `copilot`/`github`/`vscode` now resolve to it, not `codex`.
+  `.vscode/mcp.json` is no longer deleted as a "stale duplicate" — it is a native config.
+- **The Claude Code hook would never have run, and would not have blocked if it had.**
+  Three separate defects:
+  1. `settings.json` put `command` on the matcher group; the documented shape is
+     event → matcher group → nested `hooks: [{ type: "command", command }]`.
+  2. Blocking used `process.exit(1)`, which is a *non-blocking* error in Claude Code.
+     It now emits `hookSpecificOutput.permissionDecision: "deny"` on exit 0.
+  3. It read `payload.input.command`; the documented field is `tool_input.command`.
+  The hook also blocked nothing for Atabey's own tools (they were not excluded) and
+  overwrote any user hooks/permissions in `settings.json`. It now leaves
+  `mcp__atabey__*` alone, merges into existing settings, and covers `PowerShell` and
+  more shell-write patterns. Verified by executing the generated script with real
+  Claude-shaped payloads (13 tests).
+
+### Changed — adapters are labelled by what was actually verified
+
+- `AdapterConfig` gained `support: "verified" | "experimental"` and a `supportNote`.
+  Grok, Antigravity and local-model adapters are **experimental**: no published config
+  contract to check against, and a model server (Ollama/vLLM/LM Studio) is not an MCP
+  host. `atabey init` prints the experimental adapters and tells the user to confirm the
+  connection manually.
+- New `docs/ai-tool-support.md` separates *config written* / *config verified* /
+  *client connected*, lists the exact file per adapter, and gives a manual checklist.
+  **No adapter is claimed as connected** — that requires running the real client.
+- README platform table no longer advertises "Full/Strong/Partial governance" per
+  platform; it states the config file, the enforcement model (Claude hooks vs MCP-only)
+  and the verification level. `docs/limitations.md` §3 spells out what the hook does and
+  does not catch.
+- Adapter count corrected to 8 across docs, `UNIFIED_ADAPTER_SLUG` and the CLI help.
+- Generated `.gitignore` now also covers `.codex/` and the generated
+  `.github/copilot-instructions.md` / `.github/instructions/`.
+- The Copilot adapter had **no instruction shim at all** (`SHIM_TEMPLATES` had no `copilot`
+  key), so `atabey init copilot` produced MCP config plus agents but no top-level
+  instructions file. Added; the Codex shim also no longer calls itself "Copilot".
+
+### Added — adapter test coverage
+- `adapter_init.test.ts` rewritten: per-adapter config presence, schema assertions for
+  `mcpServers` / `servers` / TOML / `mcp`, idempotency, and preservation of pre-existing
+  user config.
+- New `claude_hook.test.ts` (settings schema, merge, idempotency, deny/allow behaviour,
+  exit codes) and `toml.test.ts` (quoting, Windows paths, table replacement, idempotency).
+
 ### Security — dependency advisories cleared
 - `npm audit --audit-level=high --omit=dev` is now **0 vulnerabilities** (was 2 high + 1
   moderate, which would fail the CI `security-scan` job):
@@ -121,7 +175,7 @@ which claims were narrowed so the docs match the implementation.
   `atabey update`). Two regression tests added.
 
 ### Verified
-- `npm run verify` (build, `tsc --noEmit`, lint, 909 tests in 127 test files, coverage above
+- `npm run verify` (build, `tsc --noEmit`, lint, 962 tests in 129 test files, coverage above
   thresholds in all 3 workspaces, `readme:check`, `knip`, `npm audit --omit=dev` = 0,
   `atabey check`) exits 0. `npm audit --audit-level=high` also reports 0, including dev deps.
 

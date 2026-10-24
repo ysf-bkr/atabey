@@ -47,13 +47,15 @@ Atabey connects to your AI interface as an **MCP tool server**. Once connected, 
 You (@backend): "Create a user login service with JWT authentication"
      │
      ▼
+  Your AI host (Claude Code / Cursor / Codex)
+     │  Loads the @backend role from the scaffolded instructions
+     │  Calls Atabey MCP tools (write_file, run_shell_command, …)
+     ▼
   Atabey MCP Server (atabey-mcp/)
-     │  Intercepts @agent command
-     │  Routes via RoutingEngine (TF-IDF + Semantic)
-     │  Routes to @backend specialist
+     │  Permission + risk matrix on each tool call
      │  Multi-Layer Governance Pipeline validates
-     │  Quality Gate checks output
-     │  Stores in Vector Memory
+     │  Quality Gate / AST checks on written content
+     │  Records in Vector Memory + audit trail
      │
      ▼
   Returns the tool result after governance, checks and audit logging
@@ -70,9 +72,11 @@ You (@backend): "Create a user login service with JWT authentication"
 > **Atabey does not write code.** The code is written by the AI assistant you are connected to (such as Claude Code, Cursor, or Codex).
 > Atabey adds a deterministic governance and verification layer around your AI assistant:
 >
-> 1. **Routing:** Directs instructions to the correct specialized virtual agent profile (`@backend`, `@security`, etc.).
-> 2. **Risk Engine:** Automatically scores operations for safety and halts risky actions (like mass deletions) for human approval.
-> 3. **Quality Gate:** Reviews the generated output against corporate standards, syntax correctness, and test metrics.
+> 1. **Routing:** Directs instructions to the correct role profile (`@backend`, `@security`, etc.).
+> 2. **Risk Engine:** Scores each **Atabey MCP tool call** and routes high-risk ones (like mass
+>    deletions) to human approval. It cannot score work the host performs with its own native tools.
+> 3. **Quality Gate:** Checks **content written through Atabey MCP** against AST rules, lint and
+>    test results. It does not review code that never passes through Atabey.
 > 4. **Memory:** Keeps track of past architectural decisions and specialty conventions so your AI assistant learns from history.
 >
 > *We do not mimic the LLM; we discipline it.*
@@ -140,7 +144,7 @@ You (@backend): "Create a user login service with JWT authentication"
                                 ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  .atabey/  Brain & Memory (SSOT)     │  .agents/  Unified Agent Hub    │
-│  ATABEY.md · memory/ · knowledge/     │  7 platform mirrors + skills    │
+│  ATABEY.md · memory/ · knowledge/     │  8 platform mirrors + skills    │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -216,7 +220,7 @@ Disable auto-start: set `"orchestrator": { "autoStart": false }` in `.atabey/con
 # One AI platform (your app repo) — claude is the default
 npx atabey init claude --yes
 
-# ALL 7 supported AI platforms (when you use several AI tools)
+# ALL 8 supported adapters (when you use several AI tools)
 npx atabey init all --yes
 
 # Framework monorepo maintainers only (this repository)
@@ -389,20 +393,37 @@ validates, bounds and records the tool calls your AI coding assistant makes thro
 
 ## Supported Platforms
 
-Atabey supports **7 platforms** with automatic adapter configuration. Enforcement level
-depends on how much of each host's tool surface is routed through Atabey MCP:
+Atabey writes a native MCP config for **8 adapters**. Two different things are at
+stake, and they are reported separately:
 
-| Platform | MCP Transport | Agent Personas | Dynamic Skills | Governance Enforcement | HITL Approval Gate | Audit Chain | Sandbox (env-configured) |
-|----------|---------------|----------------|----------------|------------------------|---------------------|-------------|-------------------|
-| **Claude Code** ⭐ | Stdio + SSE | Native (`.claude/agents/*.md`) | Full (15 Skills) | **Full** — `atabey init` writes a `PreToolUse` hook + `permissions.deny` for Edit/Write; Bash is blocked by pattern match, so exotic shell writes can still slip through | Webhooks + Passcode | HMAC-SHA256 Chained | none / uid / seatbelt |
-| **Cursor IDE** | Stdio | Rules (`.cursor/rules/*.mdc`) | MDC Ruleset | **Partial** — governed tools via MCP; built-in editor tools rely on rules compliance | Interactive CLI + passcode | HMAC-SHA256 Chained | none / uid / seatbelt |
-| **Codex CLI / Copilot** | Stdio | Workspace (`copilot-instructions.md`) | Injected Prompt | **Partial** — governed tools via MCP | CLI Passcode | HMAC-SHA256 Chained | none / uid / seatbelt |
-| **Antigravity CLI** | Stdio + SSE | `agent.json` + Subagents | Native Toolset | **Strong** — native tool gating | Real-time WebSocket | HMAC-SHA256 Chained | none / uid / seatbelt |
-| **Grok** | Stdio + SSE | Native (`.grok/agents/*.md`) | Context Shims | **Partial** — governed tools via MCP | Interactive CLI + passcode | HMAC-SHA256 Chained | none / uid / seatbelt |
-| **Local LLM / Ollama** | Stdio + SSE | Unified Hub (`.atabey/agents/*.md`) | Markdown Specs | **Strong** — all tools route through Atabey | Terminal Gate | HMAC-SHA256 Chained | none / uid / seatbelt |
-| **OpenCode** | Stdio | Native (`.opencode/agents/*.md`) | Native Toolset | **Strong** — native permission/agent config | Interactive CLI + passcode | HMAC-SHA256 Chained | none / uid / seatbelt |
+- **Config verified** — the file location and schema match the vendor's published
+  documentation (asserted in tests).
+- **Experimental** — Atabey writes a file where the tool is *expected* to look, but
+  there is no published contract to verify against, or the target has no MCP host.
 
-> **Governance Enforcement column:** "Full" means built-in host tools are deterministically intercepted (Claude Code `PreToolUse` hooks + `permissions.deny` scaffolded by `atabey init claude`). "Strong" means the platform routes effectively all work through Atabey MCP tools. "Partial" means the host retains native edit/shell tools that Atabey cannot deterministically block — out-of-band edits are still detected post-hoc via SHA-256 hash diffing (on by default; disable with `ATABEY_ENFORCE_UNAUDITED_WRITES=false`) and policy violations are reported. When deterministic blocking is required on a Partial platform, restrict the host's own file-write permissions in its settings.
+**No adapter is verified as "connected" yet.** Proving that requires running the real
+client; see the [manual checklist](docs/ai-tool-support.md).
+
+| Tool | Adapter | Config written | Enforcement | Status |
+|------|---------|----------------|-------------|--------|
+| **Claude Code** ⭐ | `claude` | `.mcp.json` + `.claude/settings.json` hook | **Strongest** — `PreToolUse` hard-denies `Edit`/`Write`/`NotebookEdit` and shell writes; Atabey's own MCP tools are never blocked. Pattern matching means exotic shell writes can still slip through | Verified (docs) |
+| **Cursor** | `cursor` | `.cursor/mcp.json` | MCP-only. Built-in editor tools rely on rules compliance | Verified (docs) |
+| **OpenAI Codex CLI** | `codex` | `.codex/config.toml` (TOML) | MCP-only | Verified (docs) |
+| **GitHub Copilot / VS Code** | `copilot` | `.vscode/mcp.json` (`servers`) | MCP-only | Verified (docs) |
+| **OpenCode** | `opencode` | `opencode.json` | MCP-only | Verified (schema) |
+| **Grok CLI** | `grok` | `.grok/mcp_config.json` | MCP-only | Experimental |
+| **Antigravity CLI** | `antigravity-cli` | `.agents/mcp_config.json` | MCP-only | Experimental |
+| **Local models** | `local` | `.atabey/mcp_config.json` | — | Experimental (a model server is not an MCP host) |
+
+> **MCP-only means MCP-only.** On every adapter except Claude Code, Atabey sees only the
+> calls the host chooses to route through its MCP tools. Native shell/edit tools bypass
+> the pipeline; out-of-band edits are detected post-hoc via SHA-256 hash diffing (on by
+> default; disable with `ATABEY_ENFORCE_UNAUDITED_WRITES=false`). For deterministic
+> blocking, restrict the host's own file-write permissions in its settings.
+
+> **Codex and Copilot are separate adapters.** Codex reads TOML `[mcp_servers.*]`;
+> VS Code reads JSON with a top-level `servers` object. Writing one for the other looks
+> like an integration but is never loaded.
 
 > **Sandboxing is global and env-driven** (`ATABEY_SANDBOX_RUNTIME=none|uid|seatbelt|auto`), not per-platform. On macOS, `seatbelt` uses `/usr/bin/sandbox-exec`; on Linux, POSIX `uid` drop is used. Set `ATABEY_SANDBOX_REQUIRED=true` to deny execution when isolation is unavailable.
 
@@ -463,13 +484,14 @@ supports. What you choose is **which AI platform** to compile the profiles for.
 ### `atabey init <ai>` — one platform
 
 ```bash
-npx atabey init claude    # Claude Code (default) — full deterministic governance
-npx atabey init cursor    # Cursor IDE — .cursor/rules/*.mdc + .cursor/mcp.json
-npx atabey init codex     # Codex CLI / GitHub Copilot — root .mcp.json
-npx atabey init grok      # Grok — .grok/agents + .grok/mcp_config.json
-npx atabey init local     # Local LLM / Ollama — fully offline
-npx atabey init antigravity-cli   # Antigravity — .agents/agents/*/agent.json
-npx atabey init opencode  # OpenCode — opencode.json
+npx atabey init claude      # Claude Code (default) — .mcp.json + PreToolUse hook
+npx atabey init cursor      # Cursor IDE — .cursor/mcp.json
+npx atabey init codex       # OpenAI Codex CLI — .codex/config.toml
+npx atabey init copilot     # GitHub Copilot / VS Code — .vscode/mcp.json
+npx atabey init opencode    # OpenCode — opencode.json
+npx atabey init grok        # Grok — .grok/mcp_config.json          (experimental)
+npx atabey init local       # Local models — .atabey/mcp_config.json (experimental)
+npx atabey init antigravity-cli  # Antigravity — .agents/mcp_config.json (experimental)
 ```
 
 ### `atabey init all` — every supported AI
@@ -1279,21 +1301,25 @@ Siz (@backend): "JWT kimlik doğrulamalı kullanıcı login servisi yaz"
      ▼
   Atabey MCP Middleware (atabey-mcp)
      │  Araç çağrısını yakalar, yetki ve risk matrisini denetler
-     │  Zararlı komutları veya izin dışı dosya erişimini engeller
+     │  İzin dışı dosya erişimini ve risk eşiği üstü işlemleri engeller
      │  Quality Gate ve AST denetimi (sıfır any, sıfır console.log) uygular
      │  Pre-commit kancalarıyla (.githooks) nihai zorlayıcı teyidi sağlar
      │  Vector Memory & Audit Trail zincirine kaydeder
      ▼
-  Yönetilmiş, denetlenmiş, izli kod üretilir
+  Yönetişimden geçen araç sonucu döner
 ```
+
+> Bu, işlemin Atabey'in yapılandırılmış kontrollerinden geçtiği anlamına gelir — üretilen
+> kodun hatasız, güvenli veya production'a hazır olduğu anlamına **gelmez**. İnsan incelemesi
+> gerekir.
 
 Günlük kullanımda ayrı bir terminal gerekmez. AI sohbetinde `@agent` sözdizimi yeterlidir.
 
 **Önemli:** Atabey kod yazmaz. Kodu Claude Code / Cursor / Codex gibi bağlı asistan yazar. Atabey:
 
-1. **Routing** — doğru uzman profile (`@backend`, `@security`, …)
-2. **Risk Engine** — tehlikeli işlemleri skorlar, gerekirse insan onayı ister
-3. **Quality Gate** — standartlara, sözdizimine, test metriklerine göre denetler
+1. **Routing** — doğru rol profiline (`@backend`, `@security`, …) yönlendirir
+2. **Risk Engine** — her **Atabey MCP araç çağrısını** skorlar, risk eşiği üstündekiler için insan onayı ister (host'un kendi yerel araçlarıyla yaptığı işi skorlayamaz)
+3. **Quality Gate** — **Atabey MCP üzerinden yazılan içeriği** AST kuralları, lint ve test sonuçlarıyla denetler
 4. **Memory** — mimari kararlar ve uzmanlık geçmişini tutar
 
 ---
@@ -1326,7 +1352,7 @@ Kullanıcı / Geliştirici
 # Tek AI platformu (varsayılan: claude)
 npx atabey init claude --yes
 
-# Tüm 7 desteklenen AI platformu (birden çok AI aracı kullanıyorsanız)
+# Tüm 8 desteklenen adaptör (birden çok AI aracı kullanıyorsanız)
 npx atabey init all --yes
 
 # Sağlık kontrolü
@@ -1421,13 +1447,13 @@ npx atabey mcp start   # MCP sunucusunu başlat
 ## Kurulum (AI bazlı — tek standart kurulum)
 
 Profil sistemi (freelancer/team/enterprise) kalktı: **tek kurulum** her zaman
-13 uzman ajanı ve en sıkı yönetişim duruşunu kurar. Sadece **hangi AI** için
+13 rol profilini ve hedef platformun desteklediği en güçlü kontrolleri kurar. Sadece **hangi AI** için
 derleyeceğinizi seçersiniz:
 
 ```bash
 npx atabey init claude    # varsayılan — tam deterministik yönetişim
 npx atabey init cursor    # Cursor IDE
-npx atabey init codex     # Codex CLI / GitHub Copilot
+npx atabey init codex       # OpenAI Codex CLI — .codex/config.toml
 npx atabey init grok      # Grok
 npx atabey init local     # Yerel LLM / Ollama (offline)
 npx atabey init antigravity-cli   # Antigravity

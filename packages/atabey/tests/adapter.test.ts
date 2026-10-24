@@ -36,13 +36,12 @@ describe("CLI Adapters", () => {
             expect(uiWarningSpy).not.toHaveBeenCalled();
         });
 
-        it("should map aliases 'copilot' and 'github' to 'codex'", () => {
-            const config1 = resolveAdapter("copilot");
-            expect(config1.id).toBe("codex");
-
-            const config2 = resolveAdapter("github");
-            expect(config2.id).toBe("codex");
-
+        it("should map 'copilot', 'github' and 'vscode' to the copilot adapter, not codex", () => {
+            // VS Code's MCP format (top-level `servers`) is different from
+            // Codex's TOML format; aliasing them would write the wrong file.
+            expect(resolveAdapter("copilot").id).toBe("copilot");
+            expect(resolveAdapter("github").id).toBe("copilot");
+            expect(resolveAdapter("vscode").id).toBe("copilot");
             expect(uiWarningSpy).not.toHaveBeenCalled();
         });
 

@@ -61,8 +61,13 @@ export function buildMcpServerEntry(projectRoot: string) {
     }
 }
 
-/** Adapters whose native project-scope MCP config is the root `.mcp.json`. */
-const ROOT_MCP_ADAPTERS = new Set<AdapterId>(["claude", "codex"]);
+/**
+ * Adapters whose native project-scope MCP config is the root `.mcp.json`.
+ * Only Claude Code reads the portable root file. Codex uses `.codex/config.toml`
+ * and VS Code/Copilot uses `.vscode/mcp.json`, so writing `.mcp.json` for them
+ * would be a no-op file that looks like a working integration.
+ */
+const ROOT_MCP_ADAPTERS = new Set<AdapterId>(["claude"]);
 
 /** Stale duplicate MCP config files from older Atabey versions. Removed on re-init. */
 const STALE_MCP_CONFIG_FILES = [
@@ -70,12 +75,12 @@ const STALE_MCP_CONFIG_FILES = [
     ".claude/mcp_config.json",
     ".gemini/mcp.json",
     ".gemini/settings.json",
-    ".vscode/mcp.json",
     ".opencode/mcp_config.json",
 ];
 
 /** Removes duplicate/legacy MCP config files left behind by older layouts.
- *  `.agents/mcp_config.json` is kept — it is Antigravity's native config. */
+ *  `.agents/mcp_config.json` (Antigravity) and `.vscode/mcp.json` (VS Code) are
+ *  kept — they are native configs for their adapters, not stale duplicates. */
 export function removeStaleMcpConfigs(projectRoot: string): void {
     for (const rel of STALE_MCP_CONFIG_FILES) {
         const abs = path.join(projectRoot, rel);

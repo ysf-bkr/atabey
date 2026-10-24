@@ -65,8 +65,19 @@ A fundamental architectural boundary:
 - If the host AI decides to invoke its native shell instead of calling Atabey MCP tools (`run_shell_command`, `write_file`), MCP-level permission matrices and risk gates are bypassed during execution.
 - **Atabey Mitigations & Residual Risk:**
   1. Atabey maintains SHA-256 digests of all read/written files (`scanUnauditedWorkspaceEdits`). On any subsequent MCP tool invocation, out-of-band workspace modifications violating constitutional rules trigger a hard stop.
-  2. For full enforcement, host CLI configurations (`settings.json`, tool allow-lists, hooks) should disable native editing/shell tools in favor of Atabey MCP tools.
-  3. OS-level containment (Docker sandbox, seccomp, seatbelt) is mandatory for absolute boundary guarantees.
+  2. **Claude Code only:** `atabey init claude` writes a `PreToolUse` hook plus
+     `permissions.deny` for `Edit`, `Write`, `NotebookEdit` and `MultiEdit`, and the hook
+     denies shell writes it can recognise (redirects, `rm`/`mv`/`cp`, `sed -i`, `chmod`,
+     `PowerShell Remove-Item`/`Set-Content`, `git reset --hard`, …). Atabey's own
+     `mcp__atabey__*` tools are never blocked. This is pattern matching, not a parser: an
+     obfuscated shell write (base64, `eval`, unusual binaries) can still get through, so the
+     `permissions.deny` list — not the hook — is what actually removes the built-in tools.
+  3. **Every other adapter is MCP-only.** Cursor, Codex, VS Code/Copilot, OpenCode, Grok,
+     Antigravity and local hosts keep their native tools; Atabey only sees calls they route
+     through its MCP tools. For full enforcement, restrict the host's own file-write
+     permissions in its settings.
+  4. OS-level containment (Docker sandbox, seccomp, seatbelt) is mandatory for absolute
+     boundary guarantees.
 
 ---
 
