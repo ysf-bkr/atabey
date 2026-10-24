@@ -1,6 +1,6 @@
 {
   "name": "atabey-mcp",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Atabey MCP — Tool governance and verification server for AI coding agents",
   "author": "Yusuf BEKAR",
   "license": "AGPL-3.0",
@@ -57,8 +57,8 @@
     "prepublishOnly": "node ../../scripts/build-readmes.mjs && npm run build"
   },
   "dependencies": {
-    "atabey": "^0.1.7",
-    "atabey-shared": "^0.1.7",
+    "atabey": "^0.1.8",
+    "atabey-shared": "^0.1.8",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "better-sqlite3": "^13.0.2",
     "chalk": "^5.6.2",

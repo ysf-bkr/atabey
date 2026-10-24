@@ -1,6 +1,6 @@
 {
   "name": "atabey",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Atabey Core — CLI, project setup and task verification runtime for AI coding agents",
   "author": "Yusuf BEKAR",
   "license": "AGPL-3.0",
@@ -58,7 +58,7 @@
     "prepublishOnly": "node ../../scripts/build-readmes.mjs && npm run build"
   },
   "dependencies": {
-    "atabey-shared": "^0.1.7",
+    "atabey-shared": "^0.1.8",
     "better-sqlite3": "^13.0.2",
     "chalk": "^5.6.2",
     "js-yaml": "^4.2.0",
@@ -66,7 +66,7 @@
     "zod": "^4.6.7"
   },
   "optionalDependencies": {
-    "atabey-mcp": "^0.1.7"
+    "atabey-mcp": "^0.1.8"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",

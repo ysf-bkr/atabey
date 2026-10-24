@@ -2,7 +2,7 @@
 
 > **Language / Dil:** [English](#atabey--local-governance--verification-for-ai-coding-agents) · [Türkçe](#turkce)
 
-*v0.1.7 · Local-first · 100% strict TypeScript · Cross-platform (macOS, Linux, Windows)*
+*v0.1.8 · Local-first · 100% strict TypeScript · Cross-platform (macOS, Linux, Windows)*
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![npm](https://img.shields.io/npm/v/atabey)](https://www.npmjs.com/package/atabey)

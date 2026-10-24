@@ -1,6 +1,6 @@
 # Atabey — Known Limitations & System Boundaries (LIMITATIONS.md)
 
-**Version:** v0.1.7  
+**Version:** v0.1.8  
 **Last Updated:** 2026-10-23  
 **Status:** Active Living Document
 

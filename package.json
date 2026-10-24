@@ -1,6 +1,6 @@
 {
   "name": "atabey-monorepo",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Atabey — Local governance and verification layer for AI coding agents",
   "author": "Yusuf BEKAR",
   "license": "AGPL-3.0",
@@ -84,7 +84,7 @@
   },
   "frameworkRepo": true,
   "atabey": {
-    "version": "0.1.7",
+    "version": "0.1.8",
     "frameworkRepo": true,
     "initializedAt": "2026-10-15T15:52:14.950Z"
   }

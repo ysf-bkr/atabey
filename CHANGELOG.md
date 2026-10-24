@@ -11,6 +11,77 @@ All notable changes to this project are documented in this file.
 
 ---
 
+> **0.1.7 is published and superseded.** Testing the published tarball surfaced several
+> real bugs (see 0.1.8). Install 0.1.8 or newer.
+
+## [0.1.8] — 2026-10-24 — Fixes found by testing the published 0.1.7 package
+
+No new features. Every item below is a bug that shipped in 0.1.7 and was reproduced against
+the published package (`npm i -g atabey@0.1.7`) before being fixed.
+
+### Fixed — bugs found testing the published 0.1.7 package end-to-end
+Installed the real npm package (`npm i -g atabey@0.1.7`) and drove it in throwaway
+projects. Each item below was reproduced before it was fixed.
+
+- **KVKK erasure did nothing from the CLI.** `atabey audit erase <trace>` failed with
+  "Atabey Shared Database has not been initialized": `DataRetention` read
+  `databaseHolder` directly, and nothing had opened the DB in a fresh CLI process.
+  Worse, `audit_log` is created by `Audit.initialize()` (only the MCP bootstrap called
+  it), so erasure/stats hit "no such table: audit_log". `DataRetention` now opens the
+  store through `AtabeyStorage.getDB()` and ensures the audit schema. Verified: the CLI
+  deletes the rows it claims to delete. Covered by 8 new tests (`retention.test.ts`),
+  which previously did not exist at all.
+- **A shared root shim was written twice.** `AGENTS.md` is the cross-tool standard, read
+  by both Codex CLI and Antigravity CLI. Unified mode wrote a vendor-specific file for
+  each to the same path, so the last writer silently won (Codex beat Antigravity) and the
+  CLI announced the same shim twice. Shims are now collected by destination and shared
+  ones get one neutral document ("Shared platform shim created: AGENTS.md
+  (antigravity-cli, codex)").
+- **User-facing failures printed a raw `[DEBUG] Fatal exception` line** above the friendly
+  message, because the global handler logged before reporting. The stack is still kept in
+  the redacted report; the console now shows only the actionable message.
+- **Misleading text:** `atabey plan list` recommended the non-existent `plan:submit`
+  (now `plan submit`); `atabey security .` printed "on: ...."; `security`/`compliance`
+  already handled this.
+- **`submit_plan` stored nothing while reporting success.** The handler shelled out to
+  `npx atabey plan:submit`, a subcommand that does not exist (the CLI has `plan submit`).
+  The CLI routes unknown commands to @manager as natural language, so the tool "worked" by
+  posting the JSON as a chat message: `atabey plan list` stayed empty and no task was ever
+  scheduled. Same failure class as the old `update_project_memory` no-op. It now validates
+  with `PlanningEngine` (including the mandatory acceptance-criteria gate) and persists the
+  plan, tasks and delegations in-process. 6 tests added.
+- **`grep_search` `includePattern` globs never matched.** It was implemented as
+  `filePath.endsWith(pattern)`, so `**/*.json` (the documented example) returned nothing.
+  Rewritten as a single-pass glob→regex translation (`**/`, `*`, `?`), with `.ts`-style
+  suffixes still working. The same walker also read binary files (`.db`, archives) as text,
+  producing nonsense hits and echoing stored bytes; NUL-containing files are now skipped.
+  9 tests added (`grep_search.test.ts`), which did not exist before.
+- **Silent-routing token cost was undocumented and unbounded.** Every tool response gets
+  the routed agent's prompt prepended: measured 1.6–2.7 KB per call (≈400–700 tokens),
+  i.e. ~20 K tokens for a 40-call session. The `MCP_SILENT_ROUTING` /
+  `MCP_INJECT_SPECIALTY_MEMORY` / `MCP_SILENT_STEALTH` switches existed but appeared in no
+  document; they are now in the Token Efficiency section of the README and the MCP package
+  README.
+
+### Verified against the published package
+`npm i -g atabey@0.1.7`, then in fresh git repos: `init claude`, `init all`, and each of the
+8 adapters individually (exactly one correctly-shaped config each); `status`, `check`,
+`compliance`, `security`, `lint`, `coverage`, `db status|verify|backup|compact`,
+`secrets set|get|list|scan|delete`, `api scan|list|json|drift`, `knowledge`, `log`,
+`explorer graph|audit`, `contract verify`, `worktree list`, `memory update`, `quickstart`,
+`index`, `spec init`, `handoff`, `retro`, `trace new`, `plan list`, `hitl status`,
+`audit export|--verify|erase`, `mcp status|install|start`, `report`, `update`, `orchestrate`.
+MCP: 40 tools over stdio; `rm -rf` gated with a passcode; `.env` write denied by PolicyGate;
+`supreme` self-registration blocked; locks enforce ownership; unified HTTP returns 401
+without a token and 200 with it.
+
+### Verified
+- `npm run verify` (build, `tsc --noEmit`, lint, 1019 tests in 135 test files, coverage above
+  thresholds in all 3 workspaces, `readme:check`, `knip`, `npm audit --omit=dev` = 0,
+  `atabey check`) exits 0. `npm audit --audit-level=high` also reports 0, including dev deps.
+
+---
+
 ## [0.1.7] — 2026-10-23 — Positioning, Documentation & Dead-Code Cleanup
 
 No runtime behavior change in this part of the release. It records what was reworded and
@@ -181,62 +252,6 @@ Verified against the vendors' published docs before changing anything.
 - Expected user-data failures (missing/corrupt `.atabey/config.json`) do **not** create a
   report — they now print the failing stage and a concrete fix instead.
 
-### Fixed — bugs found testing the published 0.1.7 package end-to-end
-Installed the real npm package (`npm i -g atabey@0.1.7`) and drove it in throwaway
-projects. Each item below was reproduced before it was fixed.
-
-- **KVKK erasure did nothing from the CLI.** `atabey audit erase <trace>` failed with
-  "Atabey Shared Database has not been initialized": `DataRetention` read
-  `databaseHolder` directly, and nothing had opened the DB in a fresh CLI process.
-  Worse, `audit_log` is created by `Audit.initialize()` (only the MCP bootstrap called
-  it), so erasure/stats hit "no such table: audit_log". `DataRetention` now opens the
-  store through `AtabeyStorage.getDB()` and ensures the audit schema. Verified: the CLI
-  deletes the rows it claims to delete. Covered by 8 new tests (`retention.test.ts`),
-  which previously did not exist at all.
-- **A shared root shim was written twice.** `AGENTS.md` is the cross-tool standard, read
-  by both Codex CLI and Antigravity CLI. Unified mode wrote a vendor-specific file for
-  each to the same path, so the last writer silently won (Codex beat Antigravity) and the
-  CLI announced the same shim twice. Shims are now collected by destination and shared
-  ones get one neutral document ("Shared platform shim created: AGENTS.md
-  (antigravity-cli, codex)").
-- **User-facing failures printed a raw `[DEBUG] Fatal exception` line** above the friendly
-  message, because the global handler logged before reporting. The stack is still kept in
-  the redacted report; the console now shows only the actionable message.
-- **Misleading text:** `atabey plan list` recommended the non-existent `plan:submit`
-  (now `plan submit`); `atabey security .` printed "on: ...."; `security`/`compliance`
-  already handled this.
-- **`submit_plan` stored nothing while reporting success.** The handler shelled out to
-  `npx atabey plan:submit`, a subcommand that does not exist (the CLI has `plan submit`).
-  The CLI routes unknown commands to @manager as natural language, so the tool "worked" by
-  posting the JSON as a chat message: `atabey plan list` stayed empty and no task was ever
-  scheduled. Same failure class as the old `update_project_memory` no-op. It now validates
-  with `PlanningEngine` (including the mandatory acceptance-criteria gate) and persists the
-  plan, tasks and delegations in-process. 6 tests added.
-- **`grep_search` `includePattern` globs never matched.** It was implemented as
-  `filePath.endsWith(pattern)`, so `**/*.json` (the documented example) returned nothing.
-  Rewritten as a single-pass glob→regex translation (`**/`, `*`, `?`), with `.ts`-style
-  suffixes still working. The same walker also read binary files (`.db`, archives) as text,
-  producing nonsense hits and echoing stored bytes; NUL-containing files are now skipped.
-  9 tests added (`grep_search.test.ts`), which did not exist before.
-- **Silent-routing token cost was undocumented and unbounded.** Every tool response gets
-  the routed agent's prompt prepended: measured 1.6–2.7 KB per call (≈400–700 tokens),
-  i.e. ~20 K tokens for a 40-call session. The `MCP_SILENT_ROUTING` /
-  `MCP_INJECT_SPECIALTY_MEMORY` / `MCP_SILENT_STEALTH` switches existed but appeared in no
-  document; they are now in the Token Efficiency section of the README and the MCP package
-  README.
-
-### Verified against the published package
-`npm i -g atabey@0.1.7`, then in fresh git repos: `init claude`, `init all`, and each of the
-8 adapters individually (exactly one correctly-shaped config each); `status`, `check`,
-`compliance`, `security`, `lint`, `coverage`, `db status|verify|backup|compact`,
-`secrets set|get|list|scan|delete`, `api scan|list|json|drift`, `knowledge`, `log`,
-`explorer graph|audit`, `contract verify`, `worktree list`, `memory update`, `quickstart`,
-`index`, `spec init`, `handoff`, `retro`, `trace new`, `plan list`, `hitl status`,
-`audit export|--verify|erase`, `mcp status|install|start`, `report`, `update`, `orchestrate`.
-MCP: 40 tools over stdio; `rm -rf` gated with a passcode; `.env` write denied by PolicyGate;
-`supreme` self-registration blocked; locks enforce ownership; unified HTTP returns 401
-without a token and 200 with it.
-
 ### Fixed — flaky test and scaffold/gitignore drift
 - **`send_message.test.ts` was racy.** It relied on wall-clock timing (20 retries × 500 ms ≈ 10 s)
   while the lock goes stale after 15 s, and it shared one directory inside the repo across runs.
@@ -251,7 +266,8 @@ without a token and 200 with it.
   `atabey update`). Two regression tests added.
 
 ### Verified
-- `npm run verify` (build, `tsc --noEmit`, lint, 1019 tests in 135 test files, coverage above
+- `npm run verify` (build, `tsc --noEmit`, lint, 996 tests in 131 test files at the time of
+  release, coverage above
   thresholds in all 3 workspaces, `readme:check`, `knip`, `npm audit --omit=dev` = 0,
   `atabey check`) exits 0. `npm audit --audit-level=high` also reports 0, including dev deps.
 

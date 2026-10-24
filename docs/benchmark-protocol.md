@@ -1,6 +1,6 @@
 # Atabey — End-to-End Benchmark Protocol
 
-**Version:** v0.1.7
+**Version:** v0.1.8
 **Status:** Protocol defined — execution pending (roadmap)
 
 This document defines the repeatable protocol for measuring Atabey's real-world value. The goal is to replace qualitative maturity claims with measurable evidence: **does governed AI coding actually deliver more than ungoverned AI coding?**

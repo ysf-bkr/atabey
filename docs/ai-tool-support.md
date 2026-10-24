@@ -1,6 +1,6 @@
 # AI Tool Support — what is verified, and what is not
 
-**Version:** v0.1.7
+**Version:** v0.1.8
 **Last verified:** 2026-10-24
 
 Atabey connects to AI coding tools over MCP. This page separates three different

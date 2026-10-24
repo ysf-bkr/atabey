@@ -1,6 +1,6 @@
 {
   "name": "atabey-shared",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Shared infrastructure for the Atabey monorepo",
   "author": "Yusuf BEKAR",
   "license": "AGPL-3.0",
