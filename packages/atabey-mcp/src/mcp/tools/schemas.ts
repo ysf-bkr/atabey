@@ -134,7 +134,7 @@ export const RegisterAgentSchema = z.object({
     agent: AgentIDSchema,
     role: z.string().min(1),
     capability: z.number().int().min(1).max(10).optional().default(5),
-    specialties: z.record(z.number()).optional(),
+    specialties: z.record(z.string(), z.number()).optional(),
 }).strict();
 
 export const UpdateContractHashSchema = z.object({}).strict();
@@ -214,7 +214,7 @@ export const CheckArchitectureComplianceSchema = z.object({
 // ─── PII / Compliance ───────────────────────────────────────────────
 export const MaskPIISchema = z.object({
     text: z.string().optional(),
-    data: z.record(z.unknown()).optional(),
+    data: z.record(z.string(), z.unknown()).optional(),
     mode: z.enum(["text", "object", "auto"]).optional().default("auto"),
     strictMode: z.boolean().optional().default(false),
 }).strict();
@@ -291,7 +291,7 @@ export type CheckArchitectureComplianceArgs = z.infer<typeof CheckArchitectureCo
 export const HttpProxyRequestSchema = z.object({
     url: z.string().url("A valid URL must be provided"),
     method: z.enum(["GET", "POST", "PUT", "DELETE"]).default("GET"),
-    headers: z.record(z.string()).optional(),
+    headers: z.record(z.string(), z.string()).optional(),
     body: z.string().optional(),
     proxyUrl: z.string().url("A valid proxy URL must be provided (e.g. http://proxy:port)").optional(),
 }).strict();

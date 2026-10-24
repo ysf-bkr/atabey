@@ -74,7 +74,7 @@ function validateArgs(toolName: string, args: Record<string, unknown>): string |
     if (schema) {
         const result = schema.safeParse(args);
         if (!result.success) {
-            return result.error.errors.map(e => `${e.path.join(".")}: ${e.message}`).join(", ");
+            return result.error.issues.map(e => `${e.path.join(".")}: ${e.message}`).join(", ");
         }
         return null;
     }

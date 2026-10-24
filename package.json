@@ -43,6 +43,8 @@
     "build:mcp": "npm run build -w packages/atabey-mcp",
     "lint": "eslint packages/",
     "knip": "knip",
+    "audit:prod": "npm audit --audit-level=high --omit=dev",
+    "verify": "npm run build && npx tsc --noEmit && npm run lint && npm test && npm run test:coverage && npm run readme:check && npm run knip && npm run audit:prod && npx atabey check",
     "readme:build": "node scripts/build-readmes.mjs",
     "readme:check": "node scripts/build-readmes.mjs --check",
     "benchmark": "node scripts/benchmark.mjs",

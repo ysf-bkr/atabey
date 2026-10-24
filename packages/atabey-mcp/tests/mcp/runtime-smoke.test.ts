@@ -101,7 +101,7 @@ describeIf(fs.existsSync(MCP_DIST))("MCP runtime smoke (compiled dist over stdio
 
         const toolNames = [...responses.join(" ").matchAll(/"name":"([a-z_]+)"/g)].map(m => m[1]);
         const unique = Array.from(new Set(toolNames));
-        expect(unique.length, `expected 39 tools, got ${unique.length}: ${unique.join(", ")}`).toBeGreaterThanOrEqual(39);
+        expect(unique.length, `expected 40 tools, got ${unique.length}: ${unique.join(", ")}`).toBe(40);
         expect(unique).toContain("read_file");
         expect(unique).toContain("write_file");
         expect(unique).toContain("run_shell_command");

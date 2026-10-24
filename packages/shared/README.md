@@ -127,7 +127,7 @@ const task: TaskID = asTaskID("TASK-102");
 ## 📦 Dependencies
 
 - **js-tiktoken**: `cl100k_base` BPE tokenizer for token accounting
-- **better-sqlite3**, **chalk**, **zod** _(peer)_: storage, terminal styling and runtime validation
+- **better-sqlite3**, **chalk** _(peer)_: storage and terminal styling
 
 ## 🔗 Related Packages
 

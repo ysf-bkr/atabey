@@ -87,10 +87,34 @@ which claims were narrowed so the docs match the implementation.
 - Type-only fix: handlers with schema defaults (`acquire_lock`, `register_agent`) accept
   `z.input` types, so omitting a defaulted field type-checks and the runtime default is reachable.
 
+### Security — dependency advisories cleared
+- `npm audit --audit-level=high --omit=dev` is now **0 vulnerabilities** (was 2 high + 1
+  moderate, which would fail the CI `security-scan` job):
+  - **zod 3 → 4.6.7** (GHSA-mrhx-c7xc-m3w5, memory exhaustion via unbounded array
+    validation). `@modelcontextprotocol/sdk` already declares `zod: ^3.25 || ^4.0`, so no SDK
+    fork was needed. Migration details: `error.errors` → `error.issues`,
+    `z.record(value)` → `z.record(key, value)`, and `zodToMcpSchema` now uses Zod 4's
+    `z.toJSONSchema({ io: "input" })` instead of walking `_def` internals (which changed shape).
+  - **body-parser 2.3.x → patched** and **fast-uri 3.1.8 → 3.1.9+** via `npm audit fix`
+    (transitive through `@modelcontextprotocol/sdk` → `express` / `ajv`).
+- New `npm run audit:prod` script and `npm run verify`, which runs the full CI sequence
+  locally (build, typecheck, lint, tests, coverage, README sync, knip, audit, `atabey check`).
+
+### Fixed — MCP tool schemas
+- The generated `inputSchema` for all 40 tools is now derived from Zod's own JSON Schema
+  exporter. The previous hand-written walker read private `_def` fields, silently dropped
+  constraints (patterns, min/max, defaults) and mis-flagged required fields for nested
+  objects. Added `zod-to-mcp` tests plus an end-to-end assertion that the compiled server
+  advertises exactly 40 tools over stdio.
+
 ### Verified
-- `npm run build`, `npx tsc --noEmit`, `npm test` (124 files / 863 tests), `npm run test:coverage`
-  (all three workspaces above their thresholds), `npm run lint`, `npx knip`,
-  `npm run readme:check`, `npx atabey check` (exit 0).
+- `npm run verify` (build, `tsc --noEmit`, lint, 876 tests in 125 test files, coverage above
+  thresholds in all 3 workspaces, `readme:check`, `knip`, `npm audit --omit=dev` = 0,
+  `atabey check`) exits 0. `npm audit --audit-level=high` also reports 0, including dev deps.
+
+### Verified (earlier in this release)
+- `npm run build`, `npx tsc --noEmit`, `npm test`, `npm run test:coverage`, `npm run lint`,
+  `npx knip`, `npm run readme:check`, `npx atabey check` (exit 0).
 
 ### Memory Round-Trip Fixes, `atabey update`, OTLP Observability
 

@@ -60,10 +60,11 @@ export const HealthCheckSchema = z.object({
     version: z.string(),
     uptime: z.number().nonnegative(),
     checks: z.record(
+        z.string(),
         z.object({
             status: z.enum(["pass", "fail"]),
             message: z.string().optional(),
-        })
+        }),
     ),
 });
 

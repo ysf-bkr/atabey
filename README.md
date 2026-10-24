@@ -1141,10 +1141,15 @@ files are removed, the directory format is written).
 ## Testing
 
 ```bash
-npm test                    # Run all tests
+npm test                    # Run all tests (unit + compiled-server smoke)
 npm run test:watch          # Watch mode
-npm run test:coverage       # Coverage report
+npm run test:coverage       # Coverage report (enforces per-package thresholds)
+npm run verify              # Full gate: build, typecheck, lint, tests, coverage,
+                            # README sync, dead-code scan, dependency audit, atabey check
 ```
+
+`npm run verify` is the same sequence CI runs. It fails on high-severity production
+dependency advisories (`npm run audit:prod`) and on unused code (`npm run knip`).
 
 ## Benchmarking
 
