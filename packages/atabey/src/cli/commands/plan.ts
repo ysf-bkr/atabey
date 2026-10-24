@@ -83,7 +83,7 @@ export async function listPlansCommand(): Promise<void> {
     const rows = db.prepare("SELECT key, value FROM metadata WHERE key LIKE 'plan_%' ORDER BY key DESC").all() as Array<{ key: string; value: string }>;
 
     if (rows.length === 0) {
-        UI.info("No plans submitted yet. Use 'atabey plan:submit <json>' or the submit_plan MCP tool.");
+        UI.info("No plans submitted yet. Use 'atabey plan submit <json>' or the submit_plan MCP tool.");
         return;
     }
 

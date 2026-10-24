@@ -6,7 +6,7 @@ import { UI } from "../utils/ui.js";
 const targetDir = process.cwd();
 
 export async function securityAuditCommand(targetPath: string) {
-    UI.info(`Running Advanced Security Audit on: ${targetPath}...`);
+    UI.info(`Running Advanced Security Audit on: ${targetPath === "." ? "current directory" : targetPath}`);
     const scanRules = [
         { pattern: /sql`/, message: "Potential Raw SQL usage detected", severity: "HIGH" },
         { pattern: /(password|secret|api_?key)\s*[:=]\s*['"][^'"]+['"]/i, message: "Potential hardcoded secret detected", severity: "CRITICAL" },

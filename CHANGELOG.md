@@ -181,6 +181,49 @@ Verified against the vendors' published docs before changing anything.
 - Expected user-data failures (missing/corrupt `.atabey/config.json`) do **not** create a
   report — they now print the failing stage and a concrete fix instead.
 
+### Fixed — bugs found testing the published 0.1.7 package end-to-end
+Installed the real npm package (`npm i -g atabey@0.1.7`) and drove it in throwaway
+projects. Each item below was reproduced before it was fixed.
+
+- **KVKK erasure did nothing from the CLI.** `atabey audit erase <trace>` failed with
+  "Atabey Shared Database has not been initialized": `DataRetention` read
+  `databaseHolder` directly, and nothing had opened the DB in a fresh CLI process.
+  Worse, `audit_log` is created by `Audit.initialize()` (only the MCP bootstrap called
+  it), so erasure/stats hit "no such table: audit_log". `DataRetention` now opens the
+  store through `AtabeyStorage.getDB()` and ensures the audit schema. Verified: the CLI
+  deletes the rows it claims to delete. Covered by 8 new tests (`retention.test.ts`),
+  which previously did not exist at all.
+- **A shared root shim was written twice.** `AGENTS.md` is the cross-tool standard, read
+  by both Codex CLI and Antigravity CLI. Unified mode wrote a vendor-specific file for
+  each to the same path, so the last writer silently won (Codex beat Antigravity) and the
+  CLI announced the same shim twice. Shims are now collected by destination and shared
+  ones get one neutral document ("Shared platform shim created: AGENTS.md
+  (antigravity-cli, codex)").
+- **User-facing failures printed a raw `[DEBUG] Fatal exception` line** above the friendly
+  message, because the global handler logged before reporting. The stack is still kept in
+  the redacted report; the console now shows only the actionable message.
+- **Misleading text:** `atabey plan list` recommended the non-existent `plan:submit`
+  (now `plan submit`); `atabey security .` printed "on: ...."; `security`/`compliance`
+  already handled this.
+- **Silent-routing token cost was undocumented and unbounded.** Every tool response gets
+  the routed agent's prompt prepended: measured 1.6–2.7 KB per call (≈400–700 tokens),
+  i.e. ~20 K tokens for a 40-call session. The `MCP_SILENT_ROUTING` /
+  `MCP_INJECT_SPECIALTY_MEMORY` / `MCP_SILENT_STEALTH` switches existed but appeared in no
+  document; they are now in the Token Efficiency section of the README and the MCP package
+  README.
+
+### Verified against the published package
+`npm i -g atabey@0.1.7`, then in fresh git repos: `init claude`, `init all`, and each of the
+8 adapters individually (exactly one correctly-shaped config each); `status`, `check`,
+`compliance`, `security`, `lint`, `coverage`, `db status|verify|backup|compact`,
+`secrets set|get|list|scan|delete`, `api scan|list|json|drift`, `knowledge`, `log`,
+`explorer graph|audit`, `contract verify`, `worktree list`, `memory update`, `quickstart`,
+`index`, `spec init`, `handoff`, `retro`, `trace new`, `plan list`, `hitl status`,
+`audit export|--verify|erase`, `mcp status|install|start`, `report`, `update`, `orchestrate`.
+MCP: 40 tools over stdio; `rm -rf` gated with a passcode; `.env` write denied by PolicyGate;
+`supreme` self-registration blocked; locks enforce ownership; unified HTTP returns 401
+without a token and 200 with it.
+
 ### Fixed — flaky test and scaffold/gitignore drift
 - **`send_message.test.ts` was racy.** It relied on wall-clock timing (20 retries × 500 ms ≈ 10 s)
   while the lock goes stale after 15 s, and it shared one directory inside the repo across runs.
@@ -195,7 +238,7 @@ Verified against the vendors' published docs before changing anything.
   `atabey update`). Two regression tests added.
 
 ### Verified
-- `npm run verify` (build, `tsc --noEmit`, lint, 996 tests in 131 test files, coverage above
+- `npm run verify` (build, `tsc --noEmit`, lint, 1004 tests in 132 test files, coverage above
   thresholds in all 3 workspaces, `readme:check`, `knip`, `npm audit --omit=dev` = 0,
   `atabey check`) exits 0. `npm audit --audit-level=high` also reports 0, including dev deps.
 

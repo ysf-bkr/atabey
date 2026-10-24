@@ -8,7 +8,7 @@ import {
     type AdapterConfig,
     type AdapterId
 } from "../../platforms/index.js";
-import { SHIM_TEMPLATES } from "../../shims.js";
+import { SHARED_AGENTS_SHIM, SHIM_TEMPLATES } from "../../shims.js";
 import { writeJsonFile, writeTextFile } from "../../utils/fs.js";
 import { detectProjectKind, resolveProjectPaths } from "../../utils/memory.js";
 import { getPackageRoot, getPackageVersion } from "../../utils/pkg.js";
@@ -275,23 +275,48 @@ export function scaffoldShims(
     dryRun: boolean,
     unified: boolean = false
 ) {
+    // Several adapters can legitimately target the SAME root file: `AGENTS.md` is
+    // the cross-tool standard, read by both Codex CLI and Antigravity CLI. Writing
+    // it once per adapter meant the last one silently won and the CLI announced
+    // the same shim twice, so collect by destination first.
+    const shims = new Map<string, { content: string; adapters: string[]; selected: boolean }>();
+
     for (const [name, content] of Object.entries(SHIM_TEMPLATES)) {
         // Normalize: "antigravity-cli" template key needs exact match or prefix match
         const isSelectedAdapter = name === adapterId ||
             name.toLowerCase() === adapterId.split("-")[0].toLowerCase();
 
-        if (unified || isSelectedAdapter) {
-            const shimAdapterId = (unified ? name : adapterId) as AdapterId;
-            const shimAdapter = ADAPTERS[shimAdapterId] || adapter;
-            const shimContent = remapFrameworkContent(content, coreDir, shimAdapterId);
-            const shimFileName = shimAdapter.shimFile || `${name.toUpperCase()}.md`;
+        if (!unified && !isSelectedAdapter) continue;
 
-            if (!dryRun) writeTextFile(path.join(projectRoot, shimFileName), shimContent);
-            if (isSelectedAdapter) {
-                UI.success(` Platform shim created: ${shimFileName}`);
-            } else if (unified) {
-                UI.success(` Unified platform shim added: ${shimFileName}`);
-            }
+        const shimAdapterId = (unified ? name : adapterId) as AdapterId;
+        const shimAdapter = ADAPTERS[shimAdapterId] || adapter;
+        const shimFileName = shimAdapter.shimFile || `${name.toUpperCase()}.md`;
+
+        const existing = shims.get(shimFileName);
+        if (existing) {
+            // Shared destination: use the neutral AGENTS.md document instead of
+            // letting one vendor's flavour overwrite the other's.
+            existing.adapters.push(shimAdapterId);
+            existing.selected = existing.selected || isSelectedAdapter;
+            existing.content = remapFrameworkContent(SHARED_AGENTS_SHIM, coreDir, shimAdapterId);
+            continue;
+        }
+
+        shims.set(shimFileName, {
+            content: remapFrameworkContent(content, coreDir, shimAdapterId),
+            adapters: [shimAdapterId],
+            selected: isSelectedAdapter,
+        });
+    }
+
+    for (const [shimFileName, shim] of shims) {
+        if (!dryRun) writeTextFile(path.join(projectRoot, shimFileName), shim.content);
+        if (shim.adapters.length > 1) {
+            UI.success(` Shared platform shim created: ${shimFileName} (${shim.adapters.join(", ")})`);
+        } else if (shim.selected) {
+            UI.success(` Platform shim created: ${shimFileName}`);
+        } else if (unified) {
+            UI.success(` Unified platform shim added: ${shimFileName}`);
         }
     }
 }

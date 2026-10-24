@@ -78,3 +78,23 @@ You are the **OpenCode Autonomous Specialist**. You represent the **Autonomous E
 - **Trace & Audit Sync:** Ensure all autonomous actions are recorded under the current Phase and Trace ID.
 `
 };
+
+/**
+ * Shared root instructions for every adapter that reads the cross-tool
+ * `AGENTS.md` standard (Codex CLI and Antigravity CLI both do).
+ *
+ * Unified mode used to write two different, vendor-flavoured `AGENTS.md` files to
+ * the same path: the last writer silently won (Codex beat Antigravity) and the
+ * CLI reported the shim twice. A single neutral document avoids picking a winner.
+ */
+export const SHARED_AGENTS_SHIM = `# [ATABEY] Atabey Project Governance — AGENTS.md (Shared)
+
+You are an AI coding agent working inside this repository. Keep every operation inside the project.
+
+## [GOV] Directives
+- **Project Rules:** Read \`{{FRAMEWORK_DIR}}/ATABEY.md\` first; project rules take precedence over your defaults.
+- **Prefer Governed Tools:** Route file writes and shell execution through the Atabey MCP tools so RBAC, risk gating and audit apply. Built-in shell/edit tools bypass them.
+- **Surgical Edits:** Change the smallest possible region; do not rewrite whole files.
+- **Verify Before Reporting:** Run the project's tests or type check and report the actual result.
+- **Traceability:** Link changes to the active Trace ID and let Atabey record the audit trail.
+`;

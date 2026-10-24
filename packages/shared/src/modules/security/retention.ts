@@ -12,7 +12,7 @@
  */
 import { Audit } from "../observability/audit.js";
 import { logger } from "../observability/logger.js";
-import { databaseHolder } from "../storage/database.js";
+import { AtabeyStorage } from "../storage/storage.js";
 import { clearChainAnchor, writeChainAnchor } from "../observability/audit-chain.js";
 
 /**
@@ -37,6 +37,23 @@ export const RETENTION_POLICIES: Record<string, number> = {
  */
 export class DataRetention {
     private static cleanupInterval: ReturnType<typeof setInterval> | null = null;
+
+    /**
+     * The CLI calls DataRetention on a fresh process, before anything has opened
+     * the database. `AtabeyStorage.getDB()` lazily opens it AND registers the
+     * shared databaseHolder, so going through it is what makes erasure work from
+     * the CLI (previously it threw "Database has not been initialized").
+     *
+     * `Audit.initialize()` is also required here: the `audit_log` table is created
+     * by the audit module, not by the storage schema, and only the MCP bootstrap
+     * used to call it. Without this, erasure/stats failed with
+     * "no such table: audit_log" when run from the CLI.
+     */
+    private static db() {
+        const db = AtabeyStorage.getDB();
+        Audit.initialize();
+        return db;
+    }
 
     /**
    * Initialize data retention with automatic cleanup.
@@ -100,7 +117,7 @@ export class DataRetention {
    */
     static eraseTraceData(traceId: string): number {
         let total = 0;
-        const db = databaseHolder.getDB();
+        const db = this.db();
 
         // Audit logs
         total += Audit.deleteByFilter({ traceId });
@@ -138,7 +155,7 @@ export class DataRetention {
         }
 
         let total = 0;
-        const db = databaseHolder.getDB();
+        const db = this.db();
 
         total += Audit.clearAll(confirmationCode);
         // Every table that can hold user/agent/personal data.
@@ -177,7 +194,7 @@ export class DataRetention {
      */
     private static refreshLogAnchor(): void {
         try {
-            const db = databaseHolder.getDB();
+            const db = this.db();
             const row = db.prepare("SELECT hash FROM logs WHERE hash IS NOT NULL ORDER BY id DESC LIMIT 1").get() as { hash: string } | undefined;
             const count = (db.prepare("SELECT COUNT(*) AS c FROM logs WHERE hash IS NOT NULL").get() as { c: number }).c;
             if (row?.hash && count > 0) writeChainAnchor("agent-log", row.hash, count);
@@ -197,7 +214,7 @@ export class DataRetention {
     taskCount: number;
     policies: Record<string, number>;
     } {
-        const db = databaseHolder.getDB();
+        const db = this.db();
 
         const auditExpired = (
       db.prepare(`
@@ -236,7 +253,7 @@ export class DataRetention {
    * Messages older than 30 days are removed.
    */
     private static cleanOldMessages(): number {
-        const db = databaseHolder.getDB();
+        const db = this.db();
         const result = db.prepare(`
       DELETE FROM messages
       WHERE strftime('%Y-%m-%d %H:%M:%S', timestamp) < datetime('now', '-30 days')
@@ -249,7 +266,7 @@ export class DataRetention {
    * Logs older than 30 days are removed.
    */
     private static cleanOldLogs(): number {
-        const db = databaseHolder.getDB();
+        const db = this.db();
         const result = db.prepare(`
       DELETE FROM logs
       WHERE strftime('%Y-%m-%d %H:%M:%S', timestamp) < datetime('now', '-30 days')

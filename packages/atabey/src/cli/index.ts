@@ -501,8 +501,10 @@ Examples:
 }
 
 main().catch(async (err) => {
-    // Log first so the stack is captured even if report generation fails.
-    logger.fatal("Fatal exception", err);
+    // Nothing is logged to the console here: the durable record of an unexpected
+    // failure is the redacted report written by handleCommandFailure (which
+    // includes the stack). Logging as well printed a raw "[DEBUG] Fatal exception"
+    // line above the friendly message on every failure.
 
     const command = process.argv[2] && !process.argv[2].startsWith("-") ? process.argv[2] : "atabey";
 
@@ -515,7 +517,8 @@ main().catch(async (err) => {
         try {
             await handleCommandFailure({ command, stage: "unknown", error: err });
         } catch (reportErr) {
-            // Reporting must never mask the original crash.
+            // Reporting must never mask the original crash: fall back to the raw
+            // message plus the debug log when the report itself cannot be written.
             UI.error(`Fatal: ${err.message || String(err)}`);
             logger.debug("Error reporting failed", reportErr);
         }
