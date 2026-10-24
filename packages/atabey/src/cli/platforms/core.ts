@@ -96,8 +96,23 @@ export function removeStaleMcpConfigs(projectRoot: string): void {
  *  unified (all-AIs) mode — platform-native files own the config otherwise. */
 export function writeRootMcpConfig(projectRoot: string, adapterId?: AdapterId): void {
     if (adapterId && !ROOT_MCP_ADAPTERS.has(adapterId)) return;
-    const mcpBlock = { mcpServers: { [MCP.SERVER_NAME]: buildMcpServerEntry(projectRoot) } };
-    writeJsonFile(path.join(projectRoot, MCP.ROOT_CONFIG_FILE), mcpBlock);
+
+    // Merge, never replace: `.mcp.json` holds every MCP server the user added.
+    const configPath = path.join(projectRoot, MCP.ROOT_CONFIG_FILE);
+    let existing: Record<string, unknown> = {};
+    if (fs.existsSync(configPath)) {
+        try {
+            existing = JSON.parse(fs.readFileSync(configPath, "utf8")) as Record<string, unknown>;
+        } catch {
+            // Corrupt file: rewriting it is the only option, but say so.
+            UI.warning("  Existing .mcp.json is not valid JSON — rewriting it.");
+            existing = {};
+        }
+    }
+    const servers = { ...(existing.mcpServers as Record<string, unknown> | undefined) };
+    servers[MCP.SERVER_NAME] = buildMcpServerEntry(projectRoot);
+    writeJsonFile(configPath, { ...existing, mcpServers: servers });
+
     removeStaleMcpConfigs(projectRoot);
 }
 

@@ -37,6 +37,8 @@ describe("FileSystem Utilities", () => {
             expect(content).toContain("/.atabey/*.db");
             expect(content).toContain("/.atabey/logs/");
             expect(content).toContain("/.atabey/secrets.vault.json");
+            expect(content).toContain(".env.*");
+            expect(content).toContain("!.env.example");
             // …and the memory/knowledge brain must NOT be ignored.
             expect(content).not.toContain("/.atabey/memory/");
             expect(content).not.toMatch(/^\/\.atabey\/$/m);

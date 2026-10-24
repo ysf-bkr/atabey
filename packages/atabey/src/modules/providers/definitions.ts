@@ -194,7 +194,14 @@ registry.register(
             if (ok) UI.success(`Claude MCP registered → ${configPath}`);
         }
 
-        writeJsonFile(path.join(projectRoot, ".mcp.json"), mcpBlock);
+        // Merge into .mcp.json instead of replacing it: this file is shared with
+        // every other MCP server the user configured, and Claude Code reads the
+        // whole object. Overwriting it silently deleted their servers.
+        const rootMcpPath = path.join(projectRoot, ".mcp.json");
+        const existingRoot = readJsonConfig(rootMcpPath);
+        const existingServers = { ...(existingRoot.mcpServers as Record<string, unknown> | undefined) };
+        existingServers.atabey = entryOf(mcpBlock);
+        writeJsonFile(rootMcpPath, { ...existingRoot, mcpServers: existingServers });
 
         const hookRelPath = writeClaudeHook(projectRoot);
 

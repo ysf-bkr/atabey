@@ -79,7 +79,17 @@ export function updateGitIgnore(targetPath: string, frameworkDir = ".atabey", dr
 
     // Add a block only when part of it is missing, so a file that already follows
     // the convention is left alone (no stray comments appear on every update).
-    const blocks = [platformLines, stateLines.filter(Boolean), [".env", ".DS_Store"]].filter((b) => b.length > 0);
+    const environmentLines = [
+        "# Atabey — local environment files (commit sanitized templates only)",
+        ".env",
+        ".env.*",
+        "!.env.example",
+        "!.env.sample",
+        "!.env.template",
+        "!.env.dist",
+        ".DS_Store",
+    ];
+    const blocks = [platformLines, stateLines.filter(Boolean), environmentLines].filter((b) => b.length > 0);
 
     let added = false;
 

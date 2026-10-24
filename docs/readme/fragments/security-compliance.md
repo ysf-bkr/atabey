@@ -7,6 +7,9 @@
 - **Risk gating** with mandatory human approval when the risk score reaches the configured threshold (default ≥ 60)
 - **Prompt-injection mitigation** (OWASP LLM01 aligned) on both input and tool response
 - **Secret-leak redaction** on tool output + AES-256-GCM local secret vault
+- `.env*` files are ignored by generated `.gitignore`; Atabey's commit guidance and auto-commit block
+  environment files and recognized secret patterns in staged content. This is not a
+  replacement for scanning ordinary `git commit` operations or a guarantee to detect every secret.
 - **HMAC-SHA256** audit chain — tampering is detectable, not impossible
 - SSRF-guarded HTTP proxy + Host header DNS-rebinding protection on localhost
 - **TLS 1.3 + optional mTLS** when the HTTP/SSE transport is configured with certificates

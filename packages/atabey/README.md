@@ -28,7 +28,7 @@ approval, and verifies task results with tests and audit evidence.
 
 | Capability | Description |
 |-----------|-------------|
-| **CLI** | 33 commands for initialization, orchestration, status, compliance and memory |
+| **CLI** | 34 commands for initialization, orchestration, status, compliance and memory |
 | **Engines** | 9 engines: routing, risk, quality, evaluation, health, planning, agent-executor, agent-loop, crud-governance |
 | **Role Profiles** | 13 role definitions (prompt + task blueprint) with a 3-tier hierarchy (Supreme / Core / Recon) — not 13 independent LLM agents |
 | **Runtime** | Headless CLI adapters, DAG dispatcher, git-worktree isolation, signed evidence bundles |
@@ -235,6 +235,7 @@ atabey db <status|migrate|verify|backup|restore>   SQLite schema, integrity & ba
 atabey secrets <list|set|get|delete|scan>          AES-256-GCM secret vault & leak scan
 atabey api <scan|list|drift|json>                  API endpoint catalog & contract drift
 atabey audit export [--verify --in <file>]|erase    Signed audit export & verification / erasure
+atabey report [--show|--send <id>|--status]         Local error reports (sharing off by default)
 atabey worktree <create|list|remove> [name]        Isolated agent worktrees
 atabey index [dir]           Index the codebase for RAG
 atabey coverage              Test coverage reports
@@ -263,7 +264,7 @@ atabey quickstart            Generate an example task file
 packages/atabey/
 ├── src/
 │   ├── cli/
-│   │   ├── commands/    # 33 CLI commands
+│   │   ├── commands/    # 34 CLI commands
 │   │   ├── platforms/   # 8 platform adapters (providers/ holds the adapter registry)
 │   │   └── utils/       # CLI utilities (compliance, memory, pkg, config)
 │   ├── modules/
@@ -307,6 +308,9 @@ list them; the product promise is the governed, verified workflow they support.
 - **Risk gating** with mandatory human approval when the risk score reaches the configured threshold (default ≥ 60)
 - **Prompt-injection mitigation** (OWASP LLM01 aligned) on both input and tool response
 - **Secret-leak redaction** on tool output + AES-256-GCM local secret vault
+- `.env*` files are ignored by generated `.gitignore`; Atabey's commit guidance and auto-commit block
+  environment files and recognized secret patterns in staged content. This is not a
+  replacement for scanning ordinary `git commit` operations or a guarantee to detect every secret.
 - **HMAC-SHA256** audit chain — tampering is detectable, not impossible
 - SSRF-guarded HTTP proxy + Host header DNS-rebinding protection on localhost
 - **TLS 1.3 + optional mTLS** when the HTTP/SSE transport is configured with certificates
@@ -349,6 +353,22 @@ Tune limits with `MCP_MAX_TOKENS_PER_MINUTE`, `MCP_MAX_TOKENS_PER_HOUR`, `MCP_MA
 - **chalk**: Terminal UI styling
 - **js-yaml**: YAML parsing for the agent-registry validator
 - **typescript**: TypeScript Compiler API for AST compliance scanning
+
+## Error Reports & Telemetry
+
+A failed command writes a **redacted local report** to `.atabey/logs/error-reports/` and prints
+its id and failing stage. **Nothing is uploaded automatically**; project files, `.env` values,
+environment variable values and absolute paths are never included. Sharing is opt-in
+(`ATABEY_TELEMETRY=1`) and still asks before sending.
+
+```bash
+atabey report                    # list
+atabey report --show RPT-…       # inspect (redacted)
+atabey report --send RPT-…       # upload (requires sharing enabled)
+atabey report --status           # is sharing on?
+```
+
+See [docs/telemetry.md](https://github.com/ysf-bkr/atabey/blob/main/docs/telemetry.md).
 
 ## 🔗 Related Packages
 

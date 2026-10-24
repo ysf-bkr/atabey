@@ -1,11 +1,18 @@
 import cp from "child_process";
 import fs from "fs";
 import path from "path";
+import { scanForSecrets } from "atabey-shared/secrets.js";
 import { getConfiguredPaths } from "../utils/memory.js";
 import { UI } from "../utils/ui.js";
 
 /** Protected branches a PR must never be opened FROM directly. */
 const PROTECTED_BRANCHES = new Set(["main", "master", "develop"]);
+const SAFE_ENV_TEMPLATES = new Set([".env.example", ".env.sample", ".env.template", ".env.dist"]);
+
+interface StagedSecretFinding {
+    file: string;
+    description: string;
+}
 
 function execGit(args: string[], opts: { cwd?: string; allowFailure?: boolean } = {}): string {
     try {
@@ -15,6 +22,54 @@ function execGit(args: string[], opts: { cwd?: string; allowFailure?: boolean } 
         if (opts.allowFailure) return "";
         throw err;
     }
+}
+
+function inspectStagedSecrets(): { findings: StagedSecretFinding[]; error?: string } {
+    try {
+        const files = cp.execFileSync("git", ["diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z"], {
+            encoding: "utf8",
+        }).split("\0").filter(Boolean);
+        const findings: StagedSecretFinding[] = [];
+
+        for (const file of files) {
+            const basename = path.posix.basename(file);
+            if (basename.toLowerCase().startsWith(".env") && !SAFE_ENV_TEMPLATES.has(basename.toLowerCase())) {
+                findings.push({ file, description: "environment file may contain local credentials" });
+                continue;
+            }
+
+            const content = cp.execFileSync("git", ["show", `:${file}`], {
+                encoding: "utf8",
+                maxBuffer: 50 * 1024 * 1024,
+            });
+            if (content.includes("\0")) continue;
+            for (const secret of scanForSecrets(content)) {
+                findings.push({ file, description: secret.description });
+            }
+        }
+
+        return { findings };
+    } catch (err) {
+        return { findings: [], error: (err as Error).message };
+    }
+}
+
+function blockStagedSecrets(): boolean {
+    const result = inspectStagedSecrets();
+    if (result.error) {
+        UI.error(`Could not scan staged changes; refusing to commit: ${result.error}`);
+        process.exitCode = 1;
+        return true;
+    }
+    if (result.findings.length === 0) return false;
+
+    UI.error("Commit blocked: potential credentials or secrets were found in staged changes.");
+    for (const finding of result.findings) {
+        UI.warning(`  ${finding.file}: ${finding.description}`);
+    }
+    UI.info("Remove the credential or move it to a local environment/vault file, then retry.");
+    process.exitCode = 1;
+    return true;
 }
 
 function detectDefaultBranch(): string {
@@ -41,6 +96,7 @@ export async function gitCommitCommand(traceId: string) {
             UI.info("No staged changes found. Use 'git add' first.");
             return;
         }
+        if (blockStagedSecrets()) return;
         const files = cp.execSync("git diff --staged --name-only", { encoding: "utf8" }).split("\n").filter(Boolean);
         const pathsMap = getConfiguredPaths();
         const backendTypesPath = path.join(pathsMap.backend, "src/types");
@@ -205,6 +261,7 @@ export async function gitPrCommand(args: string[]): Promise<void> {
         const status = execGit(["status", "--porcelain"], { allowFailure: true });
         if (status) {
             execGit(["add", "-A"]);
+            if (blockStagedSecrets()) return;
             execGit(["commit", "-m", `chore(agent): auto-commit pending changes on ${branch}`]);
             UI.success(`Auto-committed pending changes on '${branch}'.`);
         } else {

@@ -16,6 +16,7 @@ import { statusCommand } from "./commands/status.js";
 import { traceNewCommand, traceReplayCommand } from "./commands/trace.js";
 import { getMemoryPath, readActiveTraceId } from "./utils/memory.js";
 import { getPackageVersion } from "./utils/pkg.js";
+import { handleCommandFailure } from "./utils/error-reporting.js";
 import { UI } from "./utils/ui.js";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -364,6 +365,13 @@ const COMMANDS: Record<string, { run: (args: string[]) => Promise<void>; descrip
         },
         description: "Manage AES-256-GCM encrypted secrets vault & leak scanning (list|set|get|delete|scan)",
     },
+    report: {
+        run: async (args) => {
+            const { reportCommand } = await import("./commands/report.js");
+            await reportCommand(args);
+        },
+        description: "Inspect or send local error reports (off by default)",
+    },
     audit: {
         run: async (args) => {
             const { auditCommand } = await import("./commands/audit.js");
@@ -459,6 +467,7 @@ Core Commands:
   contract verify|update                                   Contract integrity (update re-syncs hash)
   api <scan|list|drift|json> [--tag X] [--search X]      API endpoint catalog & drift check
   audit <export|erase> [args]                            Signed audit export / KVKK erasure
+  report [--show <id>|--send <id>|--status]              Local error reports (sharing off by default)
   worktree <create|list|remove> [name]                   Isolated agent worktrees
   knowledge [search|update] <query>                      Knowledge base operations
   db <status|migrate|verify|backup|restore> [path]       SQLite schema, integrity & backups
@@ -491,13 +500,25 @@ Examples:
 \n`);
 }
 
-main().catch((err) => {
+main().catch(async (err) => {
+    // Log first so the stack is captured even if report generation fails.
+    logger.fatal("Fatal exception", err);
+
+    const command = process.argv[2] && !process.argv[2].startsWith("-") ? process.argv[2] : "atabey";
+
     if (err instanceof AtabeyBaseError) {
+        // A known, expected failure: the message is already actionable, so do not
+        // create an error report (and never prompt for upload).
         UI.error(`[${err.code}] ${err.message}`);
         if (err.solution) UI.info(`Solution: ${err.solution}`);
     } else {
-        UI.error(`Fatal: ${err.message || String(err)}`);
+        try {
+            await handleCommandFailure({ command, stage: "unknown", error: err });
+        } catch (reportErr) {
+            // Reporting must never mask the original crash.
+            UI.error(`Fatal: ${err.message || String(err)}`);
+            logger.debug("Error reporting failed", reportErr);
+        }
     }
-    logger.fatal("Fatal exception", err);
     process.exit(1);
 });

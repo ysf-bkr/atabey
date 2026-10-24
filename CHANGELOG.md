@@ -161,6 +161,26 @@ Verified against the vendors' published docs before changing anything.
   objects. Added `zod-to-mcp` tests plus an end-to-end assertion that the compiled server
   advertises exactly 40 tools over stdio.
 
+### Added — error reports (local, redacted, opt-in sharing)
+- Every unexpected CLI failure now writes a **redacted local report** to
+  `.atabey/logs/error-reports/<id>.json` (owner-only `0600`, gitignored) and prints
+  `Atabey <command> failed (stage: <stage>, report: RPT-…)` plus the path.
+- `atabey update` attributes failures to a stage (`config-read`, `config-refresh`,
+  `standards`, `agents`, `skills`, `shims`, `mcp-config`, `gitignore`), so a report says
+  *where* it broke instead of only that it broke.
+- Redaction is enforced by tests: project root → `<project>`, home → `~`, other absolute
+  paths → `<path>/<dir>/<file>`, PII via `maskText`, credentials via `scanForSecrets`,
+  and a final re-scan that drops any value still matching a credential pattern.
+  Environment variable **values** are never collected (only a few non-secret flag names).
+- **Sharing is off by default.** `ATABEY_TELEMETRY=1` (or `telemetry.enabled` in
+  `.atabey/config.json`) enables a *prompt* — never a silent upload. CI/non-TTY runs
+  never prompt and never upload. Upload failure keeps the local file and prints a
+  prefilled GitHub issue link (saved as `<id>.url` when it is too long for a terminal).
+- New `atabey report [--show <id>|--send <id>|--status]`; `--send` is still gated on the
+  setting. New `docs/telemetry.md` documents exactly what is and is not included.
+- Expected user-data failures (missing/corrupt `.atabey/config.json`) do **not** create a
+  report — they now print the failing stage and a concrete fix instead.
+
 ### Fixed — flaky test and scaffold/gitignore drift
 - **`send_message.test.ts` was racy.** It relied on wall-clock timing (20 retries × 500 ms ≈ 10 s)
   while the lock goes stale after 15 s, and it shared one directory inside the repo across runs.

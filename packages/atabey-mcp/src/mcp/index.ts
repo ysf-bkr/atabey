@@ -148,6 +148,7 @@ export function listenWithFallback(
     host: string,
     strict: boolean,
     onListening: () => void,
+    onFailure?: (reason: string) => void,
 ): void {
     let attempt = 0;
 
@@ -157,6 +158,16 @@ export function listenWithFallback(
     // successful retry.
     server.once("listening", onListening);
 
+    const giveUp = (reason: string): void => {
+        // Callers that treat the HTTP side as optional (stdio transport) pass
+        // onFailure and keep serving over stdio; unified mode has no fallback.
+        if (onFailure) {
+            onFailure(reason);
+            return;
+        }
+        process.exit(1);
+    };
+
     const tryListen = (): void => {
         const candidate = preferredPort + attempt;
         server.once("error", (err: NodeJS.ErrnoException) => {
@@ -165,7 +176,13 @@ export function listenWithFallback(
                     `[atabey-mcp] Port ${candidate} in use — falling back to port ${candidate + 1}.\n`,
                 );
                 attempt += 1;
-                server.close(); // release the failed listener before retrying
+                // A server that never got to listen throws ERR_SERVER_NOT_RUNNING
+                // here; that must not become an uncaught exception.
+                try {
+                    server.close();
+                } catch {
+                    /* never bound — nothing to release */
+                }
                 tryListen();
                 return;
             }
@@ -173,12 +190,14 @@ export function listenWithFallback(
             // outer httpServer error handler is transport-agnostic and must
             // not race this listener on EADDRINUSE.
             if (err.code === "EADDRINUSE") {
-                process.stderr.write(`\n[atabey-mcp] FATAL: All candidate ports (${preferredPort}..${preferredPort + MAX_PORT_FALLBACK_ATTEMPTS - 1}) are in use.\n`);
+                const reason = `All candidate ports (${preferredPort}..${preferredPort + MAX_PORT_FALLBACK_ATTEMPTS - 1}) are in use.`;
+                process.stderr.write(`\n[atabey-mcp] ${reason}\n`);
                 process.stderr.write(`[atabey-mcp] Please terminate the existing process or start with a different port using MCP_PORT=<port>.\n\n`);
+                giveUp(reason);
             } else {
                 process.stderr.write(`[atabey-mcp] Server error: ${err.message}\n`);
+                giveUp(err.message);
             }
-            process.exit(1);
         });
         server.listen(candidate, host);
     };
@@ -306,7 +325,7 @@ const server = createMcpServer();
 
 // ─── Unified HTTP Server ──────────────────────────────────────────
 
-function createUnifiedServer() {
+function createUnifiedServer(onHttpUnavailable?: (reason: string) => void) {
     const tls = resolveTlsConfig();
     assertTransportSecurity(tls, HOST);
     const scheme = tlsScheme(tls);
@@ -340,7 +359,7 @@ function createUnifiedServer() {
         // listener and kill the process on the first busy port.
         if (err.code !== "EADDRINUSE") {
             process.stderr.write(`[atabey-mcp] Server error: ${err.message}\n`);
-            process.exit(1);
+            if (!onHttpUnavailable) process.exit(1);
         }
     });
 
@@ -376,7 +395,7 @@ function createUnifiedServer() {
         process.stderr.write(`[atabey-mcp] Unified server ready on port ${boundPort} (transport: ${describeTls(tls)})\n`);
         process.stderr.write(`[atabey-mcp] mcp.json: { "url": "${scheme}://localhost:${boundPort}/mcp/sse" }\n`);
         process.stderr.write("\n");
-    });
+    }, onHttpUnavailable);
 }
 
 // ─── Startup ──────────────────────────────────────────────────────
@@ -436,7 +455,17 @@ async function run() {
             }
 
             process.stderr.write(`[atabey-mcp] Starting as PRIMARY HUB on port ${PORT} (auto port fallback enabled)...\n`);
-            createUnifiedServer();
+            // The hub is a convenience for cross-client coordination. The stdio
+            // transport is what the MCP client actually talks to, so a busy port
+            // must never kill this process. Without this, opening a second AI
+            // client (or leaving a stale hub around) crashed the server with an
+            // uncaught EADDRINUSE and the client reported "failed".
+            createUnifiedServer((reason: string) => {
+                process.stderr.write(
+                    `[atabey-mcp] Hub unavailable (${reason}) — continuing with stdio only. ` +
+                    "Tool calls still work; cross-client locking/telemetry is disabled for this process.\n",
+                );
+            });
         }
 
         const transport = new StdioServerTransport();

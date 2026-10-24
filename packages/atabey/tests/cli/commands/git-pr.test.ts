@@ -3,7 +3,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { gitPrCommand } from "../../../src/cli/commands/git.js";
+import { gitCommitCommand, gitPrCommand } from "../../../src/cli/commands/git.js";
 
 /**
  * [B1] Tests for the agent-driven PR flow (`atabey git pr`).
@@ -36,6 +36,7 @@ describe("git pr command (B1)", () => {
         git(["push", "-u", "origin", "main"], repoDir);
 
         exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+        process.exitCode = 0;
         const prevCwd = process.cwd();
         process.chdir(repoDir);
         (process as { __gitPrPrevCwd?: string }).__gitPrPrevCwd = prevCwd;
@@ -44,6 +45,7 @@ describe("git pr command (B1)", () => {
     afterEach(() => {
         const prevCwd = (process as { __gitPrPrevCwd?: string }).__gitPrPrevCwd;
         if (prevCwd) process.chdir(prevCwd);
+        process.exitCode = 0;
         exitSpy.mockRestore();
         fs.rmSync(repoDir, { recursive: true, force: true });
         fs.rmSync(originDir, { recursive: true, force: true });
@@ -96,5 +98,41 @@ describe("git pr command (B1)", () => {
         expect(exitSpy).not.toHaveBeenCalledWith(1);
         const status = git(["status", "--porcelain"], repoDir);
         expect(status).toBe("");
+    });
+
+    it("blocks auto-commit when a tracked environment file has changed", async () => {
+        fs.writeFileSync(path.join(repoDir, ".env"), "API_KEY=placeholder\n");
+        git(["add", "-f", ".env"], repoDir);
+        git(["commit", "-m", "add environment template"], repoDir);
+        git(["checkout", "-b", "agent/env-secret"], repoDir);
+        fs.writeFileSync(path.join(repoDir, ".env"), "API_KEY=local-secret-value\n");
+
+        const previousHead = git(["rev-parse", "HEAD"], repoDir).trim();
+        await gitPrCommand(["--auto-commit"]);
+
+        expect(process.exitCode).toBe(1);
+        expect(git(["rev-parse", "HEAD"], repoDir).trim()).toBe(previousHead);
+        expect(git(["status", "--porcelain"], repoDir)).not.toBe("");
+        expect(git(["ls-remote", "--heads", "origin", "agent/env-secret"], repoDir)).toBe("");
+    });
+
+    it("blocks auto-commit when a staged source file contains a recognized API key", async () => {
+        git(["checkout", "-b", "agent/api-key"], repoDir);
+        fs.writeFileSync(path.join(repoDir, "config.ts"), 'export const key = "sk-live-abcdefghijklmnopqrstuvwx";\n');
+
+        await gitPrCommand(["--auto-commit"]);
+
+        expect(process.exitCode).toBe(1);
+        expect(git(["status", "--porcelain"], repoDir)).not.toBe("");
+        expect(git(["ls-remote", "--heads", "origin", "agent/api-key"], repoDir)).toBe("");
+    });
+
+    it("blocks the Atabey commit-message workflow when staged content contains a recognized secret", async () => {
+        fs.writeFileSync(path.join(repoDir, "config.ts"), 'export const key = "sk-live-abcdefghijklmnopqrstuvwx";\n');
+        git(["add", "config.ts"], repoDir);
+
+        await gitCommitCommand("test-trace");
+
+        expect(process.exitCode).toBe(1);
     });
 });

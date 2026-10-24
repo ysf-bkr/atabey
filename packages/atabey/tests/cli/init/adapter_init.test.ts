@@ -92,10 +92,43 @@ describe("Adapter initialization — config location and schema", () => {
         it("preserves other MCP servers already in .mcp.json", () => {
             fs.writeFileSync(
                 path.join(tempDir, ".mcp.json"),
-                JSON.stringify({ mcpServers: { other: { command: "other-server" } } }),
+                JSON.stringify({
+                    mcpServers: {
+                        other: { command: "other-server", args: ["--flag"] },
+                        another: { url: "https://example.test/mcp" },
+                    },
+                    someOtherKey: true,
+                }),
             );
-            // Claude writes the whole block; verify the adapter does not delete
-            // unrelated keys it was told nothing about.
+
+            runAdapterPostInit(ADAPTERS.claude, tempDir);
+
+            const cfg = JSON.parse(fs.readFileSync(path.join(tempDir, ".mcp.json"), "utf8"));
+            // The previously-existing servers must survive verbatim.
+            expect(cfg.mcpServers.other).toEqual({ command: "other-server", args: ["--flag"] });
+            expect(cfg.mcpServers.another).toEqual({ url: "https://example.test/mcp" });
+            expect(cfg.someOtherKey).toBe(true);
+            // …and Atabey's own entry is added next to them.
+            expect(cfg.mcpServers.atabey.command).toBe("npx");
+            expect(Object.keys(cfg.mcpServers).sort()).toEqual(["another", "atabey", "other"]);
+        });
+
+        it("replaces only the atabey entry on re-init, leaving others untouched", () => {
+            fs.writeFileSync(
+                path.join(tempDir, ".mcp.json"),
+                JSON.stringify({ mcpServers: { other: { command: "keep-me" }, atabey: { command: "stale" } } }),
+            );
+
+            runAdapterPostInit(ADAPTERS.claude, tempDir);
+            runAdapterPostInit(ADAPTERS.claude, tempDir);
+
+            const cfg = JSON.parse(fs.readFileSync(path.join(tempDir, ".mcp.json"), "utf8"));
+            expect(cfg.mcpServers.other).toEqual({ command: "keep-me" });
+            expect(cfg.mcpServers.atabey.command).toBe("npx");
+        });
+
+        it("recovers from a corrupt .mcp.json by rewriting it", () => {
+            fs.writeFileSync(path.join(tempDir, ".mcp.json"), "{not json");
             runAdapterPostInit(ADAPTERS.claude, tempDir);
             const cfg = JSON.parse(fs.readFileSync(path.join(tempDir, ".mcp.json"), "utf8"));
             expect(cfg.mcpServers.atabey).toBeDefined();

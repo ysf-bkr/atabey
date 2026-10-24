@@ -112,6 +112,7 @@ You (@backend): "Create a user login service with JWT authentication"
 - [Token Efficiency](#token-efficiency)
 - [Testing](#testing)
 - [Troubleshooting](#troubleshooting)
+- [Error Reports & Telemetry](#error-reports--telemetry)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
 
@@ -302,11 +303,11 @@ automatically — orchestrator included.
 
 > [!IMPORTANT]
 > **MCP transport modes**
-> - **`stdio`** (default) — Claude, Cursor, Codex, Grok. Set by `atabey init` and `atabey mcp install`. In-process stdin/stdout, no network exposure.
+> - **`stdio`** (default) — every adapter Atabey writes. Set by `atabey init`. In-process stdin/stdout, no network exposure.
 > - **`unified`** — HTTP/SSE server on port 5858 for network and remote MCP clients: `MCP_TRANSPORT=unified MCP_PORT=5858 atabey-mcp`
 > - **Encryption:** for `unified`/network use, configure TLS 1.3 (+ optional mTLS) via `ATABEY_TLS_CERT_FILE` / `ATABEY_TLS_KEY_FILE` / `ATABEY_MTLS_REQUIRED`. `ATABEY_TLS_REQUIRED=true` refuses plaintext. See [Transport Security](#transport-security-tls-13--mtls).
 >
-> Repair a broken config: `atabey mcp install`
+> Repair Claude's root `.mcp.json` only: `atabey mcp install`. Other adapters keep their native files — re-run `atabey init <adapter>` for those.
 
 ---
 
@@ -314,20 +315,15 @@ automatically — orchestrator included.
 
 | Step | Command | Result |
 |------|---------|--------|
-| Init | `atabey init all --yes` | Agents + 7 adapter MCP configs + shims |
-| Repair | `atabey mcp install` | Refreshes root `.mcp.json` (stdio + auto-orchestrator) |
-| IDE connect | Open Claude / Cursor / Codex | MCP + orchestrator start automatically |
+| Init | `atabey init all --yes` | Agents + one native MCP config per adapter (8) + shims |
+| Repair | `atabey mcp install` | Rewrites Claude's root `.mcp.json` only (merges, keeps other servers) |
+| IDE connect | Restart your AI tool | Confirm `atabey` appears in its MCP list, then call one harmless tool (see docs/ai-tool-support.md) |
 | Debug | `atabey mcp start` | Manual stdio MCP for troubleshooting |
 | Health | `atabey check` | Validates `MCP_TRANSPORT`, unified layout, AL registry |
 
-**Platform orchestration strength:**
-
-| Platform | Orchestration | Best role |
-|----------|---------------|-----------|
-| Claude Code | Full | Primary orchestrator |
-| Local LLM | Strong | Offline / private |
-| Antigravity CLI | Strong | Custom agent JSON |
-| Cursor / Grok / Codex | Limited | Implementer / editor |
+Enforcement differs per tool — see [Supported Platforms](#supported-platforms). Only Claude
+Code gets a generated `PreToolUse` hook; everywhere else Atabey sees only the calls the host
+routes through its MCP tools.
 
 ### 4. Start Using in AI Chat
 
@@ -931,6 +927,7 @@ atabey db <status|migrate|verify|backup|restore|compact>   SQLite schema, integr
 atabey secrets <list|set|get|delete|scan>          AES-256-GCM secret vault & leak scan
 atabey api <scan|list|drift|json>                  API endpoint catalog & contract drift
 atabey audit export [--verify --in <file>]|erase    Signed audit export & verification / erasure
+atabey report [--show|--send <id>|--status]         Local error reports (sharing off by default)
 atabey worktree <create|list|remove> [name]        Isolated agent worktrees
 atabey coverage                 Test coverage reports
 atabey quickstart               Generate example task file
@@ -963,23 +960,23 @@ atabey quickstart               Generate example task file
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                      AI Chat Interface                            │
-│    @backend Create login service (in Claude/Cursor/Codex)       │
+│                      AI Chat Interface                           │
+│    @backend Create login service (in Claude/Cursor/Codex)        │
 ├──────────────────────────────────────────────────────────────────┤
-│                    MCP Server (atabey-mcp/)                       │
-│                    40 Tools · Multi-Layer Governance                │
+│                    MCP Server (atabey-mcp/)                      │
+│                    40 Tools · Multi-Layer Governance             │
 │                    Zod Validation · PII Masking                  │
 ├──────────────────────────────────────────────────────────────────┤
-│                    src/cli/  33 Commands                          │
+│                    src/cli/  34 Commands                         │
 │                    src/modules/  Engines + Agents + Memory       │
 │                    src/shared/  Types + Storage + Audit          │
 ├────────────────┬───────────────────────────┬──────────────────────┤
-│                ▼                           ▼                      │
+│                ▼                           ▼                     │
 │  ┌──────────────────────────┐  ┌──────────────────────────────┐  │
 │  │ MCP SSE Server           │  │ SQLite (better-sqlite3)      │  │
 │  │ Port 5858 · /mcp/sse     │  │ Vector Memory · Hermes Queue │  │
-│  │ Hermes WSS Bus (/bus)    │  │ Audit Logs · Locks · Tasks  │  │
-│  │ mTLS-ready transport     │  │ Knowledge · Agent Registry  │  │
+│  │ Hermes WSS Bus (/bus)    │  │ Audit Logs · Locks · Tasks   │  │
+│  │ mTLS-ready transport     │  │ Knowledge · Agent Registry   │  │
 │  └──────────────────────────┘  └──────────────────────────────┘  │
 └──────────────────────────────────────────────────────────────────┘
 ```
@@ -1012,7 +1009,11 @@ export MCP_TRANSPORT=unified
 ```
 
 ### Secret Management
+
 - AES-256-GCM local vault (`atabey secrets`) with per-secret HKDF-SHA256 salts and key rotation.
+- Generated `.gitignore` files exclude `.env*` files (except common sanitized templates). Atabey's
+  Git commit guidance and `git pr --auto-commit` block staged environment files and recognized
+  secret patterns; this does not intercept ordinary `git commit` commands or guarantee detection of every secret.
 - Sensitive env vars are scrubbed from spawned subprocesses; leaked credentials in tool output raise a `SECRET_LEAK_DETECTED` audit event.
 
 ### SQLite Reliability
@@ -1114,7 +1115,7 @@ working directory), every MCP client crashes with `MODULE_NOT_FOUND`.
 **Fix:** regenerate the configs and let the portable launcher take over:
 
 ```bash
-npx atabey mcp install     # rewrites root .mcp.json (npx -y atabey-mcp)
+npx atabey mcp install     # rewrites Claude's root .mcp.json (npx -y atabey-mcp); merges, keeps other servers
 npx atabey init <ai>       # full re-init also cleans legacy duplicate configs
 ```
 
@@ -1189,10 +1190,32 @@ Scenario prompts live in `docs/benchmark/prompts/`; results are appended to `doc
 
 ---
 
+## Error Reports & Telemetry
+
+When a command fails unexpectedly, Atabey writes a **redacted local report** (version, Node,
+OS, failing stage, error code, sanitized stack) to `.atabey/logs/error-reports/` and prints its
+id. **Nothing is uploaded automatically.**
+
+```bash
+atabey report                     # list local reports
+atabey report --show RPT-…        # inspect one (redacted)
+atabey report --send RPT-…        # upload one (requires sharing enabled)
+atabey report --status            # is sharing on?
+```
+
+Sharing is **off by default**. Enable with `ATABEY_TELEMETRY=1` or
+`{"telemetry":{"enabled":true}}` in `.atabey/config.json`; even then Atabey asks before sending
+and never prompts in CI. Project files, `.env` values, environment variable values and
+absolute paths are never included. See [docs/telemetry.md](docs/telemetry.md).
+
+---
+
 ## Documentation
 
 - [Known Limitations & System Boundaries](docs/limitations.md)
 - [Threat Model (STRIDE)](docs/threat-model.md)
+- [AI Tool Support (what is verified)](docs/ai-tool-support.md)
+- [Error Reports & Telemetry](docs/telemetry.md)
 - [Project Roadmap](docs/roadmap.md)
 - [Benchmark Protocol](docs/benchmark-protocol.md)
 - [Tech Stack](docs/tech-stack.md) · [Auth Architecture](docs/auth.md) · [Storage SSOT Plan](docs/storage-ssot-plan.md)
@@ -1652,6 +1675,27 @@ Her tool çağrısı gerçek `cl100k_base` BPE tokenizer ile ölçülür; sağla
 | Ajanlar "bu kod ne yapıyor" diyerek tüm kodu tarıyor | Init sonrası otomatik RAG indekslemesi çalışmalı; elle tetiklemek için `atabey index` (atlamak için: `--skip-index`) |
 
 Detaylı İngilizce bölüm: [Troubleshooting](#troubleshooting)
+
+---
+
+## Hata raporları ve telemetri
+
+Beklenmeyen bir hata olduğunda Atabey **yerel ve redakte edilmiş** bir rapor yazar
+(sürüm, Node, işletim sistemi, hata aşaması, hata kodu, temizlenmiş stack) ve rapor
+kimliğini gösterir. **Hiçbir şey otomatik yüklenmez.**
+
+```bash
+atabey report                   # yerel raporları listele
+atabey report --show RPT-…      # birini göster (redakte)
+atabey report --send RPT-…      # gönder (paylaşım açık olmalı)
+atabey report --status          # paylaşım açık mı?
+```
+
+Paylaşım **varsayılan olarak kapalıdır**. `ATABEY_TELEMETRY=1` veya
+`.atabey/config.json` → `{"telemetry":{"enabled":true}}` ile açılır; açıkken bile
+göndermeden önce onay ister ve CI'da asla sormaz. Proje dosyaları, `.env` değerleri,
+ortam değişkeni değerleri ve mutlak yollar rapora girmez.
+Bkz. [docs/telemetry.md](docs/telemetry.md).
 
 ---
 
