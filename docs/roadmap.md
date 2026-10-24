@@ -12,9 +12,9 @@ local LLMs) and adds controls around existing (brownfield) repositories across *
 
 ## 📈 Completed: `PHASE_0` & Core Hardening
 - [x] **Core Governance & Security:** `PolicyGate` that denies when its check cannot run, universal tool permission matrix, AES-256-GCM `SecretManager` vault, TLS 1.3 + mTLS transport (when configured), and a keyed HMAC-SHA256 tamper-evident audit chain.
-- [x] **Stateless MCP Server (40 Tools):** Consolidated, strictly typed MCP tool surface across Claude Code, Cursor, Antigravity, OpenCode, Codex, and Grok with 36 synchronized enterprise standards.
+- [x] **Consolidated MCP Server (40 tools):** one strictly typed tool surface (schemas generated from Zod) shared across Claude Code, Cursor, Antigravity, OpenCode, Codex, Grok and local LLMs, with 36 project standards.
 - [x] **Static Compliance & Token Limits:** TypeScript Compiler API AST scanner (`ast-scan.ts`), pre-write validation, real `cl100k_base` BPE tokenizer (`js-tiktoken`), and a multi-provider token pricing catalog (informational).
-- [x] **Unified HTTP/SSE Control Plane:** JSON API + real-time WebSocket event stream (agents, Hermes, approvals, token telemetry); HITL approval via CLI/API. (The bundled React web UI was removed in favour of the headless API.)
+- [x] **Headless HTTP/SSE API:** JSON API + real-time WebSocket event stream (agents, Hermes, approvals, token telemetry); HITL approval via CLI/API. (The bundled React web UI was removed in favour of the headless API.)
 - [x] **Agent Runtime P0 & DAG Dispatcher Core:** `HeadlessCliAdapter`, `AgentRuntime.runTurn`, per-agent Git worktree isolation (`worktree.ts`), fail-closed sandbox execution, OTel spans, and Kahn-wave `AgentDispatcher` (`dispatcher.ts`).
 
 ---
@@ -25,7 +25,8 @@ local LLMs) and adds controls around existing (brownfield) repositories across *
 - [x] **Structured Handoffs (B2):** Zod-validated agent handoff contract (work performed, changed files, test runs, open issues, next steps) wired into the executor runtime path.
 - [x] **Planning Gates (C4):** required acceptance criteria on `submit_plan` (schema + CLI validation) and `atabey plan list` backlog view.
 - [x] **Memory Quality (C3):** class-aware lesson persistence gate (corrective lessons always persisted; noise never) + `atabey db compact` maintenance command.
-- [x] **Benchmark Harness (D3):** `npm run benchmark` executing `docs/benchmark-protocol.md` (scenario registry, metrics from the audit DB, deterministic acceptance checks, prompt files).
+- [x] **Benchmark Harness (D3):** `npm run benchmark` implements `docs/benchmark-protocol.md` (scenario registry, metrics from the audit DB, deterministic acceptance checks, prompt files).
+- [ ] **Run the benchmark and publish results:** the harness exists, but no governed-vs-baseline runs have been executed yet. No comparative claim is made until results are published.
 - [x] **Turkish routing fixes, 95+ silent-catch logging fixes, +92 tests (703 → 795), coverage ratchets** (see CHANGELOG `[Unreleased]`).
 
 ---
@@ -47,13 +48,12 @@ local LLMs) and adds controls around existing (brownfield) repositories across *
 ---
 
 ## 🔬 Next Horizon (`PHASE_3+`: Polyglot & Multi-Repo Governance)
-- [x] **Strict Execution Ledger (`task.md`) & Zero-Defect UI Kit Verification (`T-041` / `T-042`).**
 - [ ] **Deep Polyglot AST Analysis:** Extend AST compliance scanners beyond TypeScript to Go, Python, and Rust.
-- [ ] **Multi-Repo Control Plane:** Cross-repository contract drift and federated `CodeGraph` indexing.
+- [ ] **Multi-repo governance:** Cross-repository contract drift and federated `CodeGraph` indexing.
 
 ## 🗓️ v0.2 Plan (deferred decisions from the 2026-10-20 governance audit)
 - [ ] **`utils/` barrel cleanup (S12):** remove the backward-compatibility alias barrels in `atabey-mcp/src/mcp/utils/` (one-line re-exports of `modules/*`) and collapse to the `modules/` layout — a deliberate breaking change, deferred to the next minor/major boundary.
 - [ ] **Full producer/checker separation (A3):** today `@quality`/`@security` can already run as independent headless CLI processes via `AgentDispatcher` (worktree-isolated), but a single host model still plays all roles in interactive chat. Evaluate running verification turns on a different model/provider by default.
 - [ ] **Issue tracker integration (C4 extension):** link `submit_plan` acceptance criteria to external trackers (GitHub Issues/Projects).
-- [ ] **God-file decomposition, remaining 6:** `scaffold-app.ts` (863), `definitions.ts` (664), `governance.ts` (660), `routing-engine.ts` (641), `human-in-loop.ts` (524), `loop-detector.ts` (520) — follow the proven `storage.ts` domain-split pattern.
+- [ ] **God-file decomposition, remaining 5:** `scaffold-app.ts` (866), `governance.ts` (666), `routing-engine.ts` (684), `human-in-loop.ts` (525), `loop-detector.ts` (515) — follow the proven `storage.ts` domain-split pattern. (`definitions.ts` is now 232 lines and no longer a god file.)
 

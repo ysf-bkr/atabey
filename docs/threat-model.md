@@ -145,7 +145,7 @@ Essential boundaries that users and security teams must acknowledge:
 - **Mitigation now:** `safePath` project root confinement
 - **Residual:** Must never regress; covered by policy gate path checks
 
-### 6.4 Unauthenticated control plane API (unified mode)
+### 6.4 Unauthenticated HTTP API (unified mode)
 - **Path:** Open `MCP_PORT` without token
 - **Mitigation now:** Optional `MCP_AUTH_TOKEN`
 - **Residual:** Default-open risk if misconfigured (P2: auth required for strict mode)
@@ -162,7 +162,7 @@ Essential boundaries that users and security teams must acknowledge:
 | C3 | Shell ops run via sandbox runtime (container/uid/none) | **P1.1 done** |
 | C3b | File writes via sandbox-fs (container/host + lock) | **P1.2 done** |
 | C3c | Enterprise profile `sandbox.required` | **P1.3 done** |
-| C4 | AuthN/AuthZ on control plane API | P2 |
+| C4 | AuthN/AuthZ on the HTTP API | P2 |
 | C5 | Tamper-evident audit hash chain (logs + audit_log) | **P1.4 done** |
 | C5b | SIEM export / compliance packs | P4 |
 

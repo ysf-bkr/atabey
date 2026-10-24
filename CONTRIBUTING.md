@@ -103,7 +103,7 @@ project. Use the gitignored scratch directory instead:
 
 ```bash
 mkdir -p test-lab && cd test-lab
-npx atabey init gemini --profile freelancer --yes
+npx atabey init claude --yes
 ```
 
 `test-lab/` is gitignored; delete it whenever the experiment is done. The

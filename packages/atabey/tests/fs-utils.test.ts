@@ -56,6 +56,34 @@ describe("FileSystem Utilities", () => {
             expect(content).toContain("/.atabey/*.lock"); // Added missing one
         });
 
+        it("skips the consumer brain/state block when the whole framework dir is ignored", () => {
+            // Framework checkout: the scaffold is generated output, so the repo
+            // ignores /.atabey/ entirely. Appending "the brain is COMMITTED"
+            // underneath that would be self-contradictory.
+            const gitignorePath = path.join(tempDir, ".gitignore");
+            fs.writeFileSync(gitignorePath, "# framework\n/.atabey/\n/.agents/\n");
+
+            updateGitIgnore(gitignorePath, ".atabey", false);
+
+            const content = fs.readFileSync(gitignorePath, "utf8");
+            expect(content).toContain("/.claude/");
+            expect(content).not.toContain("COMMITTED on purpose");
+            expect(content).not.toContain("/.atabey/*.db");
+            expect(content).not.toContain("/.atabey/logs/");
+        });
+
+        it("still writes the full consumer block when only individual paths are ignored", () => {
+            const gitignorePath = path.join(tempDir, ".gitignore");
+            fs.writeFileSync(gitignorePath, "/.atabey/*.db\n");
+
+            updateGitIgnore(gitignorePath, ".atabey", false);
+
+            const content = fs.readFileSync(gitignorePath, "utf8");
+            expect(content).toContain("/.atabey/logs/");
+            expect(content).toContain("COMMITTED on purpose");
+            expect((content.match(/^\/\.atabey\/\*\.db$/gm) || []).length).toBe(1);
+        });
+
         it("should respect dryRun mode", () => {
             const gitignorePath = path.join(tempDir, ".gitignore");
             const stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);

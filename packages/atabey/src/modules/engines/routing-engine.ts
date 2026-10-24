@@ -610,8 +610,9 @@ export class RoutingEngine {
 
         const frameworkDir = getFrameworkDir();
         const registryDir = path.join(frameworkDir, "registry");
-        // Respect the active profile: a freelancer project only has 4 agents
-        // scaffolded, so routing must never assign work to absent specialists.
+        // Respect the active configuration: only agents actually scaffolded for
+        // this project are eligible, so routing never assigns work to absent
+        // role profiles.
         const enabledAgents = this.getConfiguredAgents(frameworkDir);
         const isEnabled = (agent: string): boolean =>
             !enabledAgents || enabledAgents.has(agent.replace(/^@/, ""));

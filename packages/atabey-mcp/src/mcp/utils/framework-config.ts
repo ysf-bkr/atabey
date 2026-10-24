@@ -22,6 +22,11 @@ export interface AuthConfigSection {
 }
 
 export interface FrameworkConfig {
+    /**
+     * @deprecated Legacy tier name written by pre-0.1.6 scaffolds. Current
+     * `atabey init` writes explicit `compliance`/`sandbox`/`auth` sections and no
+     * `profile`. Read only to keep older project configs working.
+     */
     profile?: string;
     orchestrator?: { autoStart?: boolean; intervalMs?: number };
     compliance?: ComplianceConfigSection;
@@ -31,7 +36,8 @@ export interface FrameworkConfig {
     auth?: AuthConfigSection;
 }
 
-const PROFILE_COMPLIANCE_DEFAULTS: Record<string, ComplianceConfigSection> = {
+/** Legacy tier defaults — see `FrameworkConfig.profile`. Not a product tier. */
+const LEGACY_PROFILE_COMPLIANCE_DEFAULTS: Record<string, ComplianceConfigSection> = {
     freelancer: {
         retentionEnabled: true,
         consentLogging: true,
@@ -65,7 +71,7 @@ export function loadFrameworkConfig(projectRoot: string): FrameworkConfig {
 export function resolveComplianceConfig(projectRoot: string): Required<ComplianceConfigSection> {
     const raw = loadFrameworkConfig(projectRoot);
     const profile = raw.profile || "freelancer";
-    const profileDefaults = PROFILE_COMPLIANCE_DEFAULTS[profile] || PROFILE_COMPLIANCE_DEFAULTS.freelancer;
+    const profileDefaults = LEGACY_PROFILE_COMPLIANCE_DEFAULTS[profile] || LEGACY_PROFILE_COMPLIANCE_DEFAULTS.freelancer;
     const section = raw.compliance || {};
 
     return {
@@ -76,7 +82,8 @@ export function resolveComplianceConfig(projectRoot: string): Required<Complianc
     };
 }
 
-const PROFILE_SANDBOX_DEFAULTS: Record<string, SandboxConfigSection> = {
+/** Legacy tier defaults — see `FrameworkConfig.profile`. Not a product tier. */
+const LEGACY_PROFILE_SANDBOX_DEFAULTS: Record<string, SandboxConfigSection> = {
     freelancer: { runtime: "auto", required: false },
     team: { runtime: "auto", required: false },
     enterprise: {
@@ -92,7 +99,7 @@ export function resolveSandboxConfig(
 ): Required<Pick<SandboxConfigSection, "runtime" | "required">> & SandboxConfigSection {
     const raw = loadFrameworkConfig(projectRoot);
     const profile = raw.profile || "freelancer";
-    const defaults = PROFILE_SANDBOX_DEFAULTS[profile] || PROFILE_SANDBOX_DEFAULTS.freelancer;
+    const defaults = LEGACY_PROFILE_SANDBOX_DEFAULTS[profile] || LEGACY_PROFILE_SANDBOX_DEFAULTS.freelancer;
     const section = raw.sandbox || {};
     return {
         runtime: section.runtime ?? defaults.runtime ?? "auto",
@@ -126,7 +133,8 @@ export function applySandboxEnvFromConfig(projectRoot: string): void {
     }
 }
 
-const PROFILE_AUTH_DEFAULTS: Record<string, AuthConfigSection> = {
+/** Legacy tier defaults — see `FrameworkConfig.profile`. Not a product tier. */
+const LEGACY_PROFILE_AUTH_DEFAULTS: Record<string, AuthConfigSection> = {
     freelancer: { required: false },
     team: { required: false },
     enterprise: { required: true },
@@ -135,7 +143,7 @@ const PROFILE_AUTH_DEFAULTS: Record<string, AuthConfigSection> = {
 export function resolveAuthConfig(projectRoot: string): Required<AuthConfigSection> {
     const raw = loadFrameworkConfig(projectRoot);
     const profile = raw.profile || "freelancer";
-    const defaults = PROFILE_AUTH_DEFAULTS[profile] || PROFILE_AUTH_DEFAULTS.freelancer;
+    const defaults = LEGACY_PROFILE_AUTH_DEFAULTS[profile] || LEGACY_PROFILE_AUTH_DEFAULTS.freelancer;
     const section = raw.auth || {};
     return {
         required: section.required ?? defaults.required ?? false,

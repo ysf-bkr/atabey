@@ -107,8 +107,21 @@ which claims were narrowed so the docs match the implementation.
   objects. Added `zod-to-mcp` tests plus an end-to-end assertion that the compiled server
   advertises exactly 40 tools over stdio.
 
+### Fixed — flaky test and scaffold/gitignore drift
+- **`send_message.test.ts` was racy.** It relied on wall-clock timing (20 retries × 500 ms ≈ 10 s)
+  while the lock goes stale after 15 s, and it shared one directory inside the repo across runs.
+  Under coverage + parallel files the retry loop crossed 15 s, the product correctly stole the
+  stale lock, and the test failed for the wrong reason; leftover `backend.lock` / `backend.json`
+  also broke two neighbouring tests. Each test now uses its own `mkdtemp` directory and refreshes
+  the lock mtime while it runs, so "busy" stays busy regardless of machine load.
+- **`updateGitIgnore` contradicted itself in a framework checkout.** It appended
+  "the brain is COMMITTED on purpose" below the repo's existing `/.atabey/` ignore. The
+  consumer state/brain block is now skipped when the whole framework dir is ignored, and blocks
+  are only appended when an actual ignore entry is missing (no stray comment lines on every
+  `atabey update`). Two regression tests added.
+
 ### Verified
-- `npm run verify` (build, `tsc --noEmit`, lint, 876 tests in 125 test files, coverage above
+- `npm run verify` (build, `tsc --noEmit`, lint, 909 tests in 127 test files, coverage above
   thresholds in all 3 workspaces, `readme:check`, `knip`, `npm audit --omit=dev` = 0,
   `atabey check`) exits 0. `npm audit --audit-level=high` also reports 0, including dev deps.
 

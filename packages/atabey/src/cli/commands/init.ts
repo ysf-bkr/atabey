@@ -214,7 +214,7 @@ export async function initCommand(adapterName: string, options: InitOptions) {
         nativeLanguage = normalizeNativeLanguage(options.native);
         mobileFramework = normalizeMobileFramework(options.mobile);
         resolvedFocus = focus as FocusKind;
-        UI.success(`Non-interactive mode: canonical setup (${CANONICAL_AGENTS.length} agents, focus: ${focus}).`);
+        UI.success(`Non-interactive mode: canonical setup (${CANONICAL_AGENTS.length} role profiles, focus: ${focus}).`);
         UI.success(`Stack: backend=${backendLanguage}, frontend=${frontendFramework}, mobile=${mobileFramework}, native=${nativeLanguage}.`);
     } else {
         const result = await runInteractiveInit(options.language);
@@ -400,7 +400,7 @@ export async function initCommand(adapterName: string, options: InitOptions) {
     UI.success(`\n[START] ${FRAMEWORK_NAME} (v${getPackageVersion()}) ${t.init_success}`);
     process.stdout.write(`\n- Brain & Memory Hub: ${coreDir}/\n`);
     process.stdout.write(`- AI Agent Commands: ${aiToolDir}/\n`);
-    process.stdout.write(`- Setup: standard (${selectedAgents.length} agents${isUnified ? ", all AI platforms" : `, ${adapterId}`})\n`);
+    process.stdout.write(`- Setup: standard (${selectedAgents.length} role profiles${isUnified ? ", all AI platforms" : `, ${adapterId}`})\n`);
     process.stdout.write(`\n${t.next_steps}\n`);
     process.stdout.write("  1. Run 'npm install' to install dependencies.\n");
     process.stdout.write("  2. Run 'atabey status' to verify the environment.\n");

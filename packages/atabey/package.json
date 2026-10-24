@@ -34,7 +34,8 @@
   "types": "./dist/atabey/src/cli/index.d.ts",
   "exports": {
     ".": "./dist/atabey/src/cli/index.js",
-    "./src/*": "./dist/atabey/src/*"
+    "./src/*": "./dist/atabey/src/*",
+    "./package.json": "./package.json"
   },
   "files": [
     "bin",

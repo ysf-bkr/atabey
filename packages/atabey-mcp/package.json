@@ -36,7 +36,8 @@
     ".": "./dist/atabey-mcp/src/mcp/index.js",
     "./modules/*": "./dist/atabey-mcp/src/mcp/modules/*",
     "./utils/*": "./dist/atabey-mcp/src/mcp/utils/*",
-    "./shared/*": "./dist/atabey-mcp/src/shared/*"
+    "./shared/*": "./dist/atabey-mcp/src/shared/*",
+    "./package.json": "./package.json"
   },
   "files": [
     "bin",

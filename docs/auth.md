@@ -4,7 +4,7 @@
 
 | Mode | When | Behavior |
 |------|------|----------|
-| **Open** | No tokens + auth not required | Anonymous access (local freelancers) |
+| **Open** | No tokens + auth not required | Anonymous access (local development only) |
 | **Optional auth** | Tokens set, `required=false` | Token accepted; unauthenticated still allowed only for public paths; API routes with credentials enforced when token store exists |
 | **Required (strict)** | `MCP_AUTH_REQUIRED=true` or `auth.required` in config | Fail closed: no valid Bearer → 401 |
 

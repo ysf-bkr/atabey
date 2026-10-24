@@ -362,7 +362,7 @@ The `atabey-mcp` package provides MCP (Model Context Protocol) server integratio
 | **Memory** | `read_memory`, `store_knowledge`, `search_knowledge`, `delete_knowledge`, `get_insights` | Knowledge management |
 | **Framework** | `get_status`, `run_tests`, `update_memory`, `orchestrate`, `submit_plan`, `update_contract_hash`, `audit_deps` | Framework operations |
 | **Messaging** | `send_message`, `ask_human`, `log_action` | Agent communication |
-| **Control Plane** | Locking, Registry | Agent lifecycle |
+| **Locks & Registry** | Locking, Registry | Agent lifecycle |
 | **Observability** | `check_ports`, `get_health` | System monitoring |
 | **Search** | `get_map`, `get_gaps`, `grep_search`, `list_dir` | Codebase exploration |
 | **Quality** | `check_lint` | Code quality |

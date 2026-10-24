@@ -216,7 +216,7 @@ Disable auto-start: set `"orchestrator": { "autoStart": false }` in `.atabey/con
 # One AI platform (your app repo) — claude is the default
 npx atabey init claude --yes
 
-# ALL 7 supported AI platforms (recommended for teams)
+# ALL 7 supported AI platforms (when you use several AI tools)
 npx atabey init all --yes
 
 # Framework monorepo maintainers only (this repository)
@@ -1197,7 +1197,7 @@ npm run build
 > Source code, applications (`apps/`), templates, and software artifacts scaffolded, generated, or modified by Atabey tools in your repositories belong 100% to you and are **completely exempt** from AGPL-3.0 copyleft obligations. You are free to license your own application code under any proprietary or open-source license of your choice.
 
 > [!NOTE]
-> **License choice (deliberate):** AGPL-3.0 was chosen intentionally to keep the control plane open and to require network-facing derivatives to share source (Section 13). Be aware that some corporate policies restrict AGPL adoption. A **dual-licensing option** (commercial license alongside AGPL) is under consideration for enterprise embedders — contact the author for commercial licensing discussions.
+> **License choice (deliberate):** AGPL-3.0 was chosen intentionally to keep Atabey open and to require network-facing derivatives to share source (Section 13). Be aware that some corporate policies restrict AGPL adoption. A **dual-licensing option** (commercial license alongside AGPL) is under consideration for enterprise embedders — contact the author for commercial licensing discussions.
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
@@ -1326,7 +1326,7 @@ Kullanıcı / Geliştirici
 # Tek AI platformu (varsayılan: claude)
 npx atabey init claude --yes
 
-# Tüm 7 desteklenen AI platformu (ekip için önerilir)
+# Tüm 7 desteklenen AI platformu (birden çok AI aracı kullanıyorsanız)
 npx atabey init all --yes
 
 # Sağlık kontrolü
@@ -1547,7 +1547,7 @@ npx atabey audit export --verify --in audit.json
 - **Mesajlaşma:** send_message, ask_human, approve, log
 - **Bellek / knowledge:** store/search/delete, insights
 - **Framework:** status, orchestrate, plan, tests, audit_deps
-- **Kalite / compliance / control plane / observability / network**
+- **Kalite / compliance / kilit & kayıt (registry) / observability / network**
 
 ---
 
@@ -1577,7 +1577,7 @@ Yerel, harici bağımlılıksız ek katmanlar:
 
 ---
 
-## MCP Sunucusu ve Kontrol Düzlemi
+## MCP Sunucusu ve Headless API
 
 ```bash
 npx atabey mcp start

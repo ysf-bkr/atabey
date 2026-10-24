@@ -37,8 +37,9 @@
 | @explorer | Recon | Codebase discovery |
 | @git | Recon | Version control |
 
-> **One canonical set:** `atabey init` scaffolds all 13 role profiles into `.atabey/agents/`.
-> There are no freelancer/team/enterprise subsets.
+> **One canonical set:** `atabey init` scaffolds all 13 role profiles into the selected
+> platform's agent directory (`.claude/agents/`, `.cursor/rules/`, `.atabey/agents/` for local
+> LLM, …) — there are no freelancer/team/enterprise subsets.
 
 ## [RULE 4] Prohibitions
 - `any` type is forbidden

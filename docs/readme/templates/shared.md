@@ -25,6 +25,11 @@ It is not a standalone product. It is the common infrastructure used by both `at
 | **sandbox** | `sandbox`, `sandbox-runtime`, `sandbox-fs` | OS sandbox (seatbelt/uid), fail-closed sandboxed file writes |
 | **observability** | `logger`, `otel`, `audit`, `audit-chain` | Structured logging, OTel spans, HMAC-signed audit chain |
 | **agent** | `agent-identity`, `api-catalog`, `tokenizer` | Signed agent identity, API endpoint catalog, `cl100k_base` tokenizer |
+| **lifecycle** | `task-lifecycle` | Task state machine (`SPEC → … → DONE`) with gate checks and handover validation |
+
+> `lifecycle` is an exported **library primitive**: it validates transitions
+> (test/coverage/AST gates, maker-checker separation) when you call it. The default
+> `atabey init` workflow does not drive task state through it automatically.
 
 ---
 
@@ -56,7 +61,8 @@ packages/shared/
 │       ├── concurrency/        # lock, file-lock, job-queue, worker-pool, worker-thread, resilience
 │       ├── sandbox/            # sandbox, sandbox-runtime, sandbox-fs
 │       ├── observability/      # logger, otel, audit, audit-chain
-│       └── agent/              # agent-identity, api-catalog, tokenizer
+│       ├── agent/              # agent-identity, api-catalog, tokenizer
+│       └── lifecycle/          # task-lifecycle (state machine + handover gates)
 ```
 
 Three import styles are supported:

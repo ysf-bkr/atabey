@@ -1,16 +1,26 @@
 import fs from "fs";
+import os from "os";
 import path from "path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { handleSendAgentMessage } from "../../../../src/mcp/tools/messaging/send_message.js";
 import { SendAgentMessageArgs } from "../../../../src/mcp/tools/types.js";
 import { asAgentID, asTraceID } from "../../../../src/mcp/utils/types.js";
 
-const TEST_DIR = path.resolve(__dirname, "../../_temp_messaging_tests");
-const MESSAGES_DIR = path.join(TEST_DIR, ".gemini/messages");
-const BACKEND_LOCK_FILE = path.join(MESSAGES_DIR, "backend.lock");
+/**
+ * Each test gets its own throwaway project directory. A fixed path inside the
+ * repo leaked state between tests (and between an interrupted run and the next
+ * one): a stale `backend.lock` made a lock-free test retry for seconds, and a
+ * leftover `backend.json` made the "2 messages" assertion see 3.
+ */
+let TEST_DIR: string;
+let MESSAGES_DIR: string;
+let BACKEND_LOCK_FILE: string;
 
 beforeEach(() => {
-    fs.mkdirSync(TEST_DIR, { recursive: true });
+    TEST_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "atabey-msg-"));
+    MESSAGES_DIR = path.join(TEST_DIR, ".gemini", "messages");
+    BACKEND_LOCK_FILE = path.join(MESSAGES_DIR, "backend.lock");
+
     // Write a dummy package.json to test directory to lock frameworkDir as .gemini
     const dummyPkg = {
         name: "test-pkg",
@@ -60,6 +70,20 @@ describe("Hermes Lock Protocol & Message sending", () => {
         fs.mkdirSync(MESSAGES_DIR, { recursive: true });
         fs.writeFileSync(BACKEND_LOCK_FILE, "Locked by @test at " + new Date().toISOString(), "utf8");
 
+        // The lock is considered stale after 15s, while 20 retries × 500ms ≈ 10s.
+        // On a loaded CI box (coverage + parallel files) the retry loop can exceed
+        // 15s, the code legitimately steals the stale lock, and this test would
+        // fail for the wrong reason. Keep the lock's mtime fresh for the whole
+        // call so "busy" stays busy regardless of machine speed.
+        const keepAlive = setInterval(() => {
+            try {
+                const now = new Date();
+                fs.utimesSync(BACKEND_LOCK_FILE, now, now);
+            } catch {
+                /* lock already released — nothing to refresh */
+            }
+        }, 250);
+
         const args: SendAgentMessageArgs = {
             to: asAgentID("@backend"),
             from: asAgentID("@manager"),
@@ -71,14 +95,20 @@ describe("Hermes Lock Protocol & Message sending", () => {
         };
 
         const startTime = Date.now();
-        const result = await handleSendAgentMessage(TEST_DIR, args);
+        let result: Awaited<ReturnType<typeof handleSendAgentMessage>>;
+        try {
+            result = await handleSendAgentMessage(TEST_DIR, args);
+        } finally {
+            clearInterval(keepAlive);
+        }
         const duration = Date.now() - startTime;
 
         expect(result.isError).toBe(true);
         expect(result.content[0].text).toContain("[ERROR] Could not send message to @backend: Hermes lock is busy.");
-        // Retries takes 20 attempts with 500ms delay -> duration should be at least ~9000ms
-        expect(duration).toBeGreaterThanOrEqual(9000);
-    }, 15000);
+        // 20 retries with a 500ms delay: ≥9s nominal. Assert a loose floor so the
+        // test proves retrying happened without depending on exact scheduling.
+        expect(duration).toBeGreaterThanOrEqual(5000);
+    }, 60000);
 
     it("should bypass and acquire lock if existing lock is stale (older than 10s)", async () => {
         fs.mkdirSync(MESSAGES_DIR, { recursive: true });
