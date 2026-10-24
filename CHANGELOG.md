@@ -195,7 +195,7 @@ Verified against the vendors' published docs before changing anything.
   `atabey update`). Two regression tests added.
 
 ### Verified
-- `npm run verify` (build, `tsc --noEmit`, lint, 962 tests in 129 test files, coverage above
+- `npm run verify` (build, `tsc --noEmit`, lint, 996 tests in 131 test files, coverage above
   thresholds in all 3 workspaces, `readme:check`, `knip`, `npm audit --omit=dev` = 0,
   `atabey check`) exits 0. `npm audit --audit-level=high` also reports 0, including dev deps.
 
