@@ -20,6 +20,56 @@ export function handleGrepSearch(projectRoot: string, args: GrepSearchArgs): Too
     }
 
     const results: string[] = [];
+
+    // `includePattern` is documented as a glob (for example "**" + "/*.json"),
+    // but the original check was a literal filePath.endsWith(includePattern), so
+    // any pattern containing a wildcard silently matched nothing. Globs are
+    // translated to a regex over the project-relative path; a plain suffix like
+    // ".ts" keeps working unchanged.
+    //
+    // NOTE: this is a single left-to-right pass. Chained `.replace()` calls are
+    // subtly wrong here — the replacement text for "**/" itself contains a "*",
+    // which a later `.replace(/\*/g, ...)` pass re-processed, producing a regex
+    // that matched nothing.
+    const globToRegExp = (glob: string): RegExp | null => {
+        let source = "";
+        for (let i = 0; i < glob.length; i++) {
+            const ch = glob[i];
+            if (ch === "*") {
+                if (glob[i + 1] === "*") {
+                    if (glob[i + 2] === "/") {
+                        source += "(?:.*/)?";
+                        i += 2;
+                    } else {
+                        source += ".*";
+                        i += 1;
+                    }
+                } else {
+                    source += "[^/]*";
+                }
+            } else if (ch === "?") {
+                source += "[^/]";
+            } else if ("\\^$.|+()[]{}".includes(ch)) {
+                source += `\\${ch}`;
+            } else {
+                source += ch;
+            }
+        }
+        try {
+            return new RegExp(`^${source}$`);
+        } catch {
+            return null;
+        }
+    };
+
+    const includeGlobRegex = includePattern && /[*?]/.test(includePattern)
+        ? globToRegExp(includePattern)
+        : null;
+    const includeMatcher = (relative: string): boolean => {
+        if (!includePattern) return true;
+        if (includeGlobRegex) return includeGlobRegex.test(relative);
+        return relative.endsWith(includePattern);
+    };
     let searchRegex: RegExp;
     try {
         searchRegex = new RegExp(pattern);
@@ -51,7 +101,8 @@ export function handleGrepSearch(projectRoot: string, args: GrepSearchArgs): Too
                 if (stat.isDirectory()) {
                     walk(filePath);
                 } else if (stat.isFile()) {
-                    if (includePattern && !filePath.endsWith(includePattern)) {
+                    const relativePath = path.relative(projectRoot, filePath).split(path.sep).join("/");
+                    if (includeMatcher && !includeMatcher(relativePath)) {
                         continue;
                     }
                     if (stat.size > 2 * 1024 * 1024) {
@@ -59,7 +110,11 @@ export function handleGrepSearch(projectRoot: string, args: GrepSearchArgs): Too
                     }
                     try {
                         verifyReadPermission(projectRoot, filePath);
-                        const content = fs.readFileSync(filePath, "utf8");
+                        const buffer = fs.readFileSync(filePath);
+                        // Skip binaries (SQLite, images, archives…): matching their raw
+                        // bytes produced nonsense hits and could echo stored content.
+                        if (buffer.subarray(0, 8000).includes(0)) continue;
+                        const content = buffer.toString("utf8");
                         if (searchRegex.test(content)) {
                             if (results.length < 30) {
                                 results.push(filePath);

@@ -205,6 +205,12 @@ projects. Each item below was reproduced before it was fixed.
 - **Misleading text:** `atabey plan list` recommended the non-existent `plan:submit`
   (now `plan submit`); `atabey security .` printed "on: ...."; `security`/`compliance`
   already handled this.
+- **`grep_search` `includePattern` globs never matched.** It was implemented as
+  `filePath.endsWith(pattern)`, so `**/*.json` (the documented example) returned nothing.
+  Rewritten as a single-pass glob→regex translation (`**/`, `*`, `?`), with `.ts`-style
+  suffixes still working. The same walker also read binary files (`.db`, archives) as text,
+  producing nonsense hits and echoing stored bytes; NUL-containing files are now skipped.
+  9 tests added (`grep_search.test.ts`), which did not exist before.
 - **Silent-routing token cost was undocumented and unbounded.** Every tool response gets
   the routed agent's prompt prepended: measured 1.6–2.7 KB per call (≈400–700 tokens),
   i.e. ~20 K tokens for a 40-call session. The `MCP_SILENT_ROUTING` /
@@ -238,7 +244,7 @@ without a token and 200 with it.
   `atabey update`). Two regression tests added.
 
 ### Verified
-- `npm run verify` (build, `tsc --noEmit`, lint, 1004 tests in 132 test files, coverage above
+- `npm run verify` (build, `tsc --noEmit`, lint, 1013 tests in 133 test files, coverage above
   thresholds in all 3 workspaces, `readme:check`, `knip`, `npm audit --omit=dev` = 0,
   `atabey check`) exits 0. `npm audit --audit-level=high` also reports 0, including dev deps.
 
