@@ -40,6 +40,16 @@ jobs:
       - name: Run test suite
         run: npm run test
 
+      # Publishing must not ship stale READMEs, dead code or a known advisory.
+      - name: Verify generated READMEs are up to date
+        run: npm run readme:check
+
+      - name: Dead code / unused dependency scan
+        run: npm run knip
+
+      - name: Dependency vulnerability audit (production deps)
+        run: npm audit --audit-level=high --omit=dev
+
       - name: Generate CycloneDX SBOM
         run: |
           npx --yes @cyclonedx/cyclonedx-npm --output-file sbom.json
